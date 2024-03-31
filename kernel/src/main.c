@@ -4,6 +4,5 @@
 
 int main(int argc, char* argv[]) {
     decir_hola("Kernel");
-    printf(" ESto es una prueba");
     return 0;
 }
