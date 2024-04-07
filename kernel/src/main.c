@@ -7,7 +7,7 @@ int main(int argc, char *argv[])
     t_log *logger;
 
     // Intialize logger
-    logger = initialize_logger("main.log", "main", true, LOG_LEVEL_INFO);
+    logger = initialize_logger("kernel.log", "kernel", true, LOG_LEVEL_INFO);
 
     decir_hola("Kernel");
     printf("Esto es una prueba \n");
@@ -16,3 +16,4 @@ int main(int argc, char *argv[])
     log_destroy(logger);
     return 0;
 }
+
