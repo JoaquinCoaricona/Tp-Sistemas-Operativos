@@ -14,3 +14,4 @@ t_log *initialize_logger(char *logger_name, char *process_name, bool visible, t_
 
     return new_logger;
 }
+
