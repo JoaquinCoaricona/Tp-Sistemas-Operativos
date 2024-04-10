@@ -8,9 +8,8 @@ Protocol functions:
 //! receive_codop() is used to receive a codop from a client
 
 Socket functions:
-//*  create_connection() is used to create a connection to a server
+DONE  create_connection() is used to create a connection to a server
 //*  close_connection() is used to close a connection to a server
-//* initialize_server() is used to initialize a server
-//* accept_connection() is used to accept a connection from a client
-//* listening() is used to listen for connections
+DONE initialize_server() is used to initialize a server
+DONE accept_connection() is used to accept a connection from a client
 

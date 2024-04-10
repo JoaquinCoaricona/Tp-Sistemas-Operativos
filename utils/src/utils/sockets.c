@@ -94,3 +94,22 @@ int initialize_server(t_log *logger, const char *name, char *ip, char *port)
 
     return server_socket;
 }
+
+int wait_client(t_log *logger, const char *name, int server_socket)
+{
+    struct sockaddr_in client_addr;
+    socklen_t addr_size = sizeof(struct sockaddr_in);
+
+    int client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &addr_size);
+
+    if (client_socket == -1)
+    {
+        log_error(logger, "Error al aceptar la conexion %s", name);
+        exit(1);
+    }
+
+    log_info(logger, "Conexion aceptada %s", name);
+
+    return client_socket;
+}
+
