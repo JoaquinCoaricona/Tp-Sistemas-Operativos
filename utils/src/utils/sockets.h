@@ -14,10 +14,7 @@
 // Function declarations
 int create_connection(char *ip, char *port); // Create a client_socket
 int initialize_server(t_log *logger, const char *name, char *ip, char *port);
-int wait_client(int sockfd);
-int connect_socket(int sockfd, const char *ip, int port);
-int send_data(int sockfd, const void *data, int size);
-int receive_data(int sockfd, void *buffer, int size);
-void close_socket(int sockfd);
+int wait_client(t_log *logger, const char *name, int server_socket);
+void close_connection(int *client_socket);
 
 #endif /* SOCKETS_H */

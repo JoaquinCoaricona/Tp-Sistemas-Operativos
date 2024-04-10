@@ -1,6 +1,6 @@
 #include "src/utils/sockets.h"
 
-// Client side
+//*---- CLIENT SIDE ----*//
 int create_conection(char *ip, char *port)
 {
     int client_socket;
@@ -37,7 +37,7 @@ int create_conection(char *ip, char *port)
     return client_socket;
 }
 
-// Server side
+//*---- SERVER SIDE ----*//
 int initialize_server(t_log *logger, const char *name, char *ip, char *port)
 {
     int server_socket;
@@ -113,3 +113,8 @@ int wait_client(t_log *logger, const char *name, int server_socket)
     return client_socket;
 }
 
+void close_connection(int *client_socket)
+{
+    close(client_socket);
+    *client_socket = -1;
+}
