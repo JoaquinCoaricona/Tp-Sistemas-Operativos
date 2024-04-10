@@ -1,0 +1,15 @@
+Protocol functions:
+//!  serialize_packet() and deserialize_packet() are used to convert packets to and from byte arrays
+//!  create_packet() is used to create a packet
+//!  add_to_packet() is used to add data to a packet
+//!  destroy_packet() is used to destroy a packet
+//! receive_buffer() is used to receive data from a clientt
+//! receive_packet() is used to receive a packet from a client
+//! receive_codop() is used to receive a codop from a client
+
+Socket functions:
+DONE  create_connection() is used to create a connection to a server
+//*  close_connection() is used to close a connection to a server
+DONE initialize_server() is used to initialize a server
+DONE accept_connection() is used to accept a connection from a client
+
