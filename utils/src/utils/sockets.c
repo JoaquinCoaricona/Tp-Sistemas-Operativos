@@ -1,4 +1,4 @@
-#include "src/utils/sockets.h"
+#include "sockets.h"
 
 //*---- CLIENT SIDE ----*//
 int create_conection(char *ip, char *port)
@@ -12,7 +12,7 @@ int create_conection(char *ip, char *port)
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    getaddrinfo(ip, puerto, &hints, &server_info);
+    getaddrinfo(ip, port, &hints, &server_info);
 
     // Create client socket
     client_socket = socket(server_info->ai_family, server_info->ai_socktype, server_info->ai_protocol);
@@ -44,7 +44,7 @@ int initialize_server(t_log *logger, const char *name, char *ip, char *port)
     bool conection_succesful;
 
     struct addrinfo hints;
-    struct *server_info;
+    struct addrinfo *server_info;
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
@@ -52,7 +52,7 @@ int initialize_server(t_log *logger, const char *name, char *ip, char *port)
     hints.ai_flags = AI_PASSIVE;
 
     // Recibe los addrinfo
-    getaddrinfo(ip, port, &hints, &server_info); // TODO: Get PORT from config
+    getaddrinfo(ip, port, &hints, &server_info);
 
     // Recorre los addrinfo
     for (struct addrinfo *info = server_info; info != NULL; info = info->ai_next)
@@ -79,7 +79,7 @@ int initialize_server(t_log *logger, const char *name, char *ip, char *port)
         }
     }
 
-    if (!connection_succesful)
+    if (!conection_succesful)
     {
         log_error(logger, "Error al crear el socket %s", name);
         free(server_info);
