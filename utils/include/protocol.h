@@ -13,11 +13,22 @@
 
 // Define your protocol constants and data structures here
 
+//TODO: Implementar op_code
 typedef enum
 {
     MESSAGE,
     PACKET,
 } op_code;
+
+typedef struct {
+    int size;
+    void* stream;
+}t_buffer
+
+typedef struct {
+    op_code code;
+    t_buffer* buffer;
+} t_packet;
 
 
 
