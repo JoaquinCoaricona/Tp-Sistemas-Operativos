@@ -7,15 +7,17 @@
 #include <string.h>
 #include <netdb.h>
 
-typedef enum{
+typedef enum
+{
     MENSAJE,
     HANDSHAKE,
-    //entrada - salida
+    // entrada - salida
     EJECUTAR_SCRIPT,
     INICIAR_PROCESO,
     FINALIZAR_PROCESO,
     DETENER_PLANIFICACION,
     INICIAR_PLANIFICACION,
     PROCESO_ESTADO,
+    PACKET,
 
-}op_code;
+} op_code;
