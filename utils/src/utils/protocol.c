@@ -41,3 +41,57 @@ void add_to_packet(t_packet *packet, void *stream, int size)
 
     packet->buffer->size += size + sizeof(int);
 }
+
+void destroy_packet(t_packet *packet)
+{
+    free(packet->buffer->stream);
+    free(packet->buffer);
+    free(packet);
+}
+
+void *fetch_buffer(int *size, int client_socket)
+{
+    void *buffer;
+
+    recv(client_socket, size, sizeof(int), MSG_WAITALL);
+    buffer = malloc(*size);
+    recv(client_socket, buffer, *size, MSG_WAITALL);
+
+    return buffer;
+}
+
+t_list *fetch_packet(int client_socket)
+{
+    int total_size;
+    int offset = 0;
+    void *buffer;
+    t_list *values = list_create();
+    int buffer_size;
+
+    buffer = fetch_buffer(&total_size, client_socket);
+
+    while (offset < total_size)
+    {
+        memcpy(&buffer_size, buffer + offset, sizeof(int));
+        offset += sizeof(int);
+        char *value = malloc(buffer_size);
+        memcpy(value, buffer + offset, buffer_size);
+        offset += buffer_size;
+        list_add(values, value);
+    }
+
+    free(buffer);
+    return values;
+}
+
+int fetch_codop(int client_socket)
+{
+    int cod_op;
+    if (recv(client_socket, &cod_op, sizeof(int), MSG_WAITALL) > 0)
+    {
+        return cod_op;
+    }
+    close(client_socket);
+    return -1;
+}
+
