@@ -32,3 +32,12 @@ void serialize_packet(t_packet *packet, int buffer_size)
     return serialized_packet;
 }
 
+void add_to_packet(t_packet *packet, void *stream, int size)
+{
+    packet->buffer->stream = realloc(packet->buffer->stream, packet->buffer->size + size + sizeof(int));
+
+    memcpy(packet->buffer->stream + packet->buffer->size, &size, sizeof(int));
+    memcpy(packet->buffer->stream + packet->buffer->size + sizeof(int), stream, size);
+
+    packet->buffer->size += size + sizeof(int);
+}
