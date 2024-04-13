@@ -95,3 +95,12 @@ int fetch_codop(int client_socket)
     return -1;
 }
 
+void send_packet(t_packet *packet, int client_socket)
+{
+    int buffer_size = packet->buffer->size + 2 * sizeof(int);
+    void *to_send = serialize_packet(packet, buffer_size);
+
+    send(client_socket, to_send, buffer_size, 0);
+
+    free(to_send);
+}
