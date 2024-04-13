@@ -14,6 +14,7 @@ int create_conection(char *ip, char *port)
 
     getaddrinfo(ip, port, &hints, &server_info);
 
+
     // Create client socket
     client_socket = socket(server_info->ai_family, server_info->ai_socktype, server_info->ai_protocol);
 
@@ -53,6 +54,12 @@ int initialize_server(t_log *logger, const char *name, char *ip, char *port)
 
     // Recibe los addrinfo
     getaddrinfo(ip, port, &hints, &server_info);
+
+    if (server_info == NULL)
+    {
+        log_error(logger, "Error al obtener la informacion del servidor %s", name);
+        return -1;
+    }
 
     // Recorre los addrinfo
     for (struct addrinfo *info = server_info; info != NULL; info = info->ai_next)

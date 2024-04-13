@@ -17,7 +17,7 @@ t_packet *create_packet(op_code code, t_buffer *buffer)
     return packet;
 }
 
-void serialize_packet(t_packet *packet, int buffer_size)
+void *serialize_packet(t_packet *packet, int buffer_size)
 {
     void *serialized_packet = malloc(buffer_size);
     int offset = 0;

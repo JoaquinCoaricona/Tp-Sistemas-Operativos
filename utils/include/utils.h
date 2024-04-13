@@ -6,6 +6,10 @@
 #include <unistd.h>
 #include <string.h>
 #include <netdb.h>
+#include "sockets.h"
+//#include "protocol.h"
+#include "logger.h"
+#include "configs.h"
 
 typedef enum
 {
@@ -21,3 +25,5 @@ typedef enum
     PACKET,
 
 } op_code;
+
+#endif /* UTILS_H */

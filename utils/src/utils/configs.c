@@ -1,15 +1,18 @@
-t_config *initialize_config(t_log *logger, char *name)
+#include "configs.h"
+
+t_config *initialize_config(t_log *logger, char *path)
 {
     t_config *new_config = NULL;
 
-    new_config = config_create(name);
+    new_config = config_create(path);
 
-    if (nuevo_config == NULL)
+    if (new_config == NULL)
     {
         log_error(logger, "Error al crear el archivo de configuracion");
         exit(1);
     }
 
+    log_info(logger, "Archivo de configuracion creado correctamente");
+
     return new_config;
 }
-
