@@ -1,6 +1,6 @@
 * --- PROTOCOL FUNCTIONS --- *
-//TODO: serialize_packet() and deserialize_packet() are used to convert packets to and from byte arrays
-//TODO: create_packet() is used to create a packet
+//: serialize_packet() and deserialize_packet() are used to convert packets to and from byte arrays
+//: create_packet() is used to create a packet
 //TODO: add_to_packet() is used to add data to a packet
 //TODO: destroy_packet() is used to destroy a packet
 //TODO: receive_buffer() is used to receive data from a clientt

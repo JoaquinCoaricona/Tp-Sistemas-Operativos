@@ -16,3 +16,19 @@ t_packet *create_packet(op_code code, t_buffer *buffer)
     packet->buffer = buffer;
     return packet;
 }
+
+void serialize_packet(t_packet *packet, int buffer_size)
+{
+    void *serialized_packet = malloc(buffer_size);
+    int offset = 0;
+
+    memcpy(serialized_packet + offset, &(packet->code), sizeof(int));
+    offset += sizeof(int);
+    memcpy(serialized_packet + offset, &(packet->buffer->size), sizeof(int));
+    offset += sizeof(int);
+    memcpy(serialized_packet + offset, packet->buffer->stream, packet->buffer->size);
+    offset += packet->buffer->size;
+
+    return serialized_packet;
+}
+
