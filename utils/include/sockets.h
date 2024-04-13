@@ -10,6 +10,8 @@
 #include <commons/collections/list.h>
 #include <string.h>
 #include <assert.h>
+#include <pthread.h>
+
 
 // Function declarations
 int create_connection(char *ip, char *port); // Create a client_socket

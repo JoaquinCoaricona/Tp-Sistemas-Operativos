@@ -113,6 +113,35 @@ int wait_client(t_log *logger, const char *name, int server_socket)
     return client_socket;
 }
 
+//! Fijarse si funciona el serve_client()
+int wait_client_threaded(t_log *logger, const char *name, int server_socket, void *(*serve_client))
+{
+    struct sockaddr_in client_addr;
+    socklen_t addr_size = sizeof(struct sockaddr_in);
+    
+    while (1) {
+     pthread_t thread;
+     int *fd_conexion_ptr = malloc(sizeof(int));
+     *fd_conexion_ptr = accept(server_socket, NULL, NULL);
+     pthread_create(&thread,
+                    NULL,
+                    (void*) serve_client,
+                    fd_conexion_ptr);
+     pthread_detach(thread);
+}
+    int client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &addr_size);
+
+    if (client_socket == -1)
+    {
+        log_error(logger, "Error al aceptar la conexion %s", name);
+        return -1;
+    }
+
+    log_info(logger, "Conexion aceptada %s", name);
+
+    return client_socket;
+}
+
 void close_connection(int *client_socket)
 {
     close(client_socket);
