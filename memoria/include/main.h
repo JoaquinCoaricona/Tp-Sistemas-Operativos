@@ -1,5 +1,5 @@
 #ifndef MAIN_H_
-#define MAIN_H_
+#define MAIN_H_i
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,7 +7,7 @@
 #include <commons/string.h>
 #include <commons/config.h>
 #include <readline/readline.h>
-#include "/home/bruno/UTN/tp-2024-1c-KernelCrafters/utils/include/utils.h"
+#include "../include/utils.h"
 
 // Functions
 void *handshake(t_log *logger);

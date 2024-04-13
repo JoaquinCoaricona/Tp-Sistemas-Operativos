@@ -9,8 +9,7 @@
 #include <commons/config.h>
 #include "readline/readline.h"
 
-//Functions
-t_config *new_config(t_log *logger, char *name);
-
+// Functions
+t_config *initialize_config(t_log *logger, char *name);
 
 #endif // CONFIGS_H

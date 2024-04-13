@@ -2,10 +2,10 @@
 
 int main(int argc, char *argv[])
 {
-    char *PUERTO_ESCUCHA;
+    char *PORT;
     int MEM_SIZE;
     int PAGE_SIZE;
-    char IP[10] = "127.0.0.1";
+    char *IP;
     t_log *logger;
 
     // Initialize logger
@@ -13,14 +13,14 @@ int main(int argc, char *argv[])
 
     log_info(logger, "Logger working");
     // Get config values
-    t_config *config = initialize_config(logger, "memoria.config");
+    t_config *config = initialize_config(logger, "../memoria.config"); // TODO: Arreglar path en makefiles
 
-
-    PUERTO_ESCUCHA = config_get_string_value(config, "PUERTO_ESCUCHA");
-    printf("PUERTO_ESCUCHA: %s\n", PUERTO_ESCUCHA); //!
+    //! Solucionar configs
+    PORT = config_get_string_value(config, "PUERTO_ESCUCHA");
+    IP = config_get_string_value(config, "IP");
 
     // Create socket
-    int server_fd = initialize_server(logger, "memory_server", IP, "8002");
+    int server_fd = initialize_server(logger, "memory_server", IP, PORT);
     printf("hola\n");
     int client_fd = wait_client_threaded(logger, "memory_server", server_fd, handshake(logger));
     printf("hola\n");
