@@ -28,7 +28,7 @@ typedef struct
 } t_packet;
 
 // Functions
-t_buffer *create_buffer(void *stream);
+t_buffer *create_buffer();
 t_list *fetch_packet(int client_socket);
 t_packet *create_packet(op_code code, t_buffer *buffer);
 void *serialize_packet(t_packet *packet, int buffer_size);

@@ -7,5 +7,6 @@
 #include <commons/string.h>
 #include <commons/config.h>
 #include <readline/readline.h>
-
+#include "../include/protocol.h"
+#include "../include/sockets.h"
 #endif /* MAIN_H_ */

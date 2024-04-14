@@ -1,7 +1,7 @@
 #include "sockets.h"
 
 //*---- CLIENT SIDE ----*//
-int create_conection(char *ip, char *port)
+int create_conection(t_log *logger, char *ip, char *port)
 {
     int client_socket;
     struct addrinfo hints;
@@ -20,7 +20,7 @@ int create_conection(char *ip, char *port)
 
     if (client_socket == -1)
     {
-        perror("Error al crear el socket");
+        log_error(logger, "Error al crear el socket");
         exit(1);
     }
 
@@ -29,7 +29,7 @@ int create_conection(char *ip, char *port)
 
     if (conection == -1)
     {
-        perror("Error al conectar el socket");
+        log_error(logger, "Error al conectar el socket");
         exit(1);
     }
 
@@ -149,8 +149,8 @@ int wait_client_threaded(t_log *logger, const char *name, int server_socket, voi
     return client_socket;
 }
 
-void close_connection(int *client_socket)
+void close_conection(int *client_socket)
 {
     close(client_socket);
-    *client_socket = -1;
+    client_socket = -1;
 }
