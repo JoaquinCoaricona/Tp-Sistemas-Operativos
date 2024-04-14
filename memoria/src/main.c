@@ -49,9 +49,3 @@ void *handshake(t_log *logger)
     log_info(logger, "Handshake started");
 }
 
-void end_program(t_log *logger, t_config *config, int conection)
-{
-    log_destroy(logger);
-    config_destroy(config);
-    close_conection(conection);
-}

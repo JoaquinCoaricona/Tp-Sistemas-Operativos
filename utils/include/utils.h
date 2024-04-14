@@ -2,29 +2,16 @@
 #define UTILS_H
 
 // INCLUDES
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <netdb.h>
+#include <commons/log.h>
+#include <commons/string.h>
+#include <commons/config.h>
+#include <readline/readline.h>
 #include "sockets.h"
 #include "logger.h"
 #include "configs.h"
+#include "protocol.h"
+#include "opcode.h"
 
 // STRUCTS
-typedef enum
-{
-    MENSAJE,
-    HANDSHAKE,
-    // entrada - salida
-    EJECUTAR_SCRIPT,
-    INICIAR_PROCESO,
-    FINALIZAR_PROCESO,
-    DETENER_PLANIFICACION,
-    INICIAR_PLANIFICACION,
-    PROCESO_ESTADO,
-    PACKET,
-
-} op_code;
 
 #endif /* UTILS_H */

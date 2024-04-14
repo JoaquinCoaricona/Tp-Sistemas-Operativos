@@ -1,12 +1,6 @@
 #ifndef MAIN_H_
 #define MAIN_H_
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <commons/log.h>
-#include <commons/string.h>
-#include <commons/config.h>
-#include <readline/readline.h>
-#include "../include/protocol.h"
-#include "../include/sockets.h"
+#include "../include/utils.h"
+
 #endif /* MAIN_H_ */

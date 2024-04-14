@@ -12,7 +12,7 @@
 #include <commons/collections/list.h>
 #include <string.h>
 #include <assert.h>
-#include "utils.h"
+#include "opcode.h"
 
 // STRUCTS
 typedef struct

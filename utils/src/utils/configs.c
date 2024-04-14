@@ -16,3 +16,10 @@ t_config *initialize_config(t_log *logger, char *path)
 
     return new_config;
 }
+
+void end_program(t_log *logger, t_config *config, int conection)
+{
+    log_destroy(logger);
+    config_destroy(config);
+    close_conection(conection);
+}
