@@ -1,6 +1,7 @@
 #ifndef SOCKETS_H
 #define SOCKETS_H
 
+// INCLUDES
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -10,11 +11,17 @@
 #include <commons/collections/list.h>
 #include <string.h>
 #include <assert.h>
+#include <pthread.h>
 
-// Function declarations
-int create_connection(char *ip, char *port); // Create a client_socket
+// FUNCTIONS
+
+// CLIENT
+int create_conection(t_log *logger, char *ip, char *port);
+void close_conection(int *client_socket);
+
+// SERVER
 int initialize_server(t_log *logger, const char *name, char *ip, char *port);
 int wait_client(t_log *logger, const char *name, int server_socket);
-void close_connection(int *client_socket);
+int wait_client_threaded(t_log *logger, const char *name, int server_socket, void *(*serve_client));
 
 #endif /* SOCKETS_H */

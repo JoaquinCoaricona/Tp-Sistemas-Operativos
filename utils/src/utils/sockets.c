@@ -1,7 +1,7 @@
-#include "src/utils/sockets.h"
+#include "sockets.h"
 
-//*---- CLIENT SIDE ----*//
-int create_conection(char *ip, char *port)
+/* MARK: --- CLIENT SIDE --- */
+int create_conection(t_log *logger, char *ip, char *port)
 {
     int client_socket;
     struct addrinfo hints;
@@ -12,14 +12,14 @@ int create_conection(char *ip, char *port)
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    getaddrinfo(ip, puerto, &hints, &server_info);
+    getaddrinfo(ip, port, &hints, &server_info);
 
     // Create client socket
     client_socket = socket(server_info->ai_family, server_info->ai_socktype, server_info->ai_protocol);
 
     if (client_socket == -1)
     {
-        perror("Error al crear el socket");
+        log_error(logger, "Error al crear el socket");
         exit(1);
     }
 
@@ -28,7 +28,7 @@ int create_conection(char *ip, char *port)
 
     if (conection == -1)
     {
-        perror("Error al conectar el socket");
+        log_error(logger, "Error al conectar el socket");
         exit(1);
     }
 
@@ -37,22 +37,27 @@ int create_conection(char *ip, char *port)
     return client_socket;
 }
 
-//*---- SERVER SIDE ----*//
+/* MARK: --- SERVER SIDE --- */
 int initialize_server(t_log *logger, const char *name, char *ip, char *port)
 {
     int server_socket;
     bool conection_succesful;
 
     struct addrinfo hints;
-    struct *server_info;
+    struct addrinfo *server_info;
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    // Recibe los addrinfo
-    getaddrinfo(ip, port, &hints, &server_info); // TODO: Get PORT from config
+    getaddrinfo(ip, port, &hints, &server_info);
+
+    if (server_info == NULL)
+    {
+        log_error(logger, "Error al obtener la informacion del servidor %s", name);
+        return -1;
+    }
 
     // Recorre los addrinfo
     for (struct addrinfo *info = server_info; info != NULL; info = info->ai_next)
@@ -79,7 +84,7 @@ int initialize_server(t_log *logger, const char *name, char *ip, char *port)
         }
     }
 
-    if (!connection_succesful)
+    if (!conection_succesful)
     {
         log_error(logger, "Error al crear el socket %s", name);
         free(server_info);
@@ -88,7 +93,7 @@ int initialize_server(t_log *logger, const char *name, char *ip, char *port)
 
     // Listen
     listen(server_socket, SOMAXCONN);
-    log_info(logger, "Escuchando en %s:%s (%s)\n", ip, port, name);
+    log_info(logger, "LISTENING IN... %s:%s (%s)\n", ip, port, name);
 
     freeaddrinfo(server_info);
 
@@ -100,6 +105,7 @@ int wait_client(t_log *logger, const char *name, int server_socket)
     struct sockaddr_in client_addr;
     socklen_t addr_size = sizeof(struct sockaddr_in);
 
+    // Accept client
     int client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &addr_size);
 
     if (client_socket == -1)
@@ -113,8 +119,38 @@ int wait_client(t_log *logger, const char *name, int server_socket)
     return client_socket;
 }
 
-void close_connection(int *client_socket)
+//! Fijarse si funciona el serve_client()
+int wait_client_threaded(t_log *logger, const char *name, int server_socket, void *(*serve_client))
+{
+    struct sockaddr_in client_addr;
+    socklen_t addr_size = sizeof(struct sockaddr_in);
+
+    while (1)
+    {
+        pthread_t thread;
+        int *fd_conexion_ptr = malloc(sizeof(int));
+        *fd_conexion_ptr = accept(server_socket, NULL, NULL);
+        pthread_create(&thread,
+                       NULL,
+                       (void *)serve_client,
+                       fd_conexion_ptr);
+        pthread_detach(thread);
+    }
+    int client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &addr_size);
+
+    if (client_socket == -1)
+    {
+        log_error(logger, "Error al aceptar la conexion %s", name);
+        return -1;
+    }
+
+    log_info(logger, "Conexion aceptada %s", name);
+
+    return client_socket;
+}
+
+void close_conection(int *client_socket)
 {
     close(client_socket);
-    *client_socket = -1;
+    client_socket = -1;
 }
