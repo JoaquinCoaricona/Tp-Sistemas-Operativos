@@ -1,6 +1,6 @@
 #include "sockets.h"
 
-//*---- CLIENT SIDE ----*//
+/* MARK: --- CLIENT SIDE --- */
 int create_conection(t_log *logger, char *ip, char *port)
 {
     int client_socket;
@@ -13,7 +13,6 @@ int create_conection(t_log *logger, char *ip, char *port)
     hints.ai_flags = AI_PASSIVE;
 
     getaddrinfo(ip, port, &hints, &server_info);
-
 
     // Create client socket
     client_socket = socket(server_info->ai_family, server_info->ai_socktype, server_info->ai_protocol);
@@ -38,7 +37,7 @@ int create_conection(t_log *logger, char *ip, char *port)
     return client_socket;
 }
 
-//*---- SERVER SIDE ----*//
+/* MARK: --- SERVER SIDE --- */
 int initialize_server(t_log *logger, const char *name, char *ip, char *port)
 {
     int server_socket;
@@ -52,7 +51,6 @@ int initialize_server(t_log *logger, const char *name, char *ip, char *port)
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    // Recibe los addrinfo
     getaddrinfo(ip, port, &hints, &server_info);
 
     if (server_info == NULL)
@@ -95,7 +93,7 @@ int initialize_server(t_log *logger, const char *name, char *ip, char *port)
 
     // Listen
     listen(server_socket, SOMAXCONN);
-    log_info(logger, "Escuchando en %s:%s (%s)\n", ip, port, name);
+    log_info(logger, "LISTENING IN... %s:%s (%s)\n", ip, port, name);
 
     freeaddrinfo(server_info);
 
@@ -107,6 +105,7 @@ int wait_client(t_log *logger, const char *name, int server_socket)
     struct sockaddr_in client_addr;
     socklen_t addr_size = sizeof(struct sockaddr_in);
 
+    // Accept client
     int client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &addr_size);
 
     if (client_socket == -1)
@@ -125,17 +124,18 @@ int wait_client_threaded(t_log *logger, const char *name, int server_socket, voi
 {
     struct sockaddr_in client_addr;
     socklen_t addr_size = sizeof(struct sockaddr_in);
-    
-    while (1) {
-     pthread_t thread;
-     int *fd_conexion_ptr = malloc(sizeof(int));
-     *fd_conexion_ptr = accept(server_socket, NULL, NULL);
-     pthread_create(&thread,
-                    NULL,
-                    (void*) serve_client,
-                    fd_conexion_ptr);
-     pthread_detach(thread);
-}
+
+    while (1)
+    {
+        pthread_t thread;
+        int *fd_conexion_ptr = malloc(sizeof(int));
+        *fd_conexion_ptr = accept(server_socket, NULL, NULL);
+        pthread_create(&thread,
+                       NULL,
+                       (void *)serve_client,
+                       fd_conexion_ptr);
+        pthread_detach(thread);
+    }
     int client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &addr_size);
 
     if (client_socket == -1)

@@ -1,6 +1,7 @@
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
 
+// INCLUDES
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -13,29 +14,34 @@
 #include <assert.h>
 #include "utils.h"
 
-// Define your protocol constants and data structures here
-
+// STRUCTS
 typedef struct
 {
     int size;
     void *stream;
+
 } t_buffer;
 
 typedef struct
 {
     op_code code;
     t_buffer *buffer;
+
 } t_packet;
 
-// Functions
+// FUNCTIONS
+
+// Client
 t_buffer *create_buffer();
-t_list *fetch_packet(int client_socket);
 t_packet *create_packet(op_code code, t_buffer *buffer);
-void *serialize_packet(t_packet *packet, int buffer_size);
 void add_to_packet(t_packet *packet, void *stream, int size);
+void *serialize_packet(t_packet *packet, int buffer_size);
 void destroy_packet(t_packet *packet);
+void send_packet(t_packet *packet, int client_socket);
+
+// Server
+t_list *fetch_packet(int client_socket);
 void *fetch_buffer(int *size, int client_socket);
 int fetch_codop(int client_socket);
-void send_packet(t_packet *packet, int client_socket);
 
 #endif // PROTOCOL_H

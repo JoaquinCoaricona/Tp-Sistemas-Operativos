@@ -1,16 +1,17 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+// INCLUDES
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <netdb.h>
 #include "sockets.h"
-//#include "protocol.h"
 #include "logger.h"
 #include "configs.h"
 
+// STRUCTS
 typedef enum
 {
     MENSAJE,

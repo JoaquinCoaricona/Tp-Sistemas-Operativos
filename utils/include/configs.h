@@ -1,7 +1,7 @@
 #ifndef CONFIGS_H
 #define CONFIGS_H
 
-// Define your configuration constants here
+// INCLUDES
 #include <stdio.h>
 #include <stdlib.h>
 #include <commons/log.h>
