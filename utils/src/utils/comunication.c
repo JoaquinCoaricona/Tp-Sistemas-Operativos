@@ -26,6 +26,7 @@ static void process_conection(void *args)
             log_info(logger, "handshake recibido %s", server_name);
             packet = fetch_packet(client_socket);
             log_info(logger, "Packet received");
+
             close_conection(client_socket);
             client_socket = -1;
             break;
@@ -46,46 +47,21 @@ static void process_conection(void *args)
 
 int server_listen(t_log *logger, const char *server_name, int server_socket)
 {
-    int client_socket = wait_client(logger, server_name, server_socket);
     log_info(logger, "listening...");
 
-    if (client_socket != -1)
-    {
-        pthread_t thread;
+    int client_socket = wait_client(logger, server_name, server_socket);
 
-        t_process_conection_args *args = malloc(sizeof(t_process_conection_args));
+    pthread_t thread;
 
-        args->logger = logger;
-        int server_listen(t_log * logger, char *server_name, int server_socket)
-        {
-            int client_socket = wait_client(logger, server_name, server_socket);
-            log_info(logger, "listening...");
+    t_process_conection_args *args = malloc(sizeof(t_process_conection_args));
 
-            if (client_socket != -1)
-            {
-                pthread_t thread;
+    args->logger = logger;
 
-                t_process_conection_args *args = malloc(sizeof(t_process_conection_args));
+    args->server_name = server_name;
+    args->fd = client_socket;
 
-                args->logger = logger;
-                args->server_name = server_name;
-                args->fd = client_socket;
+    pthread_create(&thread, NULL, (void *)process_conection, (void *)args);
+    pthread_detach(thread);
 
-                pthread_create(&thread, NULL, (void *)process_conection, (void *)args);
-                pthread_detach(thread);
-
-                return 1;
-            }
-
-            return 0;
-        }
-        args->server_name = server_name;
-
-        pthread_create(&thread, NULL, (void *)process_conection, (void *)args);
-        pthread_detach(thread);
-
-        return 1;
-    }
-
-    return 0;
+    return 1;
 }
