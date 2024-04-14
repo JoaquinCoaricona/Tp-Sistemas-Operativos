@@ -11,6 +11,6 @@
 
 // Functions
 t_config *initialize_config(t_log *logger, char *name);
-void end_program(t_log *logger, t_config *config, int conection);
+void end_program(t_log *logger, t_config *config);
 
 #endif // CONFIGS_H

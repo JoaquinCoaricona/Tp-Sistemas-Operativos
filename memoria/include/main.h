@@ -4,6 +4,5 @@
 #include "../include/utils.h"
 
 // Functions
-void *handshake(t_log *logger);
 
 #endif /* MAIN_H_ */

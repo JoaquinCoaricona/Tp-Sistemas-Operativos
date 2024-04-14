@@ -26,11 +26,10 @@ int main(int argc, char *argv[])
     packet = create_packet(HANDSHAKE, buffer);
 
     add_to_packet(packet, buffer->stream, buffer->size);
+    //packet = serialize_packet(packet, buffer->size);
     send_packet(packet, client_fd);
 
     log_info(logger, "Handshake enviado");
-
-    // TODO: serialize_packet(packet, buffer->size);
 
     return 0;
 }

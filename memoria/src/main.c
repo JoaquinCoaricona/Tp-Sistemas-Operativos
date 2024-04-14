@@ -22,30 +22,11 @@ int main(int argc, char *argv[])
     int server_fd = initialize_server(logger, "memory_server", IP, PORT);
     log_info(logger, "Server initialized");
 
-    int client_fd = wait_client(logger, "memory_server", server_fd);
-    // int client_fd = wait_client_threaded(logger, "memory_server", server_fd, handshake);
+    while (server_listen(logger, "memory_server", server_fd))
+        ;
 
-    log_info(logger, "Listening...");
-
-    if (fetch_codop(client_fd) == HANDSHAKE)
-    {
-        log_info(logger, "Handshake successful");
-
-        packet = fetch_packet(client_fd);
-        log_info(logger, "Packet received");
-    }
-    else
-    {
-        log_error(logger, "Handshake failed");
-    }
-
-    end_program(logger, config, client_fd);
+    end_program(logger, config);
 
     return 0;
-}
-
-void *handshake(t_log *logger)
-{
-    log_info(logger, "Handshake started");
 }
 
