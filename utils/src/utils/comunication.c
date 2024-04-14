@@ -48,15 +48,12 @@ static void process_conection(void *args)
 int server_listen(t_log *logger, const char *server_name, int server_socket)
 {
     log_info(logger, "listening...");
-
-    int client_socket = wait_client(logger, server_name, server_socket);
-
     pthread_t thread;
 
+    int client_socket = wait_client(logger, server_name, server_socket);
     t_process_conection_args *args = malloc(sizeof(t_process_conection_args));
 
     args->logger = logger;
-
     args->server_name = server_name;
     args->fd = client_socket;
 
