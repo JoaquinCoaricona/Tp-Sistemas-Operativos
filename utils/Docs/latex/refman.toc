@@ -1,0 +1,28 @@
+\@ifundefined {etoctocstyle}{\let \etoc@startlocaltoc \@gobble \let \etoc@settocdepth \@gobble \let \etoc@depthtag \@gobble \let \etoc@setlocaltop \@gobble }{}
+\contentsline {chapter}{\numberline {1}Data Structure Index}{1}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Data Structures}{1}{section.1.1}%
+\contentsline {chapter}{\numberline {2}File Index}{3}{chapter.2}%
+\contentsline {section}{\numberline {2.1}File List}{3}{section.2.1}%
+\contentsline {chapter}{\numberline {3}Data Structure Documentation}{5}{chapter.3}%
+\contentsline {section}{\numberline {3.1}t\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}\_\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}buffer Struct Reference}{5}{section.3.1}%
+\contentsline {section}{\numberline {3.2}t\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}\_\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}packet Struct Reference}{5}{section.3.2}%
+\contentsline {section}{\numberline {3.3}t\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}\_\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}process\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}\_\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}conection\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}\_\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}args Struct Reference}{5}{section.3.3}%
+\contentsline {chapter}{\numberline {4}File Documentation}{7}{chapter.4}%
+\contentsline {section}{\numberline {4.1}memoria/include/main.h File Reference}{7}{section.4.1}%
+\contentsline {section}{\numberline {4.2}utils/include/protocol.h File Reference}{7}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}Detailed Description}{8}{subsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.2.2}Function Documentation}{8}{subsection.4.2.2}%
+\contentsline {subsubsection}{\numberline {4.2.2.1}add\_to\_packet()}{8}{subsubsection.4.2.2.1}%
+\contentsline {subsubsection}{\numberline {4.2.2.2}create\_buffer()}{9}{subsubsection.4.2.2.2}%
+\contentsline {subsubsection}{\numberline {4.2.2.3}create\_packet()}{9}{subsubsection.4.2.2.3}%
+\contentsline {subsubsection}{\numberline {4.2.2.4}destroy\_packet()}{9}{subsubsection.4.2.2.4}%
+\contentsline {subsubsection}{\numberline {4.2.2.5}fetch\_codop()}{10}{subsubsection.4.2.2.5}%
+\contentsline {subsubsection}{\numberline {4.2.2.6}fetch\_packet()}{10}{subsubsection.4.2.2.6}%
+\contentsline {subsubsection}{\numberline {4.2.2.7}send\_packet()}{10}{subsubsection.4.2.2.7}%
+\contentsline {subsubsection}{\numberline {4.2.2.8}serialize\_packet()}{11}{subsubsection.4.2.2.8}%
+\contentsline {section}{\numberline {4.3}utils/include/sockets.h File Reference}{11}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}Detailed Description}{12}{subsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.3.2}Function Documentation}{12}{subsection.4.3.2}%
+\contentsline {subsubsection}{\numberline {4.3.2.1}close\_conection()}{12}{subsubsection.4.3.2.1}%
+\contentsline {subsubsection}{\numberline {4.3.2.2}create\_conection()}{12}{subsubsection.4.3.2.2}%
+\contentsline {chapter}{Index}{15}{section*.7}%

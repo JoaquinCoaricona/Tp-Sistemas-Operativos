@@ -1,0 +1,48 @@
+\hypertarget{memoria_2include_2main_8h}{}\doxysection{memoria/include/main.h File Reference}
+\label{memoria_2include_2main_8h}\index{memoria/include/main.h@{memoria/include/main.h}}
+
+
+main.\+h from memoria  
+
+
+{\ttfamily \#include \char`\"{}../include/utils.\+h\char`\"{}}\newline
+Include dependency graph for main.\+h\+:
+% FIG 0
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \mbox{\hyperlink{memoria_2include_2main_8h_ab32ef174556c3b7079cae78562300491}{say\+Hello}} ()
+\begin{DoxyCompactList}\small\item\em Test function prints hello world. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+main.\+h from memoria 
+
+\begin{DoxyAuthor}{Author}
+Kernel\+Crafters (\href{mailto:you@domain.com}{\texttt{ you@domain.\+com}}) 
+\end{DoxyAuthor}
+\begin{DoxyVersion}{Version}
+0.\+1 
+\end{DoxyVersion}
+\begin{DoxyDate}{Date}
+2024-\/04-\/16
+\end{DoxyDate}
+\begin{DoxyCopyright}{Copyright}
+Copyright (c) 2024 
+\end{DoxyCopyright}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{memoria_2include_2main_8h_ab32ef174556c3b7079cae78562300491}\label{memoria_2include_2main_8h_ab32ef174556c3b7079cae78562300491}} 
+\index{main.h@{main.h}!sayHello@{sayHello}}
+\index{sayHello@{sayHello}!main.h@{main.h}}
+\doxysubsubsection{\texorpdfstring{sayHello()}{sayHello()}}
+{\footnotesize\ttfamily int say\+Hello (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})}
+
+
+
+Test function prints hello world. 
+
+\begin{DoxyReturn}{Returns}
+int 
+\end{DoxyReturn}
