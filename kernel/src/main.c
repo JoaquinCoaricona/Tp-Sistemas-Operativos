@@ -15,5 +15,8 @@ int main(int argc, char *argv[])
     log_info(logger, "Logger working");
     log_destroy(logger);
     return 0;
+
+    
+
 }
 
