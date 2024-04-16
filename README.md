@@ -74,3 +74,28 @@ Ante cualquier duda, podés consultar la documentación en el repositorio de
 
 [so-commons-library]: https://github.com/sisoputnfrba/so-commons-library
 [so-deploy]: https://github.com/sisoputnfrba/so-deploy
+
+## Documentacion
+### Instalation
+
+Instalar Latex para poder obtener el PDF con la Documentacion
+
+```bash
+sudo apt-get update
+sudo apt-get install texlive-full
+```
+
+Instalar Doxygen
+
+```bash
+sudo apt-add-repository universe
+sudo apt-get update
+sudo apt-get install doxygen
+```
+
+Posteriormente dirigirse a ./utils/Docs/latex y compilar usando 
+
+```bash
+make clean all
+```
+
