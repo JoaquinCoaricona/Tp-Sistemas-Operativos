@@ -1,0 +1,94 @@
+\hypertarget{sockets_8h}{}\doxysection{utils/include/sockets.h File Reference}
+\label{sockets_8h}\index{utils/include/sockets.h@{utils/include/sockets.h}}
+
+
+Socket Connection Functions.  
+
+
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include $<$stdlib.\+h$>$}\newline
+{\ttfamily \#include $<$sys/socket.\+h$>$}\newline
+{\ttfamily \#include $<$unistd.\+h$>$}\newline
+{\ttfamily \#include $<$netdb.\+h$>$}\newline
+{\ttfamily \#include $<$commons/log.\+h$>$}\newline
+{\ttfamily \#include $<$commons/collections/list.\+h$>$}\newline
+{\ttfamily \#include $<$string.\+h$>$}\newline
+{\ttfamily \#include $<$assert.\+h$>$}\newline
+{\ttfamily \#include $<$pthread.\+h$>$}\newline
+Include dependency graph for sockets.\+h\+:
+% FIG 0
+This graph shows which files directly or indirectly include this file\+:
+% FIG 1
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \mbox{\hyperlink{sockets_8h_a267f32bd973292da7975a998336ce064}{create\+\_\+conection}} (t\+\_\+log $\ast$logger, char $\ast$ip, char $\ast$port)
+\begin{DoxyCompactList}\small\item\em Create conection with server. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sockets_8h_a90060467809b5c7d1871e5a98d1a0161}{close\+\_\+conection}} (int $\ast$client\+\_\+socket)
+\begin{DoxyCompactList}\small\item\em Close conection with server. \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{sockets_8h_aff07ef0f57d11ee30e6372323d1b419b}\label{sockets_8h_aff07ef0f57d11ee30e6372323d1b419b}} 
+int {\bfseries initialize\+\_\+server} (t\+\_\+log $\ast$logger, const char $\ast$name, char $\ast$ip, char $\ast$port)
+\item 
+\mbox{\Hypertarget{sockets_8h_ac9e0bf078a0d6303de9575c35920e586}\label{sockets_8h_ac9e0bf078a0d6303de9575c35920e586}} 
+int {\bfseries wait\+\_\+client} (t\+\_\+log $\ast$logger, const char $\ast$name, int server\+\_\+socket)
+\item 
+\mbox{\Hypertarget{sockets_8h_a85a26d5b499602b59694fdbb696429c6}\label{sockets_8h_a85a26d5b499602b59694fdbb696429c6}} 
+int {\bfseries wait\+\_\+client\+\_\+threaded} (t\+\_\+log $\ast$logger, const char $\ast$name, int server\+\_\+socket, void $\ast$($\ast$serve\+\_\+client))
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Socket Connection Functions. 
+
+\begin{DoxyAuthor}{Author}
+Kernel\+Crafters (\href{mailto:you@domain.com}{\texttt{ you@domain.\+com}}) 
+\end{DoxyAuthor}
+\begin{DoxyVersion}{Version}
+1.\+0 
+\end{DoxyVersion}
+\begin{DoxyDate}{Date}
+2024-\/04-\/16
+\end{DoxyDate}
+\begin{DoxyCopyright}{Copyright}
+Copyright (c) 2024 
+\end{DoxyCopyright}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{sockets_8h_a90060467809b5c7d1871e5a98d1a0161}\label{sockets_8h_a90060467809b5c7d1871e5a98d1a0161}} 
+\index{sockets.h@{sockets.h}!close\_conection@{close\_conection}}
+\index{close\_conection@{close\_conection}!sockets.h@{sockets.h}}
+\doxysubsubsection{\texorpdfstring{close\_conection()}{close\_conection()}}
+{\footnotesize\ttfamily void close\+\_\+conection (\begin{DoxyParamCaption}\item[{int $\ast$}]{client\+\_\+socket }\end{DoxyParamCaption})}
+
+
+
+Close conection with server. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em client\+\_\+socket} & client\+\_\+fd to close connection \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{sockets_8h_a267f32bd973292da7975a998336ce064}\label{sockets_8h_a267f32bd973292da7975a998336ce064}} 
+\index{sockets.h@{sockets.h}!create\_conection@{create\_conection}}
+\index{create\_conection@{create\_conection}!sockets.h@{sockets.h}}
+\doxysubsubsection{\texorpdfstring{create\_conection()}{create\_conection()}}
+{\footnotesize\ttfamily int create\+\_\+conection (\begin{DoxyParamCaption}\item[{t\+\_\+log $\ast$}]{logger,  }\item[{char $\ast$}]{ip,  }\item[{char $\ast$}]{port }\end{DoxyParamCaption})}
+
+
+
+Create conection with server. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em logger} & Logger from commons libraries \\
+\hline
+{\em ip} & ip to connect \\
+\hline
+{\em port} & Port to connect \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+int Return client\+\_\+socket 
+\end{DoxyReturn}

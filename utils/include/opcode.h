@@ -7,7 +7,9 @@
 typedef enum
 {
     MENSAJE,
-    HANDSHAKE,
+    HANDSHAKE_KERNEL,
+    HANDSHAKE_ENTRADA_SALIDA,
+    HANDSHAKE_CPU,
     // entrada - salida
     EJECUTAR_SCRIPT,
     INICIAR_PROCESO,

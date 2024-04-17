@@ -22,8 +22,10 @@ static void process_conection(void *args)
 
         switch (operation_code)
         {
-        case HANDSHAKE:
-            log_info(logger, "handshake recibido %s", server_name);
+        case HANDSHAKE_KERNEL:
+        case HANDSHAKE_ENTRADA_SALIDA:
+        case HANDSHAKE_CPU:
+            log_info(logger, "handshake %d recibido %s",operation_code, server_name);
             packet = fetch_packet(client_socket);
             log_info(logger, "Packet received");
 

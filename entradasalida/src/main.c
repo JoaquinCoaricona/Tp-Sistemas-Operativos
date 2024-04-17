@@ -22,6 +22,8 @@ int main(int argc, char *argv[])
 
     PORT_memoria = config_get_string_value(config, "PUERTO_MEMORIA");
     IP_memoria = config_get_string_value(config, "IP_MEMORIA");
+    PORT_kernel = config_get_string_value(config, "PUERTO_KERNEL");
+    IP_kernel = config_get_string_value(config, "IP_KERNEL");
 
     // Conect to server
     socket_memoria = create_conection(logger, IP_memoria, PORT_memoria);
@@ -29,7 +31,7 @@ int main(int argc, char *argv[])
 
     // Send handshake
     buffer = create_buffer();
-    packet = create_packet(HANDSHAKE, buffer);
+    packet = create_packet(HANDSHAKE_ENTRADA_SALIDA, buffer);
 
     add_to_packet(packet, buffer->stream, buffer->size);
     //packet = serialize_packet(packet, buffer->size);
@@ -37,7 +39,9 @@ int main(int argc, char *argv[])
 
     log_info(logger, "Handshake enviado");
     
-
+    socket_kernel = create_conection(logger, IP_kernel, PORT_kernel);
+    log_info(logger, "Conectado al servidor de memoria %s:%s", IP_kernel, PORT_kernel);
+    send_packet(packet, socket_kernel);
 
     return 0;
 }
