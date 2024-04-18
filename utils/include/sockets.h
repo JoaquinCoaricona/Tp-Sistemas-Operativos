@@ -45,7 +45,18 @@ int create_conection(t_log *logger, char *ip, char *port);
 void close_conection(int *client_socket);
 
 // SERVER
+
+/**
+ * @brief initialize the server
+ * 
+ * @param logger 
+ * @param name 
+ * @param ip 
+ * @param port 
+ * @return int 
+ */ 
 int initialize_server(t_log *logger, const char *name, char *ip, char *port);
+
 int wait_client(t_log *logger, const char *name, int server_socket);
 int wait_client_threaded(t_log *logger, const char *name, int server_socket, void *(*serve_client));
 
