@@ -1,1 +1,4 @@
 utils/Docs* linguist-vendored
+HTML linguist-vendored=false
+Tex linguist-vendored=false
+JavaScript linguist-vendored=false
