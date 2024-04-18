@@ -1,3 +1,14 @@
+/**
+ * @file configs.h
+ * @author KernelCrafters
+ * @brief Config functions to read the configuration files
+ * @version 1.0
+ * @date 2024-04-18
+ * 
+ * @copyright Copyright (c) 2024
+ * 
+ */
+
 #ifndef CONFIGS_H
 #define CONFIGS_H
 
