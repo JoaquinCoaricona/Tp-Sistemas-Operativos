@@ -25,7 +25,13 @@
 #include <assert.h>
 #include "opcode.h"
 
+
 // STRUCTS
+
+/**
+ * @brief  Struct to handle the buffer of the packet
+ * 
+ */
 typedef struct
 {
     int size;
@@ -33,6 +39,10 @@ typedef struct
 
 } t_buffer;
 
+/**
+ * @brief struct to handle the packet 
+ * 
+ */
 typedef struct
 {
     op_code code;
