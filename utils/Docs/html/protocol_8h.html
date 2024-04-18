@@ -76,19 +76,19 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 
-<p>Network Protocol Connection Functions.  
+<p>Handles the protocol of the communication between the client and the server.  
 <a href="#details">More...</a></p>
-<div class="textblock"><code>#include &quot;opcode.h&quot;</code><br />
-<code>#include &lt;assert.h&gt;</code><br />
-<code>#include &lt;commons/collections/list.h&gt;</code><br />
-<code>#include &lt;commons/log.h&gt;</code><br />
-<code>#include &lt;netdb.h&gt;</code><br />
-<code>#include &lt;signal.h&gt;</code><br />
-<code>#include &lt;stdio.h&gt;</code><br />
+<div class="textblock"><code>#include &lt;stdio.h&gt;</code><br />
 <code>#include &lt;stdlib.h&gt;</code><br />
-<code>#include &lt;string.h&gt;</code><br />
 <code>#include &lt;sys/socket.h&gt;</code><br />
+<code>#include &lt;signal.h&gt;</code><br />
 <code>#include &lt;unistd.h&gt;</code><br />
+<code>#include &lt;netdb.h&gt;</code><br />
+<code>#include &lt;commons/log.h&gt;</code><br />
+<code>#include &lt;commons/collections/list.h&gt;</code><br />
+<code>#include &lt;string.h&gt;</code><br />
+<code>#include &lt;assert.h&gt;</code><br />
+<code>#include &quot;<a class="el" href="opcode_8h_source.html">opcode.h</a>&quot;</code><br />
 </div><div class="textblock"><div class="dynheader">
 Include dependency graph for protocol.h:</div>
 <div class="dyncontent">
@@ -105,8 +105,10 @@ This graph shows which files directly or indirectly include this file:</div>
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Data Structures</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structt__buffer.html">t_buffer</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Struct to handle the buffer of the packet.  <a href="structt__buffer.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structt__packet.html">t_packet</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">struct to handle the packet  <a href="structt__packet.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
@@ -114,36 +116,36 @@ Functions</h2></td></tr>
 <tr class="memitem:a716f201529d2f774fa22369e2d39fe56"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structt__buffer.html">t_buffer</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="protocol_8h.html#a716f201529d2f774fa22369e2d39fe56">create_buffer</a> ()</td></tr>
 <tr class="memdesc:a716f201529d2f774fa22369e2d39fe56"><td class="mdescLeft">&#160;</td><td class="mdescRight">Create a buffer object.  <a href="protocol_8h.html#a716f201529d2f774fa22369e2d39fe56">More...</a><br /></td></tr>
 <tr class="separator:a716f201529d2f774fa22369e2d39fe56"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9728a992cfcad1d0195d075a9d13439e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structt__packet.html">t_packet</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="protocol_8h.html#a9728a992cfcad1d0195d075a9d13439e">create_packet</a> (op_code code, <a class="el" href="structt__buffer.html">t_buffer</a> *buffer)</td></tr>
-<tr class="memdesc:a9728a992cfcad1d0195d075a9d13439e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Create a packet object.  <a href="protocol_8h.html#a9728a992cfcad1d0195d075a9d13439e">More...</a><br /></td></tr>
+<tr class="memitem:a9728a992cfcad1d0195d075a9d13439e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structt__packet.html">t_packet</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="protocol_8h.html#a9728a992cfcad1d0195d075a9d13439e">create_packet</a> (<a class="el" href="opcode_8h.html#aa48c0ba3c7a16f8d52b2f905b2ba940f">op_code</a> code, <a class="el" href="structt__buffer.html">t_buffer</a> *buffer)</td></tr>
+<tr class="memdesc:a9728a992cfcad1d0195d075a9d13439e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Create a packet object that contains the operation code and the buffer to send.  <a href="protocol_8h.html#a9728a992cfcad1d0195d075a9d13439e">More...</a><br /></td></tr>
 <tr class="separator:a9728a992cfcad1d0195d075a9d13439e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a36cb4ee6ec88fd43ceb7e25a015863de"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="protocol_8h.html#a36cb4ee6ec88fd43ceb7e25a015863de">add_to_packet</a> (<a class="el" href="structt__packet.html">t_packet</a> *packet, void *stream, int size)</td></tr>
-<tr class="memdesc:a36cb4ee6ec88fd43ceb7e25a015863de"><td class="mdescLeft">&#160;</td><td class="mdescRight">Add the buffer to the packet.  <a href="protocol_8h.html#a36cb4ee6ec88fd43ceb7e25a015863de">More...</a><br /></td></tr>
+<tr class="memdesc:a36cb4ee6ec88fd43ceb7e25a015863de"><td class="mdescLeft">&#160;</td><td class="mdescRight">Add the stream to the packet.  <a href="protocol_8h.html#a36cb4ee6ec88fd43ceb7e25a015863de">More...</a><br /></td></tr>
 <tr class="separator:a36cb4ee6ec88fd43ceb7e25a015863de"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa122c0bc354ce4bfc6667b9aa67c035f"><td class="memItemLeft" align="right" valign="top">void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="protocol_8h.html#aa122c0bc354ce4bfc6667b9aa67c035f">serialize_packet</a> (<a class="el" href="structt__packet.html">t_packet</a> *packet, int buffer_size)</td></tr>
-<tr class="memdesc:aa122c0bc354ce4bfc6667b9aa67c035f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Serialize the packet.  <a href="protocol_8h.html#aa122c0bc354ce4bfc6667b9aa67c035f">More...</a><br /></td></tr>
+<tr class="memdesc:aa122c0bc354ce4bfc6667b9aa67c035f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Serializes the packet to send it.  <a href="protocol_8h.html#aa122c0bc354ce4bfc6667b9aa67c035f">More...</a><br /></td></tr>
 <tr class="separator:aa122c0bc354ce4bfc6667b9aa67c035f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0ddfadd37aa10e5630d37e9b242fed65"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="protocol_8h.html#a0ddfadd37aa10e5630d37e9b242fed65">destroy_packet</a> (<a class="el" href="structt__packet.html">t_packet</a> *packet)</td></tr>
-<tr class="memdesc:a0ddfadd37aa10e5630d37e9b242fed65"><td class="mdescLeft">&#160;</td><td class="mdescRight">Destroy the packet object.  <a href="protocol_8h.html#a0ddfadd37aa10e5630d37e9b242fed65">More...</a><br /></td></tr>
+<tr class="memdesc:a0ddfadd37aa10e5630d37e9b242fed65"><td class="mdescLeft">&#160;</td><td class="mdescRight">Destroys the packet freeing the memory. It is used by send_packet function.  <a href="protocol_8h.html#a0ddfadd37aa10e5630d37e9b242fed65">More...</a><br /></td></tr>
 <tr class="separator:a0ddfadd37aa10e5630d37e9b242fed65"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af5cae91677a1a528cbce3322bcb03579"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="protocol_8h.html#af5cae91677a1a528cbce3322bcb03579">send_packet</a> (<a class="el" href="structt__packet.html">t_packet</a> *packet, int client_socket)</td></tr>
-<tr class="memdesc:af5cae91677a1a528cbce3322bcb03579"><td class="mdescLeft">&#160;</td><td class="mdescRight">Send the packet to the server.  <a href="protocol_8h.html#af5cae91677a1a528cbce3322bcb03579">More...</a><br /></td></tr>
+<tr class="memdesc:af5cae91677a1a528cbce3322bcb03579"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sends the packet to the server.  <a href="protocol_8h.html#af5cae91677a1a528cbce3322bcb03579">More...</a><br /></td></tr>
 <tr class="separator:af5cae91677a1a528cbce3322bcb03579"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0e4a4b90103742646c78af1641ed7e91"><td class="memItemLeft" align="right" valign="top">t_list *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="protocol_8h.html#a0e4a4b90103742646c78af1641ed7e91">fetch_packet</a> (int client_socket)</td></tr>
 <tr class="memdesc:a0e4a4b90103742646c78af1641ed7e91"><td class="mdescLeft">&#160;</td><td class="mdescRight">Fetch the packet from the client.  <a href="protocol_8h.html#a0e4a4b90103742646c78af1641ed7e91">More...</a><br /></td></tr>
 <tr class="separator:a0e4a4b90103742646c78af1641ed7e91"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:add90d82ce43706a959bf634c438040d5"><td class="memItemLeft" align="right" valign="top"><a id="add90d82ce43706a959bf634c438040d5"></a>
-void *&#160;</td><td class="memItemRight" valign="bottom"><b>fetch_buffer</b> (int *size, int client_socket)</td></tr>
+<tr class="memitem:add90d82ce43706a959bf634c438040d5"><td class="memItemLeft" align="right" valign="top">void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="protocol_8h.html#add90d82ce43706a959bf634c438040d5">fetch_buffer</a> (int *size, int client_socket)</td></tr>
+<tr class="memdesc:add90d82ce43706a959bf634c438040d5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Fetch the buffer from the client. It is used by fetch_packet function.  <a href="protocol_8h.html#add90d82ce43706a959bf634c438040d5">More...</a><br /></td></tr>
 <tr class="separator:add90d82ce43706a959bf634c438040d5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7f4105b88fc389555611d3dae59943ea"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="protocol_8h.html#a7f4105b88fc389555611d3dae59943ea">fetch_codop</a> (int client_socket)</td></tr>
-<tr class="memdesc:a7f4105b88fc389555611d3dae59943ea"><td class="mdescLeft">&#160;</td><td class="mdescRight">Fetch code operation from client.  <a href="protocol_8h.html#a7f4105b88fc389555611d3dae59943ea">More...</a><br /></td></tr>
+<tr class="memdesc:a7f4105b88fc389555611d3dae59943ea"><td class="mdescLeft">&#160;</td><td class="mdescRight">Fetch the operation code from the client.  <a href="protocol_8h.html#a7f4105b88fc389555611d3dae59943ea">More...</a><br /></td></tr>
 <tr class="separator:a7f4105b88fc389555611d3dae59943ea"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>Network Protocol Connection Functions. </p>
-<dl class="section author"><dt>Author</dt><dd>KernelCrafters (<a href="#" onclick="location.href='mai'+'lto:'+'you'+'@d'+'oma'+'in'+'.co'+'m'; return false;">you@d<span style="display: none;">.nosp@m.</span>omai<span style="display: none;">.nosp@m.</span>n.com</a>) </dd></dl>
+<div class="textblock"><p>Handles the protocol of the communication between the client and the server. </p>
+<dl class="section author"><dt>Author</dt><dd>your name (<a href="#" onclick="location.href='mai'+'lto:'+'you'+'@d'+'oma'+'in'+'.co'+'m'; return false;">you@d<span style="display: none;">.nosp@m.</span>omai<span style="display: none;">.nosp@m.</span>n.com</a>) </dd></dl>
 <dl class="section version"><dt>Version</dt><dd>1.0 </dd></dl>
-<dl class="section date"><dt>Date</dt><dd>2024-04-16</dd></dl>
+<dl class="section date"><dt>Date</dt><dd>2024-04-18</dd></dl>
 <dl class="section copyright"><dt>Copyright</dt><dd>Copyright (c) 2024 </dd></dl>
 </div><h2 class="groupheader">Function Documentation</h2>
 <a id="a36cb4ee6ec88fd43ceb7e25a015863de"></a>
@@ -178,12 +180,12 @@ void *&#160;</td><td class="memItemRight" valign="bottom"><b>fetch_buffer</b> (i
       </table>
 </div><div class="memdoc">
 
-<p>Add the buffer to the packet. </p>
+<p>Add the stream to the packet. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">packet</td><td></td></tr>
-    <tr><td class="paramname">stream</td><td></td></tr>
-    <tr><td class="paramname">size</td><td></td></tr>
+    <tr><td class="paramname">packet</td><td>Packet to add the stream </td></tr>
+    <tr><td class="paramname">stream</td><td>Data of the buffer </td></tr>
+    <tr><td class="paramname">size</td><td>size of the stream </td></tr>
   </table>
   </dd>
 </dl>
@@ -220,7 +222,7 @@ void *&#160;</td><td class="memItemRight" valign="bottom"><b>fetch_buffer</b> (i
         <tr>
           <td class="memname"><a class="el" href="structt__packet.html">t_packet</a>* create_packet </td>
           <td>(</td>
-          <td class="paramtype">op_code&#160;</td>
+          <td class="paramtype"><a class="el" href="opcode_8h.html#aa48c0ba3c7a16f8d52b2f905b2ba940f">op_code</a>&#160;</td>
           <td class="paramname"><em>code</em>, </td>
         </tr>
         <tr>
@@ -237,11 +239,11 @@ void *&#160;</td><td class="memItemRight" valign="bottom"><b>fetch_buffer</b> (i
       </table>
 </div><div class="memdoc">
 
-<p>Create a packet object. </p>
+<p>Create a packet object that contains the operation code and the buffer to send. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">code</td><td></td></tr>
-    <tr><td class="paramname">buffer</td><td></td></tr>
+    <tr><td class="paramname">code</td><td>operation code </td></tr>
+    <tr><td class="paramname">buffer</td><td>buffer to send </td></tr>
   </table>
   </dd>
 </dl>
@@ -265,13 +267,51 @@ void *&#160;</td><td class="memItemRight" valign="bottom"><b>fetch_buffer</b> (i
       </table>
 </div><div class="memdoc">
 
-<p>Destroy the packet object. </p>
+<p>Destroys the packet freeing the memory. It is used by send_packet function. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">packet</td><td></td></tr>
+    <tr><td class="paramname">packet</td><td>packet to destroy </td></tr>
   </table>
   </dd>
 </dl>
+
+</div>
+</div>
+<a id="add90d82ce43706a959bf634c438040d5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#add90d82ce43706a959bf634c438040d5">&#9670;&nbsp;</a></span>fetch_buffer()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void* fetch_buffer </td>
+          <td>(</td>
+          <td class="paramtype">int *&#160;</td>
+          <td class="paramname"><em>size</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>client_socket</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Fetch the buffer from the client. It is used by fetch_packet function. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">size</td><td>size of the buffer </td></tr>
+    <tr><td class="paramname">client_socket</td><td>client file descriptor </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>void* </dd></dl>
 
 </div>
 </div>
@@ -291,14 +331,14 @@ void *&#160;</td><td class="memItemRight" valign="bottom"><b>fetch_buffer</b> (i
       </table>
 </div><div class="memdoc">
 
-<p>Fetch code operation from client. </p>
+<p>Fetch the operation code from the client. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">client_socket</td><td></td></tr>
+    <tr><td class="paramname">client_socket</td><td>client file descriptor </td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>int </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>int Returns operation code or -1 if there is an error </dd></dl>
 
 </div>
 </div>
@@ -321,11 +361,11 @@ void *&#160;</td><td class="memItemRight" valign="bottom"><b>fetch_buffer</b> (i
 <p>Fetch the packet from the client. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">client_socket</td><td></td></tr>
+    <tr><td class="paramname">client_socket</td><td>client file descriptor </td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>t_list* </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>t_list* List of packets </dd></dl>
 
 </div>
 </div>
@@ -355,11 +395,11 @@ void *&#160;</td><td class="memItemRight" valign="bottom"><b>fetch_buffer</b> (i
       </table>
 </div><div class="memdoc">
 
-<p>Send the packet to the server. </p>
+<p>Sends the packet to the server. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">packet</td><td></td></tr>
-    <tr><td class="paramname">client_socket</td><td></td></tr>
+    <tr><td class="paramname">packet</td><td>packet to send </td></tr>
+    <tr><td class="paramname">client_socket</td><td>client file descriptor </td></tr>
   </table>
   </dd>
 </dl>
@@ -392,11 +432,11 @@ void *&#160;</td><td class="memItemRight" valign="bottom"><b>fetch_buffer</b> (i
       </table>
 </div><div class="memdoc">
 
-<p>Serialize the packet. </p>
+<p>Serializes the packet to send it. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">packet</td><td></td></tr>
-    <tr><td class="paramname">buffer_size</td><td></td></tr>
+    <tr><td class="paramname">packet</td><td>packet to serialize </td></tr>
+    <tr><td class="paramname">buffer_size</td><td>size of the buffer </td></tr>
   </table>
   </dd>
 </dl>

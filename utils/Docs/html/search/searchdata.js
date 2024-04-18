@@ -1,9 +1,10 @@
 var indexSectionsWithContent =
 {
-  0: "acdfmpst",
+  0: "acdefilopstuw",
   1: "t",
-  2: "mps",
-  3: "acdfs"
+  2: "clopsu",
+  3: "acdefisw",
+  4: "o"
 };
 
 var indexSectionNames =
@@ -11,7 +12,8 @@ var indexSectionNames =
   0: "all",
   1: "classes",
   2: "files",
-  3: "functions"
+  3: "functions",
+  4: "enums"
 };
 
 var indexSectionLabels =
@@ -19,6 +21,7 @@ var indexSectionLabels =
   0: "All",
   1: "Data Structures",
   2: "Files",
-  3: "Functions"
+  3: "Functions",
+  4: "Enumerations"
 };
 

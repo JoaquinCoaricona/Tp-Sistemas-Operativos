@@ -1,3 +1,14 @@
+/**
+ * @file configs.h
+ * @author KernelCrafters
+ * @brief Config functions to read the configuration files
+ * @version 1.0
+ * @date 2024-04-18
+ * 
+ * @copyright Copyright (c) 2024
+ * 
+ */
+
 #ifndef CONFIGS_H
 #define CONFIGS_H
 
@@ -10,7 +21,22 @@
 #include "readline/readline.h"
 
 // Functions
-t_config *initialize_config(t_log *logger, char *name);
+
+/**
+ * @brief Initializes the config functions of the Commons library to read the configuration files
+ * 
+ * @param logger logger from commons library
+ * @param path path to the configuration file 
+ * @return t_config* 
+ */
+t_config *initialize_config(t_log *logger, char *path);
+
+/**
+ * @brief Destroy config and logger
+ * 
+ * @param logger logger created by initialize_logger
+ * @param config config var created by intialize_config
+ */
 void end_program(t_log *logger, t_config *config);
 
 #endif // CONFIGS_H

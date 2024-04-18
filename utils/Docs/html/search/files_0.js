@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['main_2eh_20',['main.h',['../memoria_2include_2main_8h.html',1,'']]]
+  ['comunication_2eh_31',['comunication.h',['../comunication_8h.html',1,'']]],
+  ['configs_2eh_32',['configs.h',['../configs_8h.html',1,'']]]
 ];

@@ -26,22 +26,17 @@ int \mbox{\hyperlink{sockets_8h_a267f32bd973292da7975a998336ce064}{create\+\_\+c
 \begin{DoxyCompactList}\small\item\em Create conection with server. \end{DoxyCompactList}\item 
 void \mbox{\hyperlink{sockets_8h_a90060467809b5c7d1871e5a98d1a0161}{close\+\_\+conection}} (int $\ast$client\+\_\+socket)
 \begin{DoxyCompactList}\small\item\em Close conection with server. \end{DoxyCompactList}\item 
-\mbox{\Hypertarget{sockets_8h_aff07ef0f57d11ee30e6372323d1b419b}\label{sockets_8h_aff07ef0f57d11ee30e6372323d1b419b}} 
-int {\bfseries initialize\+\_\+server} (t\+\_\+log $\ast$logger, const char $\ast$name, char $\ast$ip, char $\ast$port)
-\item 
-\mbox{\Hypertarget{sockets_8h_ac9e0bf078a0d6303de9575c35920e586}\label{sockets_8h_ac9e0bf078a0d6303de9575c35920e586}} 
-int {\bfseries wait\+\_\+client} (t\+\_\+log $\ast$logger, const char $\ast$name, int server\+\_\+socket)
-\item 
-\mbox{\Hypertarget{sockets_8h_a85a26d5b499602b59694fdbb696429c6}\label{sockets_8h_a85a26d5b499602b59694fdbb696429c6}} 
-int {\bfseries wait\+\_\+client\+\_\+threaded} (t\+\_\+log $\ast$logger, const char $\ast$name, int server\+\_\+socket, void $\ast$($\ast$serve\+\_\+client))
-\end{DoxyCompactItemize}
+int \mbox{\hyperlink{sockets_8h_aff07ef0f57d11ee30e6372323d1b419b}{initialize\+\_\+server}} (t\+\_\+log $\ast$logger, const char $\ast$name, char $\ast$ip, char $\ast$port)
+\begin{DoxyCompactList}\small\item\em initialize the server \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{sockets_8h_ac9e0bf078a0d6303de9575c35920e586}{wait\+\_\+client}} (t\+\_\+log $\ast$logger, const char $\ast$name, int server\+\_\+socket)
+\begin{DoxyCompactList}\small\item\em Listen to the server. It is used by \mbox{\hyperlink{comunication_8h_a9e4b846374834ff6c5ded005c0b99360}{server\+\_\+listen()}} \end{DoxyCompactList}\end{DoxyCompactItemize}
 
 
 \doxysubsection{Detailed Description}
 Socket Connection Functions. 
 
 \begin{DoxyAuthor}{Author}
-Kernel\+Crafters (\href{mailto:you@domain.com}{\texttt{ you@domain.\+com}}) 
+Kernel\+Crafters 
 \end{DoxyAuthor}
 \begin{DoxyVersion}{Version}
 1.\+0 
@@ -91,4 +86,52 @@ Create conection with server.
 \end{DoxyParams}
 \begin{DoxyReturn}{Returns}
 int Return client\+\_\+socket 
+\end{DoxyReturn}
+\mbox{\Hypertarget{sockets_8h_aff07ef0f57d11ee30e6372323d1b419b}\label{sockets_8h_aff07ef0f57d11ee30e6372323d1b419b}} 
+\index{sockets.h@{sockets.h}!initialize\_server@{initialize\_server}}
+\index{initialize\_server@{initialize\_server}!sockets.h@{sockets.h}}
+\doxysubsubsection{\texorpdfstring{initialize\_server()}{initialize\_server()}}
+{\footnotesize\ttfamily int initialize\+\_\+server (\begin{DoxyParamCaption}\item[{t\+\_\+log $\ast$}]{logger,  }\item[{const char $\ast$}]{name,  }\item[{char $\ast$}]{ip,  }\item[{char $\ast$}]{port }\end{DoxyParamCaption})}
+
+
+
+initialize the server 
+
+
+\begin{DoxyParams}{Parameters}
+{\em logger} & logger from commons libraries \\
+\hline
+{\em name} & name of the server \\
+\hline
+{\em ip} & ip to connect \\
+\hline
+{\em port} & Ip port to connect ~\newline
+ \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+int return server\+\_\+socket 
+\end{DoxyReturn}
+\mbox{\Hypertarget{sockets_8h_ac9e0bf078a0d6303de9575c35920e586}\label{sockets_8h_ac9e0bf078a0d6303de9575c35920e586}} 
+\index{sockets.h@{sockets.h}!wait\_client@{wait\_client}}
+\index{wait\_client@{wait\_client}!sockets.h@{sockets.h}}
+\doxysubsubsection{\texorpdfstring{wait\_client()}{wait\_client()}}
+{\footnotesize\ttfamily int wait\+\_\+client (\begin{DoxyParamCaption}\item[{t\+\_\+log $\ast$}]{logger,  }\item[{const char $\ast$}]{name,  }\item[{int}]{server\+\_\+socket }\end{DoxyParamCaption})}
+
+
+
+Listen to the server. It is used by \mbox{\hyperlink{comunication_8h_a9e4b846374834ff6c5ded005c0b99360}{server\+\_\+listen()}} 
+
+
+\begin{DoxyParams}{Parameters}
+{\em logger} & logger from commons libraries ~\newline
+ \\
+\hline
+{\em name} & name of the server \\
+\hline
+{\em server\+\_\+socket} & server file descriptor to listen \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+int return client\+\_\+socket 
 \end{DoxyReturn}
