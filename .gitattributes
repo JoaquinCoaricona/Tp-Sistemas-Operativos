@@ -1,4 +1,7 @@
-utils/Docs* linguist-vendored
+utils/Docs/html/* linguist-vendored
+utils/Docs/html/search/* linguist-vendored
+utils/Docs/latex/* linguist-vendored=false
+
 HTML linguist-vendored=false
 Tex linguist-vendored=false
 JavaScript linguist-vendored=false
