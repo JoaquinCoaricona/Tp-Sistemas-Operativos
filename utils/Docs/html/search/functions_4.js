@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['sayhello_31',['sayHello',['../memoria_2include_2main_8h.html#ab32ef174556c3b7079cae78562300491',1,'main.c']]],
-  ['send_5fpacket_32',['send_packet',['../protocol_8h.html#af5cae91677a1a528cbce3322bcb03579',1,'protocol.c']]],
-  ['serialize_5fpacket_33',['serialize_packet',['../protocol_8h.html#aa122c0bc354ce4bfc6667b9aa67c035f',1,'protocol.c']]]
+  ['fetch_5fbuffer_45',['fetch_buffer',['../protocol_8h.html#add90d82ce43706a959bf634c438040d5',1,'protocol.c']]],
+  ['fetch_5fcodop_46',['fetch_codop',['../protocol_8h.html#a7f4105b88fc389555611d3dae59943ea',1,'protocol.c']]],
+  ['fetch_5fpacket_47',['fetch_packet',['../protocol_8h.html#a0e4a4b90103742646c78af1641ed7e91',1,'protocol.c']]]
 ];

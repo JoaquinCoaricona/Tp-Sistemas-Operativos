@@ -1,6 +1,6 @@
 /**
  * @file sockets.h
- * @author KernelCrafters (you@domain.com)
+ * @author KernelCrafters 
  * @brief Socket Connection Functions
  * @version 1.0
  * @date 2024-04-16
@@ -45,9 +45,28 @@ int create_conection(t_log *logger, char *ip, char *port);
 void close_conection(int *client_socket);
 
 // SERVER
+
+/**
+ * @brief initialize the server
+ * 
+ * @param logger logger from commons libraries
+ * @param name name of the server
+ * @param ip ip to connect 
+ * @param port Ip port to connect   
+ * @return int return server_socket
+ */ 
 int initialize_server(t_log *logger, const char *name, char *ip, char *port);
+
+/**
+ * @brief  Listen to the server. It is used by server_listen() 
+ * 
+ * @param logger logger from commons libraries  
+ * @param name name of the server
+ * @param server_socket server file descriptor to listen
+ * @return int  return client_socket
+ */
 int wait_client(t_log *logger, const char *name, int server_socket);
-int wait_client_threaded(t_log *logger, const char *name, int server_socket, void *(*serve_client));
+
 
 #endif /* SOCKETS_H */
 

@@ -21,10 +21,10 @@ int main(int argc, char *argv[])
     // SERVER
     int server_fd = initialize_server(logger, "memory_server", IP, PORT);
     log_info(logger, "Server initialized");
-
     
 
-    while (1){
+    while (1)
+    {
         server_listen(logger, "memory_server", server_fd);
         
         }
@@ -35,9 +35,4 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-
-int sayHello(){
-    printf("Hello World\n");
-    return 0;
-}
 

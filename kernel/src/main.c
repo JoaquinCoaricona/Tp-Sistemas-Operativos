@@ -20,12 +20,14 @@ int main(int argc, char *argv[])
 
     // CONFIG
     t_config *config = initialize_config(logger, "kernel.config");
+
     memory_PORT = config_get_string_value(config, "PUERTO_MEMORIA");
     cpu_PORT = config_get_string_value(config, "PUERTO_CPU_DISPATCH");
-    kernel_PORT = config_get_string_value(config, "PUERTO_KERNEL");
+    kernel_PORT = config_get_string_value(config, "PUERTO_KERNEL"); //! Averiguar se deberia estar
     cpu_IP = config_get_string_value(config, "IP_CPU");
-    memory_IP = config_get_string_value(config, "IP_MEMORIA");
+    memory_IP = config_get_string_value(config, "IP_MEMORIA"); //! Averiguar se deberia estar
     kernel_IP = config_get_string_value(config, "IP_MEMORIA");// hay que ver si se tiene que cambiar a futuro pero en el archivo de configuración no hay una ip de kernel
+    
     // Conect to server
     memory_socket = create_conection(logger, memory_IP, memory_PORT);
     log_info(logger, "Conectado al servidor de memoria %s:%s", memory_IP, memory_PORT);

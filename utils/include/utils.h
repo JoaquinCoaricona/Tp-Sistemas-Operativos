@@ -1,3 +1,14 @@
+/**
+ * @file utils.h
+ * @author your name (you@domain.com)
+ * @brief Include all the headers from the project
+ * @version 1.0
+ * @date 2024-04-18
+ * 
+ * @copyright Copyright (c) 2024
+ * 
+ */
+
 #ifndef UTILS_H
 #define UTILS_H
 

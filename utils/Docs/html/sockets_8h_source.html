@@ -96,14 +96,18 @@ $(function() {
 <div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;<span class="keywordtype">void</span> <a class="code" href="sockets_8h.html#a90060467809b5c7d1871e5a98d1a0161">close_conection</a>(<span class="keywordtype">int</span> *client_socket);</div>
 <div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160; </div>
 <div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;<span class="comment">// SERVER</span></div>
-<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;<span class="keywordtype">int</span> initialize_server(t_log *logger, <span class="keyword">const</span> <span class="keywordtype">char</span> *name, <span class="keywordtype">char</span> *ip, <span class="keywordtype">char</span> *port);</div>
-<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;<span class="keywordtype">int</span> wait_client(t_log *logger, <span class="keyword">const</span> <span class="keywordtype">char</span> *name, <span class="keywordtype">int</span> server_socket);</div>
-<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;<span class="keywordtype">int</span> wait_client_threaded(t_log *logger, <span class="keyword">const</span> <span class="keywordtype">char</span> *name, <span class="keywordtype">int</span> server_socket, <span class="keywordtype">void</span> *(*serve_client));</div>
-<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160; </div>
-<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;<span class="preprocessor">#endif </span><span class="comment">/* SOCKETS_H */</span><span class="preprocessor"></span></div>
-<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160; </div>
+<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160; </div>
+<div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;<span class="keywordtype">int</span> <a class="code" href="sockets_8h.html#aff07ef0f57d11ee30e6372323d1b419b">initialize_server</a>(t_log *logger, <span class="keyword">const</span> <span class="keywordtype">char</span> *name, <span class="keywordtype">char</span> *ip, <span class="keywordtype">char</span> *port);</div>
+<div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160; </div>
+<div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;<span class="keywordtype">int</span> <a class="code" href="sockets_8h.html#ac9e0bf078a0d6303de9575c35920e586">wait_client</a>(t_log *logger, <span class="keyword">const</span> <span class="keywordtype">char</span> *name, <span class="keywordtype">int</span> server_socket);</div>
+<div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160; </div>
+<div class="line"><a name="l00070"></a><span class="lineno">   70</span>&#160; </div>
+<div class="line"><a name="l00071"></a><span class="lineno">   71</span>&#160;<span class="preprocessor">#endif </span><span class="comment">/* SOCKETS_H */</span><span class="preprocessor"></span></div>
+<div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160; </div>
 <div class="ttc" id="asockets_8h_html_a267f32bd973292da7975a998336ce064"><div class="ttname"><a href="sockets_8h.html#a267f32bd973292da7975a998336ce064">create_conection</a></div><div class="ttdeci">int create_conection(t_log *logger, char *ip, char *port)</div><div class="ttdoc">Create conection with server.</div><div class="ttdef"><b>Definition:</b> sockets.c:4</div></div>
 <div class="ttc" id="asockets_8h_html_a90060467809b5c7d1871e5a98d1a0161"><div class="ttname"><a href="sockets_8h.html#a90060467809b5c7d1871e5a98d1a0161">close_conection</a></div><div class="ttdeci">void close_conection(int *client_socket)</div><div class="ttdoc">Close conection with server.</div><div class="ttdef"><b>Definition:</b> sockets.c:124</div></div>
+<div class="ttc" id="asockets_8h_html_ac9e0bf078a0d6303de9575c35920e586"><div class="ttname"><a href="sockets_8h.html#ac9e0bf078a0d6303de9575c35920e586">wait_client</a></div><div class="ttdeci">int wait_client(t_log *logger, const char *name, int server_socket)</div><div class="ttdoc">Listen to the server. It is used by server_listen()</div><div class="ttdef"><b>Definition:</b> sockets.c:103</div></div>
+<div class="ttc" id="asockets_8h_html_aff07ef0f57d11ee30e6372323d1b419b"><div class="ttname"><a href="sockets_8h.html#aff07ef0f57d11ee30e6372323d1b419b">initialize_server</a></div><div class="ttdeci">int initialize_server(t_log *logger, const char *name, char *ip, char *port)</div><div class="ttdoc">initialize the server</div><div class="ttdef"><b>Definition:</b> sockets.c:41</div></div>
 </div><!-- fragment --></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>

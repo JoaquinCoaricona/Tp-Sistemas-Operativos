@@ -1,0 +1,81 @@
+\hypertarget{configs_8h}{}\doxysection{utils/include/configs.h File Reference}
+\label{configs_8h}\index{utils/include/configs.h@{utils/include/configs.h}}
+
+
+Config functions to read the configuration files.  
+
+
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include $<$stdlib.\+h$>$}\newline
+{\ttfamily \#include $<$commons/log.\+h$>$}\newline
+{\ttfamily \#include $<$commons/string.\+h$>$}\newline
+{\ttfamily \#include $<$commons/config.\+h$>$}\newline
+{\ttfamily \#include \char`\"{}readline/readline.\+h\char`\"{}}\newline
+Include dependency graph for configs.\+h\+:
+% FIG 0
+This graph shows which files directly or indirectly include this file\+:
+% FIG 1
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+t\+\_\+config $\ast$ \mbox{\hyperlink{configs_8h_a83ffeac22a068d9bcf4d63031c129216}{initialize\+\_\+config}} (t\+\_\+log $\ast$logger, char $\ast$path)
+\begin{DoxyCompactList}\small\item\em Initializes the config functions of the Commons library to read the configuration files. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{configs_8h_a37e0f9f39e851ce5d89c1cf11ea54a3a}{end\+\_\+program}} (t\+\_\+log $\ast$logger, t\+\_\+config $\ast$config)
+\begin{DoxyCompactList}\small\item\em Destroy config and logger. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Config functions to read the configuration files. 
+
+\begin{DoxyAuthor}{Author}
+Kernel\+Crafters 
+\end{DoxyAuthor}
+\begin{DoxyVersion}{Version}
+1.\+0 
+\end{DoxyVersion}
+\begin{DoxyDate}{Date}
+2024-\/04-\/18
+\end{DoxyDate}
+\begin{DoxyCopyright}{Copyright}
+Copyright (c) 2024 
+\end{DoxyCopyright}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{configs_8h_a37e0f9f39e851ce5d89c1cf11ea54a3a}\label{configs_8h_a37e0f9f39e851ce5d89c1cf11ea54a3a}} 
+\index{configs.h@{configs.h}!end\_program@{end\_program}}
+\index{end\_program@{end\_program}!configs.h@{configs.h}}
+\doxysubsubsection{\texorpdfstring{end\_program()}{end\_program()}}
+{\footnotesize\ttfamily void end\+\_\+program (\begin{DoxyParamCaption}\item[{t\+\_\+log $\ast$}]{logger,  }\item[{t\+\_\+config $\ast$}]{config }\end{DoxyParamCaption})}
+
+
+
+Destroy config and logger. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em logger} & logger created by initialize\+\_\+logger \\
+\hline
+{\em config} & config var created by intialize\+\_\+config \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{configs_8h_a83ffeac22a068d9bcf4d63031c129216}\label{configs_8h_a83ffeac22a068d9bcf4d63031c129216}} 
+\index{configs.h@{configs.h}!initialize\_config@{initialize\_config}}
+\index{initialize\_config@{initialize\_config}!configs.h@{configs.h}}
+\doxysubsubsection{\texorpdfstring{initialize\_config()}{initialize\_config()}}
+{\footnotesize\ttfamily t\+\_\+config$\ast$ initialize\+\_\+config (\begin{DoxyParamCaption}\item[{t\+\_\+log $\ast$}]{logger,  }\item[{char $\ast$}]{path }\end{DoxyParamCaption})}
+
+
+
+Initializes the config functions of the Commons library to read the configuration files. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em logger} & logger from commons library \\
+\hline
+{\em path} & path to the configuration file \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+t\+\_\+config$\ast$ 
+\end{DoxyReturn}
