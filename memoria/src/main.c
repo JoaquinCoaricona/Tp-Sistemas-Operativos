@@ -36,8 +36,3 @@ int main(int argc, char *argv[])
 }
 
 
-int sayHello(){
-    printf("Hello World\n");
-    return 0;
-}
-
