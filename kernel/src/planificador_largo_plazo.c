@@ -16,3 +16,19 @@ void inicializar_colas_y_semaforos() {
     cola_exit = queue_create();
 
 }
+
+//Creacion de Proceso
+void crear_proceso() {
+
+}
+
+
+//Finalizacion de Proceso
+void finalizar_proceso() {
+
+}
+
+//Planificar largo plazo
+void planificar_largo_plazo() {
+
+}
