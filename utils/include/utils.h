@@ -58,12 +58,13 @@ typedef struct {
 //Instruccion
 typedef struct {
     char* opcode;
-	int opcode_length;
-	int parametro1_length;
-	int parametro2_length;
-	int parametro3_length;
-	char* parametros[3];
-
+    int opcode_length;
+    int parametro1_length;
+    int parametro2_length;
+    int parametro3_length;
+    int parametro4_length;
+    int parametro5_length;
+    char* parametros[5];
 }t_instruccion;
 
 #endif // UTILS_H
