@@ -32,3 +32,14 @@ void end_process() {
 void long_term_scheduler() {
 
 }
+
+//Ingresar a NEW
+void ingresarANew(t_pcb *pcb,t_log *logger)
+{
+	pthread_mutex_lock(&mutex_estado_new);
+	queue_push(queue_new, (void *)pcb);
+	pthread_mutex_unlock(&mutex_estado_new);
+
+	log_info(logger, "Se agrega el proceso:%d a new", pcb->pid);
+	//sem_post(&sem_hay_pcb_esperando_ready); SEMAFORO CONTADOR
+}

@@ -27,6 +27,8 @@ t_pcb *iniciarPCB(t_proceso *proceso){
         return pcb;
 }
 
+
+
     
    
   
