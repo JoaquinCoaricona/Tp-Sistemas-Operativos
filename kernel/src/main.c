@@ -1,6 +1,7 @@
 #include "main.h"
 
 int memory_socket;
+int id_contador = 1;
 int cpu_socket;
 int main(int argc, char *argv[])
 {
