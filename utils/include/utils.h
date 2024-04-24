@@ -27,18 +27,6 @@
 // STRUCTS
 
 
-//PCB
-typedef struct {
-    int pid;
-    int program_counter;
-    int quantum;
-    cpu_registers* cpu_registers;
-
-    char* process_state; // pueden ser "NEW", "READY", "EXEC", "BLOCKED" y "EXIT"
-	int64_t tiempo_llegada_ready;
-	t_instruction* instruction;
-
-} t_pcb;
 
 //Registros
 typedef struct {
@@ -68,4 +56,17 @@ typedef struct {
 
 }t_instruction;
 
+
+//PCB
+typedef struct {
+    int pid;
+    int program_counter;
+    int quantum;
+    cpu_registers* cpu_registers;
+
+    char* process_state; // pueden ser "NEW", "READY", "EXEC", "BLOCKED" y "EXIT"
+	int64_t tiempo_llegada_ready;
+	t_instruction* instruction;
+
+} t_pcb;
 #endif // UTILS_H

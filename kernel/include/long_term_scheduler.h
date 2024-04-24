@@ -14,4 +14,6 @@ void create_process();
 void end_process();
 void long_term_scheduler();
 
+
+pthread_mutex_t mutex_estado_new;
 #endif // LONG_TERM_SCHEDULER_H_
