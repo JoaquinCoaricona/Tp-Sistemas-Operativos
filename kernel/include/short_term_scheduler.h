@@ -2,10 +2,10 @@
 #define SHORT_TERM_SCHEDULER_H_
 
 #include "../include/utils.h"
-extern int id_contador;
+extern int id_counter;
 
 //Iniciar PCB
-t_pcb *iniciarPCB();
+t_pcb *initializePCB();
 //FIFO
 void short_term_scheduler_fifo();
 
