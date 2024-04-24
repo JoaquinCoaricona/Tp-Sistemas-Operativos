@@ -15,7 +15,7 @@ void short_term_scheduler_virtual_round_robin() {
 
 }
 
-t_pcb *iniciarPCB(t_proceso *proceso){
+t_pcb *iniciarPCB(){
         
         t_pcb *pcb = malloc(sizeof(t_pcb));
 
