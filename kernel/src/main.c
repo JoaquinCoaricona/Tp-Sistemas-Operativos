@@ -1,7 +1,8 @@
 #include "main.h"
+#include "short_term_scheduler.h"
+#include "long_term_scheduler.h"
 
 int memory_socket;
-int id_contador = 1;
 int cpu_socket;
 int main(int argc, char *argv[])
 {
@@ -28,6 +29,11 @@ int main(int argc, char *argv[])
     cpu_IP = config_get_string_value(config, "IP_CPU");
     memory_IP = config_get_string_value(config, "IP_MEMORIA"); //! Averiguar se deberia estar
     kernel_IP = config_get_string_value(config, "IP_MEMORIA");// hay que ver si se tiene que cambiar a futuro pero en el archivo de configuración no hay una ip de kernel
+   
+    //PRUEBAAAA
+    //initialize_queue_and_semaphore();
+    //t_pcb *PCB = iniciarPCB();
+    //ingresarANew(PCB,logger);
 
     // Conect to server
     memory_socket = create_conection(logger, memory_IP, memory_PORT);

@@ -1,5 +1,5 @@
 #include "short_term_scheduler.h"
-
+int id_contador = 1;
 //FIFO
 void short_term_scheduler_fifo() {
 

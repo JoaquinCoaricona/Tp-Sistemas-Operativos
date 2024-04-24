@@ -1,6 +1,7 @@
 #include "long_term_scheduler.h"
 
-
+//Semaforo
+pthread_mutex_t mutex_estado_new;
 //Estado EXEC y BLOCKED no usan queue
 t_queue* queue_new;
 t_queue* queue_ready;
@@ -14,6 +15,7 @@ void initialize_queue_and_semaphore() {
     queue_new = queue_create();
     queue_ready = queue_create();
     queue_exit = queue_create();
+    pthread_mutex_init(&mutex_estado_new, NULL);
 
 }
 
@@ -37,7 +39,7 @@ void long_term_scheduler() {
 void ingresarANew(t_pcb *pcb,t_log *logger)
 {
 	pthread_mutex_lock(&mutex_estado_new);
-	queue_push(queue_new, (void *)pcb);
+	queue_push(queue_new,pcb);
 	pthread_mutex_unlock(&mutex_estado_new);
 
 	log_info(logger, "Se agrega el proceso:%d a new", pcb->pid);
