@@ -32,8 +32,8 @@ int main(int argc, char *argv[])
    
     //PRUEBAAAA
     //initialize_queue_and_semaphore();
-    //t_pcb *PCB = iniciarPCB();
-    //ingresarANew(PCB,logger);
+    //t_pcb *PCB = initializePCB();
+    //enterNew(PCB,logger);
 
     // Conect to server
     memory_socket = create_conection(logger, memory_IP, memory_PORT);
