@@ -14,7 +14,10 @@ int main(int argc, char *argv[])
     char *cpu_IP;
     char *kernel_IP;
     t_buffer *buffer;
+    t_buffer *bufferPCB;
     t_packet *packet;
+    t_packet *packetPCB;
+
 
     // LOGGER
     t_log *logger;
@@ -31,9 +34,15 @@ int main(int argc, char *argv[])
     kernel_IP = config_get_string_value(config, "IP_MEMORIA");// hay que ver si se tiene que cambiar a futuro pero en el archivo de configuración no hay una ip de kernel
    
     //PRUEBAAAA
-    //initialize_queue_and_semaphore();
-    //t_pcb *PCB = initializePCB();
-    //enterNew(PCB,logger);
+    initialize_queue_and_semaphore();
+    t_pcb *PCB = initializePCB();
+    
+    // printf("PID: %d ",PCB->pid);
+    // printf("COUNTER: %d  ",PCB->program_counter);
+    // printf("QUANTUM: %d",PCB->quantum);
+    
+    enterNew(PCB,logger);
+    t_pcb PRUEBA;
 
     // Conect to server
     memory_socket = create_conection(logger, memory_IP, memory_PORT);
@@ -42,6 +51,16 @@ int main(int argc, char *argv[])
     // Send handshake
     buffer = create_buffer();
     packet = create_packet(HANDSHAKE_KERNEL,buffer);
+
+
+    int tamanioPCB = sizeof(PRUEBA);
+    //ENVIAR PCB
+    bufferPCB = create_buffer();
+    packetPCB = create_packet(PCB_REC,bufferPCB);
+    add_to_packet(packetPCB,PCB,tamanioPCB);
+
+   
+    
 
     add_to_packet(packet, buffer->stream, buffer->size);
     //packet = serialize_packet(packet, buffer->size);
@@ -52,7 +71,8 @@ int main(int argc, char *argv[])
     cpu_socket = create_conection(logger, cpu_IP, cpu_PORT);
     log_info(logger, "Conectado al servidor de cpu %s:%s", cpu_IP, cpu_PORT);
 
-    send_packet(packet, cpu_socket);
+    //send_packet(packet, cpu_socket);
+    send_packet(packetPCB, cpu_socket);
 
 
     int server_fd = initialize_server(logger, "kernel_server", kernel_IP, kernel_PORT);

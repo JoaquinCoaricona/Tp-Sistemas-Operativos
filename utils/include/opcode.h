@@ -20,11 +20,13 @@
  * 
  */
 typedef enum
-{
+{   
+    PCB_REC,
     MENSAJE,
     HANDSHAKE_KERNEL,
     HANDSHAKE_ENTRADA_SALIDA,
     HANDSHAKE_CPU,
+    
     // entrada - salida
     EJECUTAR_SCRIPT,
     INICIAR_PROCESO,

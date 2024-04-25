@@ -1,4 +1,5 @@
 #include "protocol.h"
+#include "utils.h"
 
 // MARK: CLIENT
 t_buffer *create_buffer()
@@ -120,3 +121,67 @@ int fetch_codop(int client_socket)
     return -1;
 }
 
+t_pcb *fetch_PCB(int client_socket)
+{
+    int total_size;
+    int offset = 0;
+   
+    void *buffer2;
+
+   
+  
+    t_pcb* PCBrec;
+    int pid;
+    int counter;
+    int tama;
+    int quantum;
+    cpu_registers* cpureg;
+    int length;
+    char* estado; // pueden ser "NEW", "READY", "EXEC", "BLOCKED" y "EXIT"
+	int64_t tiempollega;
+	t_instruction* instruccion;
+    int tamaPuntero = sizeof(cpureg);
+    int tamaInstruccion = sizeof(instruccion);
+    
+
+    
+
+    buffer2 = fetch_buffer(&total_size, client_socket);
+
+    memcpy(&tama,buffer2 + offset, sizeof(int)); //RECIBO EL TAMAÑO
+    offset += sizeof(int);
+    
+
+    memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
+    offset += sizeof(int);
+
+    memcpy(&counter, buffer2 + offset, sizeof(int)); // RECIBO EL PROGRAM COUNTER
+    offset += sizeof(int);
+    
+    memcpy(&quantum, buffer2 + offset, sizeof(int)); //RECIBO EL QUANTUM
+    offset += sizeof(int);
+
+    memcpy(cpureg, buffer2 + offset,tamaPuntero); //RECIBO EL PUNTERO A CPU_REGISTERS a los que son punter no pongo el &
+    offset += tamaPuntero;
+
+    memcpy(&length,buffer2 + offset, sizeof(int)); //RECIBO EL LENGTH
+    offset += sizeof(int);
+    
+    estado = malloc(length);
+    memcpy(estado,buffer2 + offset, length-1); //RECIBO EL PROCESS_STATE aca no paso la direccion porque ya es un PUNTERO
+    offset += length;
+    
+    memcpy(&tiempollega, buffer2 + offset, sizeof(int64_t)); //RECIBO EL TIEMPO LLEGADA
+    offset += sizeof(int64_t);
+
+    memcpy(instruccion, buffer2 + offset,tamaInstruccion); //RECIBO la instruccion
+
+    free(buffer2);
+
+
+    printf("ESTADO: %s       ",estado);
+    printf("PID: %i        ",pid);
+    printf("QUANTUM: %i      ",quantum);
+
+   return PCBrec;
+}

@@ -63,7 +63,7 @@ typedef struct {
     int program_counter;
     int quantum;
     cpu_registers* cpu_registers;
-
+    int length_process_state;
     char* process_state; // pueden ser "NEW", "READY", "EXEC", "BLOCKED" y "EXIT"
 	int64_t tiempo_llegada_ready;
 	t_instruction* instruction;

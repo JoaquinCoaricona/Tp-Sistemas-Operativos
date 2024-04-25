@@ -15,7 +15,7 @@ void initialize_queue_and_semaphore() {
     queue_new = queue_create();
     queue_ready = queue_create();
     queue_exit = queue_create();
-    pthread_mutex_init(&mutex_estado_new, NULL);
+    pthread_mutex_init(&mutex_state_new, NULL);
 
 }
 

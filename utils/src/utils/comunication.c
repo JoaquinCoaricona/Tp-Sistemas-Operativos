@@ -1,4 +1,6 @@
 #include "comunication.h"
+#include "utils.h"
+
 
 static void process_conection(void *args)
 {
@@ -6,6 +8,7 @@ static void process_conection(void *args)
     char *server_name;
     t_log *logger;
     t_packet *packet;
+    t_pcb *PCBRECB;
 
     t_process_conection_args *arguments = (t_process_conection_args *)args;
 
@@ -28,6 +31,16 @@ static void process_conection(void *args)
             log_info(logger, "handshake %d recibido %s",operation_code, server_name);
             packet = fetch_packet(client_socket);
             log_info(logger, "Packet received");
+
+            close_conection(client_socket);
+            client_socket = -1;
+            break;
+        case PCB_REC:
+            log_info(logger, "PCB %d recibido %s",operation_code, server_name);
+            PCBRECB = fetch_PCB(client_socket);
+            log_info(logger, "PCB received");
+            
+            
 
             close_conection(client_socket);
             client_socket = -1;
