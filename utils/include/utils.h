@@ -56,17 +56,31 @@ typedef struct {
 
 }t_instruction;
 
+//Process state
+typedef enum {
+    NEW,
+    READY,
+    EXEC,
+    BLOCKED,
+    EXIT
+} t_process_state;
 
 //PCB
 typedef struct {
     int pid;
     int program_counter;
     int quantum;
-    int length_process_state;
-    char* process_state; // pueden ser "NEW", "READY", "EXEC", "BLOCKED" y "EXIT"
+    //int length_process_state;
 	int64_t tiempo_llegada_ready;
+    t_process_state* state; // pueden ser "NEW", "READY", "EXEC", "BLOCKED" y "EXIT"
 	t_instruction* instruction;
     t_cpu_registers* registers;
+    int prueba;
 
 } t_pcb;
+
+
+
+
+
 #endif // UTILS_H

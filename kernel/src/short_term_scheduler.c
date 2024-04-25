@@ -23,13 +23,15 @@ t_pcb *initializePCB(){
         id_counter++;
         pcb->program_counter = 1;
         pcb->quantum = 5;
-        pcb->process_state = malloc(strlen("NEW") + 1); strcpy(pcb->process_state, "NEW");
-        pcb->length_process_state = strlen("NEW")+1;
+        pcb->state = 0;
         pcb->registers = NULL;
         pcb->instruction = NULL;
+        pcb->state = NULL;
+        pcb->prueba=5;
         
         return pcb;
 }
+
 
 
 

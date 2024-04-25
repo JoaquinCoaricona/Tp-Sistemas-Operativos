@@ -137,11 +137,13 @@ t_pcb *fetch_PCB(int client_socket)
     int counter;
     int tama;
     int quantum;
-    int length;
-    char* estado; // pueden ser "NEW", "READY", "EXEC", "BLOCKED" y "EXIT"
+    t_process_state* state; // pueden ser "NEW", "READY", "EXEC", "BLOCKED" y "EXIT"
 	int64_t tiempollega;
+
+    int size_ps = sizeof(state);
     int tamaPuntero = sizeof(cpureg);
     int tamaInstruccion = sizeof(instruction);
+    int prueba;
     
 
 
@@ -160,29 +162,34 @@ t_pcb *fetch_PCB(int client_socket)
     memcpy(&quantum, buffer2 + offset, sizeof(int)); //RECIBO EL QUANTUM
     offset += sizeof(int);
 
-    cpureg = malloc(tamaPuntero); // Allocate memory for CPU_REGISTERS
-    memcpy(cpureg, buffer2 + offset, tamaPuntero); //! RECIBO EL PUNTERO A CPU_REGISTERS a los que son punter no pongo el &
-    offset += tamaPuntero;
-
-    memcpy(&length,buffer2 + offset, sizeof(int)); //RECIBO EL LENGTH
-    offset += sizeof(int);
-    
-    estado = malloc(length);
-    memcpy(estado,buffer2 + offset, length-1); //RECIBO EL PROCESS_STATE aca no paso la direccion porque ya es un PUNTERO
-    offset += length;
-    
     memcpy(&tiempollega, buffer2 + offset, sizeof(int64_t)); //RECIBO EL TIEMPO LLEGADA
     offset += sizeof(int64_t);
+    
+    cpureg = malloc(tamaPuntero); // Allocate memory for CPU_REGISTERS
+    memcpy(cpureg, buffer2 + offset, tamaPuntero);
+    offset += tamaPuntero;
 
+    state = malloc(size_ps); // Allocate memory for process_state
+    memcpy(state, buffer2 + offset, size_ps); //RECIBO EL PROCESS_STATE aca no paso la direccion porque ya es un PUNTERO
+    offset += size_ps;
+    
     instruction = malloc(tamaInstruccion); // Allocate memory for instruction
     memcpy(instruction, buffer2 + offset, tamaInstruccion); // Copy the instruction
+    offset += tamaInstruccion;
+
+    memcpy(&prueba, buffer2 + offset, sizeof(int)); //RECIBO EL PRUEBA
+    offset += sizeof(int);
 
     free(buffer2);
 
 
-    printf("ESTADO: %s       ", estado);
+    printf("ESTADO: %i       ", state); //!Devuelve "creado" !?
     printf("PID: %i        ", pid);
     printf("QUANTUM: %i      ", quantum);
+  
+    free(cpureg);
+    free(state);
+    free(instruction);
 
    return PCBrec;
 }
