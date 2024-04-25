@@ -160,6 +160,7 @@ t_pcb *fetch_PCB(int client_socket)
     memcpy(&quantum, buffer2 + offset, sizeof(int)); //RECIBO EL QUANTUM
     offset += sizeof(int);
 
+    cpureg = malloc(tamaPuntero); // Allocate memory for CPU_REGISTERS
     memcpy(cpureg, buffer2 + offset, tamaPuntero); //! RECIBO EL PUNTERO A CPU_REGISTERS a los que son punter no pongo el &
     offset += tamaPuntero;
 
@@ -173,14 +174,15 @@ t_pcb *fetch_PCB(int client_socket)
     memcpy(&tiempollega, buffer2 + offset, sizeof(int64_t)); //RECIBO EL TIEMPO LLEGADA
     offset += sizeof(int64_t);
 
-    memcpy(instruction, buffer2 + offset,tamaInstruccion); //RECIBO la instruccion
+    instruction = malloc(tamaInstruccion); // Allocate memory for instruction
+    memcpy(instruction, buffer2 + offset, tamaInstruccion); // Copy the instruction
 
     free(buffer2);
 
 
-    printf("ESTADO: %s       ",estado);
-    printf("PID: %i        ",pid);
-    printf("QUANTUM: %i      ",quantum);
+    printf("ESTADO: %s       ", estado);
+    printf("PID: %i        ", pid);
+    printf("QUANTUM: %i      ", quantum);
 
    return PCBrec;
 }
