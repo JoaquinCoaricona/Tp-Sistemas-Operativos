@@ -41,7 +41,7 @@ typedef struct {
     uint32_t EDX;
     uint32_t SI;
     uint32_t DI;
-} cpu_registers;
+} t_cpu_registers;
 
 //Instruccion
 typedef struct {
@@ -62,11 +62,11 @@ typedef struct {
     int pid;
     int program_counter;
     int quantum;
-    cpu_registers* cpu_registers;
     int length_process_state;
     char* process_state; // pueden ser "NEW", "READY", "EXEC", "BLOCKED" y "EXIT"
 	int64_t tiempo_llegada_ready;
 	t_instruction* instruction;
+    t_cpu_registers* registers;
 
 } t_pcb;
 #endif // UTILS_H

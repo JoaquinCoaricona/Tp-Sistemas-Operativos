@@ -25,7 +25,7 @@ t_pcb *initializePCB(){
         pcb->quantum = 5;
         pcb->process_state = malloc(strlen("NEW") + 1); strcpy(pcb->process_state, "NEW");
         pcb->length_process_state = strlen("NEW")+1;
-        pcb->cpu_registers = NULL;
+        pcb->registers = NULL;
         pcb->instruction = NULL;
         
         return pcb;

@@ -127,24 +127,23 @@ t_pcb *fetch_PCB(int client_socket)
     int offset = 0;
    
     void *buffer2;
-
    
   
     t_pcb* PCBrec;
+	t_instruction* instruction;
+    t_cpu_registers* cpureg;
+    
     int pid;
     int counter;
     int tama;
     int quantum;
-    cpu_registers* cpureg;
     int length;
     char* estado; // pueden ser "NEW", "READY", "EXEC", "BLOCKED" y "EXIT"
 	int64_t tiempollega;
-	t_instruction* instruccion;
     int tamaPuntero = sizeof(cpureg);
-    int tamaInstruccion = sizeof(instruccion);
+    int tamaInstruccion = sizeof(instruction);
     
 
-    
 
     buffer2 = fetch_buffer(&total_size, client_socket);
 
@@ -161,7 +160,7 @@ t_pcb *fetch_PCB(int client_socket)
     memcpy(&quantum, buffer2 + offset, sizeof(int)); //RECIBO EL QUANTUM
     offset += sizeof(int);
 
-    memcpy(cpureg, buffer2 + offset,tamaPuntero); //RECIBO EL PUNTERO A CPU_REGISTERS a los que son punter no pongo el &
+    memcpy(cpureg, buffer2 + offset, tamaPuntero); //! RECIBO EL PUNTERO A CPU_REGISTERS a los que son punter no pongo el &
     offset += tamaPuntero;
 
     memcpy(&length,buffer2 + offset, sizeof(int)); //RECIBO EL LENGTH
@@ -174,7 +173,7 @@ t_pcb *fetch_PCB(int client_socket)
     memcpy(&tiempollega, buffer2 + offset, sizeof(int64_t)); //RECIBO EL TIEMPO LLEGADA
     offset += sizeof(int64_t);
 
-    memcpy(instruccion, buffer2 + offset,tamaInstruccion); //RECIBO la instruccion
+    memcpy(instruction, buffer2 + offset,tamaInstruccion); //RECIBO la instruccion
 
     free(buffer2);
 

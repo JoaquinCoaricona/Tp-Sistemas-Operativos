@@ -56,8 +56,8 @@ int main(int argc, char *argv[])
     int tamanioPCB = sizeof(PRUEBA);
     //ENVIAR PCB
     bufferPCB = create_buffer();
-    packetPCB = create_packet(PCB_REC,bufferPCB);
-    add_to_packet(packetPCB,PCB,tamanioPCB);
+    packetPCB = create_packet(PCB_REC, bufferPCB);
+    add_to_packet(packetPCB, PCB, tamanioPCB);
 
    
     
