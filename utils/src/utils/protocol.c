@@ -121,75 +121,74 @@ int fetch_codop(int client_socket)
     return -1;
 }
 
-t_pcb *fetch_PCB(int client_socket)
+void *fetch_PCB(int client_socket,t_pcb *PCBrec)
 {
     int total_size;
     int offset = 0;
    
     void *buffer2;
    
-  
-    t_pcb* PCBrec;
-	t_instruction* instruction;
-    t_cpu_registers* cpureg;
+    int tama; //Solo para recibir el size que esta al principio del buffer
     
-    int pid;
-    int counter;
-    int tama;
-    int quantum;
-    t_process_state* state; // pueden ser "NEW", "READY", "EXEC", "BLOCKED" y "EXIT"
-	int64_t tiempollega;
-
-    int size_ps = sizeof(state);
-    int tamaPuntero = sizeof(cpureg);
-    int tamaInstruccion = sizeof(instruction);
-    int prueba;
-    
-
-
     buffer2 = fetch_buffer(&total_size, client_socket);
 
     memcpy(&tama,buffer2 + offset, sizeof(int)); //RECIBO EL TAMAÑO
     offset += sizeof(int);
     
 
-    memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
+    memcpy(&(PCBrec->pid),buffer2 + offset, sizeof(int)); //RECIBO EL PID
     offset += sizeof(int);
 
-    memcpy(&counter, buffer2 + offset, sizeof(int)); // RECIBO EL PROGRAM COUNTER
+    memcpy(&(PCBrec->program_counter), buffer2 + offset, sizeof(int)); // RECIBO EL PROGRAM COUNTER
     offset += sizeof(int);
     
-    memcpy(&quantum, buffer2 + offset, sizeof(int)); //RECIBO EL QUANTUM
+    memcpy(&(PCBrec->quantum), buffer2 + offset, sizeof(int)); //RECIBO EL QUANTUM
     offset += sizeof(int);
 
-    memcpy(&tiempollega, buffer2 + offset, sizeof(int64_t)); //RECIBO EL TIEMPO LLEGADA
-    offset += sizeof(int64_t);
-    
-    cpureg = malloc(tamaPuntero); // Allocate memory for CPU_REGISTERS
-    memcpy(cpureg, buffer2 + offset, tamaPuntero);
-    offset += tamaPuntero;
+    memcpy(&(PCBrec->state), buffer2 + offset, sizeof(t_process_state)); //RECIBO EL PROCESS STATE
+    offset += sizeof(t_process_state);
 
-    state = malloc(size_ps); // Allocate memory for process_state
-    memcpy(state, buffer2 + offset, size_ps); //RECIBO EL PROCESS_STATE aca no paso la direccion porque ya es un PUNTERO
-    offset += size_ps;
-    
-    instruction = malloc(tamaInstruccion); // Allocate memory for instruction
-    memcpy(instruction, buffer2 + offset, tamaInstruccion); // Copy the instruction
-    offset += tamaInstruccion;
+    memcpy(&(PCBrec->registers.PC), buffer2 + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(PCBrec->registers.AX), buffer2 + offset, sizeof(uint8_t)); //RECIBO CPUREG
+    offset += sizeof(uint8_t);
+    memcpy(&(PCBrec->registers.BX), buffer2 + offset, sizeof(uint8_t)); //RECIBO CPUREG
+    offset += sizeof(uint8_t);
+    memcpy(&(PCBrec->registers.CX), buffer2 + offset, sizeof(uint8_t)); //RECIBO CPUREG
+    offset += sizeof(uint8_t);
+    memcpy(&(PCBrec->registers.DX), buffer2 + offset, sizeof(uint8_t)); //RECIBO CPUREG
+    offset += sizeof(uint8_t);
+    memcpy(&(PCBrec->registers.EAX), buffer2 + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(PCBrec->registers.EBX), buffer2 + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(PCBrec->registers.ECX), buffer2 + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(PCBrec->registers.EDX), buffer2 + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(PCBrec->registers.SI), buffer2 + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(PCBrec->registers.DI), buffer2 + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    offset += sizeof(uint32_t);
 
-    memcpy(&prueba, buffer2 + offset, sizeof(int)); //RECIBO EL PRUEBA
-    offset += sizeof(int);
+
+    // memcpy(&tiempollega, buffer2 + offset, sizeof(int64_t)); //RECIBO EL TIEMPO LLEGADA
+    // offset += sizeof(int64_t);
+    
+    // cpureg = malloc(tamaPuntero); // Allocate memory for CPU_REGISTERS
+    // memcpy(cpureg, buffer2 + offset, tamaPuntero);
+    // offset += tamaPuntero;
+
+    // memcpy(state, buffer2 + offset, size_ps); 
+    // offset += size_ps;
+    
+    // instruction = malloc(tamaInstruccion); // Allocate memory for instruction
+    // memcpy(instruction, buffer2 + offset, tamaInstruccion); // Copy the instruction
+    // offset += tamaInstruccion;
+    
+    // memcpy(&prueba, buffer2 + offset, sizeof(int)); //RECIBO EL PRUEBA
+    // offset += sizeof(int);
 
     free(buffer2);
-
-
-    printf("ESTADO: %i       ", state); //!Devuelve "creado" !?
-    printf("PID: %i        ", pid);
-    printf("QUANTUM: %i      ", quantum);
-  
-    free(cpureg);
-    free(state);
-    free(instruction);
-
-   return PCBrec;
 }
+

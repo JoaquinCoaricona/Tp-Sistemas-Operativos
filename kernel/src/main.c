@@ -52,6 +52,9 @@ int main(int argc, char *argv[])
     buffer = create_buffer();
     packet = create_packet(HANDSHAKE_KERNEL,buffer);
 
+    printf("TAMAÑO %i",sizeof(*PCB));
+
+
 
     int tamanioPCB = sizeof(PRUEBA);
     //ENVIAR PCB

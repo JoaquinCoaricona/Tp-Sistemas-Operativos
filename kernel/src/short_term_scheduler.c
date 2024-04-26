@@ -24,10 +24,9 @@ t_pcb *initializePCB(){
         pcb->program_counter = 1;
         pcb->quantum = 5;
         pcb->state = 0;
-        pcb->registers = NULL;
-        pcb->instruction = NULL;
-        pcb->state = NULL;
-        pcb->prueba=5;
+        //pcb->registers = malloc(sizeof( t_cpu_registers));
+        //pcb->instruction = malloc(sizeof( t_instruction));
+        // pcb->prueba=5;
         
         return pcb;
 }
