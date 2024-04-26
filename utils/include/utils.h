@@ -17,6 +17,7 @@
 #include <commons/string.h>
 #include <commons/config.h>
 #include <readline/readline.h>
+#include <string.h>
 #include "sockets.h"
 #include "logger.h"
 #include "configs.h"

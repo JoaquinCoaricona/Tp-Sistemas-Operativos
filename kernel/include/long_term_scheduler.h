@@ -1,6 +1,7 @@
 #ifndef LONG_TERM_SCHEDULER_H_
 #define LONG_TERM_SCHEDULER_H_
 
+#include <semaphore.h>
 #include <commons/collections/queue.h>
 #include "../include/utils.h"
 
@@ -16,6 +17,8 @@ void create_process();
 void end_process();
 void long_term_scheduler();
 
-
+extern sem_t m_execute_process;
+extern sem_t short_term_scheduler_semaphore;
+extern sem_t m_ready_queue;
 extern pthread_mutex_t mutex_state_new;
 #endif // LONG_TERM_SCHEDULER_H_
