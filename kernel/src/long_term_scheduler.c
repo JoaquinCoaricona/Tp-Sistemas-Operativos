@@ -3,6 +3,7 @@
 //Semaforo
 sem_t m_execute_process;
 sem_t short_term_scheduler_semaphore;
+sem_t sem_ready;
 sem_t m_ready_queue;
 sem_t sem_hay_pcb_esperando_ready; //esto es para contar los PCB de ready
 sem_t sem_multiprogramacion; //hay que inicializarlo en 0
@@ -23,7 +24,8 @@ void initialize_queue_and_semaphore() {
     queue_ready = queue_create();
     queue_exit = queue_create();
     sem_init(&m_execute_process, 0, 1);
-    sem_init(&short_term_scheduler_semaphore, 0, 0);
+    sem_init(&sem_ready, 0, 0);
+	sem_init(&short_term_scheduler_semaphore, 0, 0);
     sem_init(&sem_hay_pcb_esperando_ready,0,0);
     sem_init(&sem_multiprogramacion,0,0);//aca hay que poner en el segundo cero el grado de multipprogramacion
     sem_init(&m_ready_queue, 0, 1);
@@ -80,9 +82,9 @@ void Aready()
 	while (1)
 	{
     	sem_wait(&sem_hay_pcb_esperando_ready); //controla que haya pcbs en ready
-
     	sem_wait(&sem_multiprogramacion);//controla que se cumpla con los hilos de multiprogramacion, se va restando hasta
         //que llegue a 0 y ahi se bloquea y el signal lo haces cuando un proceso finaliza 
+
      	//log_info(logger, "Grado de multiprogramación permite agregar proceso a ready\n");
 
     	t_pcb *pcb = obtenerSiguienteAready();
@@ -90,6 +92,6 @@ void Aready()
     	addEstadoReady(pcb);
     	//log_info(logger, "Se elimino el proceso %d de New y se agrego a Ready", pcb->id);
 
-    	//sem_post(&sem_ready);esto indicaria que hay uno mas en ready pero hay que hacer la declaracion del semaforo
+    	sem_post(&sem_ready); //esto indicaria que hay uno mas en ready pero hay que hacer la declaracion del semaforo
 	}
 }
