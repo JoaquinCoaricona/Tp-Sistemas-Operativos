@@ -73,6 +73,8 @@ typedef struct {
     int quantum;
     t_process_state state; // pueden ser "NEW", "READY", "EXEC", "BLOCKED" y "EXIT"
     t_cpu_registers registers;
+
+
     // int prueba;
     //int length_process_state;
 	//int64_t tiempo_llegada_ready;

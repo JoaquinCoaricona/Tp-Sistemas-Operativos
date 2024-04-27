@@ -1,5 +1,6 @@
 #include "short_term_scheduler.h"
 int id_counter = 1;
+
 //FIFO
 void short_term_scheduler_fifo() {
     sem_wait(&short_term_scheduler_semaphore);
@@ -7,22 +8,47 @@ void short_term_scheduler_fifo() {
 
     if(queue_size(queue_ready) == 0) {
         sem_post(&m_ready_queue);
+        sem_post(&short_term_scheduler_semaphore);
         return;
     }
 
-    t_pcb *process = queue_pop(queue_ready);
+    while(queue_size(queue_ready) != 0) {
+        t_pcb *process = queue_pop(queue_ready);
+        execute_process(process);
+    }
+
     sem_post(&m_ready_queue);
-    execute_process(process);
+    sem_post(&short_term_scheduler_semaphore);
 }
 
 //RR
 void short_term_scheduler_round_robin() {
+    sem_wait(&short_term_scheduler_semaphore);
+    sem_wait(&m_ready_queue);
 
+    if(queue_size(queue_ready) == 0) {
+        sem_post(&m_ready_queue);
+        sem_post(&short_term_scheduler_semaphore);
+        return;
+    }
+
+    sem_post(&m_ready_queue);
+    sem_post(&short_term_scheduler_semaphore);
 }
 
 //VRR
 void short_term_scheduler_virtual_round_robin() {
+    sem_wait(&short_term_scheduler_semaphore);
+    sem_wait(&m_ready_queue);
 
+    if(queue_size(queue_ready) == 0) {
+        sem_post(&m_ready_queue);
+        sem_post(&short_term_scheduler_semaphore);
+        return;
+    }
+
+    sem_post(&m_ready_queue);
+    sem_post(&short_term_scheduler_semaphore);
 }
 
 void execute_process(t_pcb *process) {
