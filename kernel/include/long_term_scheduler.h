@@ -20,5 +20,8 @@ void long_term_scheduler();
 extern sem_t m_execute_process;
 extern sem_t short_term_scheduler_semaphore;
 extern sem_t m_ready_queue;
+extern sem_t sem_hay_pcb_esperando_ready;
+extern sem_t sem_multiprogramacion;
 extern pthread_mutex_t mutex_state_new;
+pthread_mutex_t mutex_state_ready;
 #endif // LONG_TERM_SCHEDULER_H_

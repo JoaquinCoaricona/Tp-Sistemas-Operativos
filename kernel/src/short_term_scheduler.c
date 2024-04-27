@@ -28,8 +28,8 @@ void short_term_scheduler_virtual_round_robin() {
 void execute_process(t_pcb *process) {
     sem_wait(&m_execute_process);
     if(process -> state != "EXEC") {
-        free(process->state);
-        process->state = string_new();
+        free(process->state);//error al compilar
+        process->state = string_new(); //error al compilar
         string_append(&(process->state), "EXEC");
     }
     send_execution_context_to_CPU(process);
