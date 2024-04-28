@@ -21,7 +21,13 @@ void levantar_consola(t_log *logger) {
 			comando = linea;
 		}else if(strchr(linea, ' ') != NULL){
 			comando = strtok(linea," ");
-			parametro = strtok(NULL, " ");
+			parametro = strtok(NULL, " "); 
+			//aca antes tenia esto de abajo pero comando al hacerle el strtok a "hola joa" comando se queda con hola
+			//pero linea tambien se modifica y queda con hola porque el espacio se remplaza por /0
+			//y entonces parametro tambien quedaba con hola. El null lo que hace seguir desde donde se quedo
+			//y usa la misma cadena y se habia quedado en joa y busca de nuevo el " " y como no lo encunetra devuelve joa
+			//comando = strtok(linea," ");
+			//parametro = linea
 
 		}else{
 			printf("ERROR AL INGRESAR COMANDO");
