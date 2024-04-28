@@ -12,5 +12,14 @@ int pid;
 char* path;
 }t_instrucciones;
 
+typedef struct {
+	int opcode_lenght;
+	char* opcode;
+	int parametro1_lenght;
+	int parametro2_lenght;
+	int parametro3_lenght;
+	char* parametros[3];
+
+}t_instruccion_unitaria;
 
 #endif /* MAIN_H_ */
