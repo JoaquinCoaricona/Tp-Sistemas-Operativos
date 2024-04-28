@@ -68,7 +68,7 @@ typedef enum {
 
 //PCB
 typedef struct {
-    int pid;
+    pid_t pid; //! Process ID pid_t from "https://man7.org/linux/man-pages/man2/fork.2.html"
     int program_counter;
     int quantum;
     t_process_state state; // pueden ser "NEW", "READY", "EXEC", "BLOCKED" y "EXIT"
