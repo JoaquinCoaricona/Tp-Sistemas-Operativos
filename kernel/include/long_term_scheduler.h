@@ -24,5 +24,5 @@ extern sem_t sem_hay_pcb_esperando_ready;
 extern sem_t sem_multiprogramacion;
 extern sem_t sem_ready;
 extern pthread_mutex_t mutex_state_new;
-pthread_mutex_t mutex_state_ready;
+extern pthread_mutex_t mutex_state_ready;
 #endif // LONG_TERM_SCHEDULER_H_

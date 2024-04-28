@@ -26,6 +26,7 @@ typedef enum
     HANDSHAKE_KERNEL,
     HANDSHAKE_ENTRADA_SALIDA,
     HANDSHAKE_CPU,
+    CREAR_PROCESO,
     
     // entrada - salida
     EJECUTAR_SCRIPT,

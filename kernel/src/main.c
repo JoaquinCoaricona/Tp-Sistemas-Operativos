@@ -78,13 +78,14 @@ int main(int argc, char *argv[])
     send_packet(packetPCB, cpu_socket);
 
 
-    int server_fd = initialize_server(logger, "kernel_server", kernel_IP, kernel_PORT);
-    log_info(logger, "Server initialized");
+    levantar_consola(logger);
+    // int server_fd = initialize_server(logger, "kernel_server", kernel_IP, kernel_PORT);
+    // log_info(logger, "Server initialized");
 
-    while (1){
-        server_listen(logger, "kernel_server", server_fd);
+    // while (1){
+    //     server_listen(logger, "kernel_server", server_fd);
         
-    }
+    // }
 
     return 0;
 

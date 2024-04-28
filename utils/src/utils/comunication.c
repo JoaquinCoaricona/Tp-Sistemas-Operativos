@@ -53,7 +53,7 @@ static void process_conection(void *args)
             log_info(logger,"Se Envio Un Proceso a Crear");
             close_conection(client_socket);
             client_socket = -1;
-        break
+        break;
 
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
