@@ -79,9 +79,9 @@ int main(int argc, char *argv[])
     send_packet(packetPCB, cpu_socket);
 
 
-    levantar_consola(logger);
-    // int server_fd = initialize_server(logger, "kernel_server", kernel_IP, kernel_PORT);
-    // log_info(logger, "Server initialized");
+    
+    int server_fd = initialize_server(logger, "kernel_server", kernel_IP, kernel_PORT);
+    log_info(logger, "Server initialized");
 
     pthread_t thread_memory_peticions;
     t_process_conection_args *process_conection_arguments= malloc(sizeof(t_process_conection_args));
@@ -91,6 +91,7 @@ int main(int argc, char *argv[])
     pthread_create(&thread_memory_peticions,NULL,manage_peticiones,process_conection_arguments);
     pthread_detach(thread_memory_peticions);
 
+levantar_consola(logger);
     return 0;
 
     
