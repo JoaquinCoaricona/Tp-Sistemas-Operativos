@@ -36,6 +36,8 @@ typedef enum
     INICIAR_PLANIFICACION,
     PROCESO_ESTADO,
     PACKET,
+    INTERRUPCION,
+    PETICION_CPU,
 
 } op_code;
 
