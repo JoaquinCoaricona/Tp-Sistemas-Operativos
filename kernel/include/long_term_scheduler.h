@@ -8,6 +8,7 @@
 extern t_queue* queue_new;
 extern t_queue* queue_ready;
 extern t_queue* queue_exit;
+extern t_queue* queue_block;
 extern char* scheduler_algorithm;
 
 void enterNew(t_pcb *pcb,t_log *logger);

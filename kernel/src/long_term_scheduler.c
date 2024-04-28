@@ -14,18 +14,20 @@ pthread_mutex_t mutex_state_ready;
 t_queue* queue_new;
 t_queue* queue_ready;
 t_queue* queue_exit;
+t_queue* queue_block;
 
 //FIFO, RR, VRR
 char* scheduler_algorithm;
 
-//Asignar valores principiantes a colas y semaforos
+//Asignar valores principales a colas y semaforos
 void initialize_queue_and_semaphore() {
     queue_new = queue_create();
     queue_ready = queue_create();
+		queue_block = queue_create(); //Cola de procesos bloqueados
     queue_exit = queue_create();
     sem_init(&m_execute_process, 0, 1);
     sem_init(&sem_ready, 0, 0);
-	sem_init(&short_term_scheduler_semaphore, 0, 0);
+		sem_init(&short_term_scheduler_semaphore, 0, 0);
     sem_init(&sem_hay_pcb_esperando_ready,0,0);
     sem_init(&sem_multiprogramacion,0,0);//aca hay que poner en el segundo cero el grado de multipprogramacion
     sem_init(&m_ready_queue, 0, 1);
@@ -34,7 +36,29 @@ void initialize_queue_and_semaphore() {
 }
 
 //Creacion de Proceso
-void create_process() {
+t_pcb create_process() { //Bruno
+	//TODO: cear un proceso
+	pid_t PID = fork();
+	t_pcb* PCB = initializePCB(PID);
+	
+	if (PCB->pid == 0) 
+	{
+		//Codigo del hijo 
+	} else if (PCB->pid > 0) 
+	{
+		//Codigo del padre
+	} else 
+	{
+		//Error
+	}
+
+
+	//Asginar el PID
+	//Reservar espacio para estructuras (codigo, datos, pila, heap)
+	//Inicializar PCB
+	//Ubicar pcb en listas de planificacion
+
+
 
 }
 

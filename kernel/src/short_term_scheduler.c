@@ -1,25 +1,24 @@
 #include "short_term_scheduler.h"
 int id_counter = 1;
 
-// //FIFO
-// void short_term_scheduler_fifo() {
-//     sem_wait(&short_term_scheduler_semaphore);
-//     sem_wait(&m_ready_queue);
+//FIFO
+void short_term_scheduler_fifo() {
+    sem_wait(&short_term_scheduler_semaphore);
+    sem_wait(&m_ready_queue);
 
-//     if(queue_size(queue_ready) == 0) {
-//         sem_post(&m_ready_queue);
-//         sem_post(&short_term_scheduler_semaphore);
-//         return;
-//     }
+    if(queue_size(queue_ready) == 0) {
+        sem_post(&m_ready_queue);
+        sem_post(&short_term_scheduler_semaphore);
+        return;
+    }
 
-//     while(queue_size(queue_ready) != 0) {
-//         t_pcb *process = queue_pop(queue_ready);
-//         execute_process(process);
-//     }
+    t_pcb *process = queue_pop(queue_ready);
+    //TODO: Enviar lista de procesos a cpu
 
-//     sem_post(&m_ready_queue);
-//     sem_post(&short_term_scheduler_semaphore);
-// }
+    send_process(process);
+    sem_post(&m_ready_queue);
+    sem_post(&short_term_scheduler_semaphore);
+}
 
 // //RR
 // void short_term_scheduler_round_robin() {
@@ -51,27 +50,24 @@ int id_counter = 1;
 //     sem_post(&short_term_scheduler_semaphore);
 // }
 
-// void execute_process(t_pcb *process) {
-//     sem_wait(&m_execute_process);
-//     if(process -> state != "EXEC") {
-//         free(process->state);//error al compilar
-//         process->state = string_new(); //error al compilar
-//         string_append(&(process->state), "EXEC");
-//     }
-//     send_execution_context_to_CPU(process);
-//     sem_post(&m_execute_process);
-// }
+void send_process(t_pcb *process) {
+    sem_wait(&m_execute_process);
+    if(process -> state != "EXEC") {
+        string_append(&(process->state), "EXEC");
+    }
+    send_execution_context_to_CPU(process);
+    sem_post(&m_execute_process);
+}
 
 void send_execution_context_to_CPU(t_pcb *process) {
 
 }
 
-t_pcb *initializePCB(){
-        
+t_pcb *initializePCB(pid_t PID){
         t_pcb *pcb = malloc(sizeof(t_pcb));
-
-        pcb->pid = id_counter;
-        id_counter++;
+        
+        pcb->pid = PID;
+        //id_counter++;  Aumenta el pid para que no haya 2 procesos iguales
         pcb->program_counter = 1;
         pcb->quantum = 5;
         pcb->state = 0;
