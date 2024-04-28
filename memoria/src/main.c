@@ -1,4 +1,5 @@
 #include "main.h"
+#include "instrucciones.h"
 
 int main(int argc, char *argv[])
 {
@@ -18,16 +19,20 @@ int main(int argc, char *argv[])
     PORT = config_get_string_value(config, "PUERTO_ESCUCHA");
     IP = config_get_string_value(config, "IP");
 
+    initialize_queue_and_semaphore_memoria();
+
     // SERVER
     int server_fd = initialize_server(logger, "memory_server", IP, PORT);
     log_info(logger, "Server initialized");
     
 
+
     while (1)
     {
         server_listen(logger, "memory_server", server_fd);
         
-        }
+    }
+    
         
 
     end_program(logger, config);

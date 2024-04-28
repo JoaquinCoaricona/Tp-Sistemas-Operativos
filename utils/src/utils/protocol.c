@@ -192,3 +192,6 @@ void *fetch_PCB(int client_socket,t_pcb *PCBrec)
     free(buffer2);
 }
 
+
+
+

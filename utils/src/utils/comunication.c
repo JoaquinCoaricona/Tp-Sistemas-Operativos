@@ -45,12 +45,15 @@ static void process_conection(void *args)
             //al resultado de la funcion. Eso devolvia solo la direccion pero no se podia acceder a los campos
             //para solucionarlo habia que crear ese puntero y pasarlo como parametro directamente y que en la funcion
             //escriban sobre ese puntero y despues ya no te devuelve nada porque le pasaste el puntero
-           
-            
-
             close_conection(client_socket);
             client_socket = -1;
             break;
+        case CREAR_PROCESO:
+            
+            log_info(logger,"Se Envio Un Proceso a Crear");
+            close_conection(client_socket);
+            client_socket = -1;
+        break
 
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
