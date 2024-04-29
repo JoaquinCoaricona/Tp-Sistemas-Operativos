@@ -37,7 +37,13 @@ void initialize_queue_and_semaphore() {
 
 //Creacion de Proceso
 t_pcb create_process() { //Bruno
-	//TODO: cear un proceso
+
+	//TODO: Asignar PID
+	//TODO: Reservar espacio para estructuras (codigo, datos, pila, heap)
+	//TODO: Inicializar PCB
+	//TODO: Ubicar pcb en listas de planificacion
+
+
 	pid_t PID = fork();
 	t_pcb* PCB = initializePCB(PID);
 	
