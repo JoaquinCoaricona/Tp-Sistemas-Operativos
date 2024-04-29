@@ -1,5 +1,10 @@
 #include "comunication.h"
-#include "utils.h"
+// #include "utils.h"
+// #include "../../memoria/include/instrucciones.h" estos dos estaban incluidos
+
+
+
+
 
 
 static void process_conection(void *args)
@@ -54,7 +59,18 @@ static void process_conection(void *args)
             close_conection(client_socket);
             client_socket = -1;
         break;
+        case PATH_A_MEMORIA:
+            
+            t_instrucciones *instruccionREC = malloc(sizeof(t_instrucciones));
+            leer_pseudo(client_socket);
 
+            
+            //close_conection(client_socket);
+            //client_socket = -1;
+         
+        
+
+        break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
             return;

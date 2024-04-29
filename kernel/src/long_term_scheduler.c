@@ -37,26 +37,20 @@ void initialize_queue_and_semaphore() {
 
 //Creacion de Proceso
 t_pcb create_process() { //Bruno
-
-	//TODO: Asignar PID
-	//TODO: Reservar espacio para estructuras (codigo, datos, pila, heap)
-	//TODO: Inicializar PCB
-	//TODO: Ubicar pcb en listas de planificacion
-
-
+	//TODO: cear un proceso
 	pid_t PID = fork();
 	t_pcb* PCB = initializePCB(PID);
 	
-	if (PCB->pid == 0) 
-	{
-		//Codigo del hijo 
-	} else if (PCB->pid > 0) 
-	{
-		//Codigo del padre
-	} else 
-	{
-		//Error
-	}
+// 	if (PCB->pid == 0) 
+// 	{
+// 		//Codigo del hijo 
+// 	} else if (PCB->pid > 0) 
+// 	{
+// 		//Codigo del padre
+// 	} else 
+// 	{
+// 		//Error
+// 	}
 
 
 	//Asginar el PID
@@ -66,7 +60,7 @@ t_pcb create_process() { //Bruno
 
 
 
-}
+//}
 
 
 //Finalizacion de Proceso

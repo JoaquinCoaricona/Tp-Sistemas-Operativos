@@ -3,21 +3,23 @@
 #include "long_term_scheduler.h"
 
 int memory_socket;
-int cpu_socket;
+int cpu_dispatch_socket;
+int cpu_interrupt_socket;
 t_log *logger;
 
 int main(int argc, char *argv[])
 {
 
     char *memory_PORT;
-    char *cpu_PORT;
+    char *cpu_dispatch_PORT;
+    char *cpu_interrupt_PORT;
     char *kernel_PORT;
     char *memory_IP;
     char *cpu_IP;
     char *kernel_IP;
     t_buffer *buffer;
     t_buffer *bufferPCB;
-    t_packet *packet;
+    t_packet *packet_handshake;
     t_packet *packetPCB;
 
 
@@ -28,7 +30,8 @@ int main(int argc, char *argv[])
     t_config *config = initialize_config(logger, "kernel.config");
 
     memory_PORT = config_get_string_value(config, "PUERTO_MEMORIA");
-    cpu_PORT = config_get_string_value(config, "PUERTO_CPU_DISPATCH");
+    cpu_dispatch_PORT = config_get_string_value(config, "PUERTO_CPU_DISPATCH");
+    cpu_interrupt_PORT = config_get_string_value(config, "PUERTO_CPU_INTERRUPT");
     kernel_PORT = config_get_string_value(config, "PUERTO_KERNEL"); //! Averiguar se deberia estar
     cpu_IP = config_get_string_value(config, "IP_CPU");
     memory_IP = config_get_string_value(config, "IP_MEMORIA"); //! Averiguar se deberia estar
@@ -37,10 +40,7 @@ int main(int argc, char *argv[])
     //PRUEBAAAA
     initialize_queue_and_semaphore();
     t_pcb *PCB = initializePCB();
-    
-    // printf("PID: %d ",PCB->pid);
-    // printf("COUNTER: %d  ",PCB->program_counter);
-    // printf("QUANTUM: %d",PCB->quantum);
+
     
     enterNew(PCB,logger);
     t_pcb PRUEBA;
@@ -51,9 +51,9 @@ int main(int argc, char *argv[])
 
     // Send handshake
     buffer = create_buffer();
-    packet = create_packet(HANDSHAKE_KERNEL,buffer);
+    packet_handshake = create_packet(HANDSHAKE_KERNEL,buffer);
 
-    printf("TAMAÑO %i",sizeof(*PCB));
+    //printf("TAMAÑO %i",sizeof(*PCB));
 
 
 
@@ -66,17 +66,22 @@ int main(int argc, char *argv[])
    
     
 
-    add_to_packet(packet, buffer->stream, buffer->size);
+    add_to_packet(packet_handshake, buffer->stream, buffer->size);
     //packet = serialize_packet(packet, buffer->size);
-    send_packet(packet, memory_socket);
+    //send_packet(packet_handshake, memory_socket);
 
     log_info(logger, "Handshake enviado");
 
-    cpu_socket = create_conection(logger, cpu_IP, cpu_PORT);
-    log_info(logger, "Conectado al servidor de cpu %s:%s", cpu_IP, cpu_PORT);
+    cpu_dispatch_socket = create_conection(logger, cpu_IP, cpu_dispatch_PORT);
+    log_info(logger, "Conectado al servidor de cpu %s:%s", cpu_IP, cpu_dispatch_PORT);
 
-    //send_packet(packet, cpu_socket);
-    send_packet(packetPCB, cpu_socket);
+    cpu_interrupt_socket = create_conection(logger, cpu_IP, cpu_interrupt_PORT);
+    log_info(logger, "Conectado al servidor de cpu %s:%s", cpu_IP, cpu_interrupt_PORT);
+
+    send_packet(packet_handshake, cpu_dispatch_socket);
+    send_packet(packet_handshake, cpu_interrupt_socket);
+
+    //send_packet(packetPCB, cpu_dispatch_socket);
 
 
     
@@ -88,17 +93,14 @@ int main(int argc, char *argv[])
     process_conection_arguments->server_name = "kernel_server";
     process_conection_arguments->fd = server_fd;
 
-    pthread_create(&thread_memory_peticions,NULL,manage_peticiones,process_conection_arguments);
+    pthread_create(&thread_memory_peticions,NULL,manage_request_from_input_output,process_conection_arguments);
     pthread_detach(thread_memory_peticions);
 
-levantar_consola(logger);
+    levantar_consola(logger);
     return 0;
+ }
 
-    
-
-}
-
-void* manage_peticiones(void *args)
+void* manage_request_from_input_output(void *args)
 {
     int server_socket;
     char *server_name;
@@ -121,7 +123,6 @@ void* manage_peticiones(void *args)
 
         switch (operation_code)
         {
-        case HANDSHAKE_KERNEL:
         case HANDSHAKE_ENTRADA_SALIDA:
         case HANDSHAKE_CPU:
             log_info(logger, "handshake %d recibido %s",operation_code, server_name);
@@ -150,7 +151,6 @@ void* manage_peticiones(void *args)
             close_conection(client_socket);
             client_socket = -1;
         break;
-
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
             return;
@@ -163,4 +163,21 @@ void* manage_peticiones(void *args)
 
     log_warning(logger, "Conexion cerrada %s", server_name);
     return;
+}
+
+void enviar_path_a_memoria(char *path){
+    //ENVIAR PATH A MEMORIA
+
+    //Declaraciones
+    t_buffer *bufferMemoria;
+    t_packet *packetMemoria;
+    int pid = 5;
+
+    //Inicializar Buffer y Packet
+    bufferMemoria   = create_buffer();
+    packetMemoria = create_packet(PATH_A_MEMORIA, bufferMemoria);
+    add_to_packet(packetMemoria,&pid, sizeof(int));
+    add_to_packet(packetMemoria,path,(strlen(path)+1));
+    send_packet(packetMemoria, memory_socket);
+
 }

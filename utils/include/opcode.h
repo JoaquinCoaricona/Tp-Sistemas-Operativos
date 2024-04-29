@@ -27,6 +27,7 @@ typedef enum
     HANDSHAKE_ENTRADA_SALIDA,
     HANDSHAKE_CPU,
     CREAR_PROCESO,
+    PATH_A_MEMORIA,
     
     // entrada - salida
     EJECUTAR_SCRIPT,
@@ -36,6 +37,8 @@ typedef enum
     INICIAR_PLANIFICACION,
     PROCESO_ESTADO,
     PACKET,
+    INTERRUPCION,
+    PETICION_CPU,
 
 } op_code;
 

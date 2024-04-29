@@ -21,6 +21,7 @@
 #include "protocol.h"
 #include "sockets.h"
 #include "opcode.h"
+#include "utils.h"
 
 // STRUCTS
 

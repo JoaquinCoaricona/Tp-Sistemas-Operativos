@@ -24,6 +24,8 @@
 #include <string.h>
 #include <assert.h>
 #include "opcode.h"
+#include "utils.h"
+
 
 
 // STRUCTS
@@ -32,6 +34,8 @@
  * @brief  Struct to handle the buffer of the packet
  * 
  */
+
+void *fetch_pathYpid(int client_socket,t_instrucciones *instruccionREC);
 typedef struct
 {
     int size;
@@ -127,5 +131,6 @@ void *fetch_buffer(int *size, int client_socket);
  * @return int Returns operation code or -1 if there is an error
  */
 int fetch_codop(int client_socket);
+
 
 #endif // PROTOCOL_H
