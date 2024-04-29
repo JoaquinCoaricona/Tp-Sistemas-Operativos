@@ -25,13 +25,13 @@ int main(int argc, char *argv[])
     int server_fd = initialize_server(logger, "memory_server", IP, PORT);
     log_info(logger, "Server initialized");
     
-    leer_pseudo();
+    //leer_pseudo();
 
-    // while (1)
-    // {
-    //     server_listen(logger, "memory_server", server_fd);
+    while (1)
+    {
+        server_listen(logger, "memory_server", server_fd);
         
-    // }
+    }
     
         
 
