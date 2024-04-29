@@ -1,5 +1,8 @@
 #include "instrucciones.h"
 
+
+
+
 t_queue* queue_instrucciones;
 
 void initialize_queue_and_semaphore_memoria() {
@@ -46,10 +49,19 @@ void fetch_instruccion(int client_socket,t_instrucciones *instRec) //aca era voi
     free(buffer2);
 }
 
-void leer_pseudo(){
-    FILE* archivo = fopen("/home/utnso/pruebas/prueba","r");
-    
-    if(archivo == NULL){
+void leer_pseudo(int client_socket){
+
+	t_instrucciones *instruccionREC = malloc(sizeof(t_instrucciones));
+    fetch_pathYpid(client_socket,instruccionREC);
+
+	char* path = string_new();
+	string_append(&path, PATH_CONFIG);
+	string_append(&path, instruccionREC->path);
+	
+
+    FILE* archivo = fopen(path,"r");
+
+	if(archivo == NULL){
 		//log_error(logger, "Error en la apertura del archivo: Error: %d (%s)", errno, strerror(errno));
 		//free(path);
 		printf("Error al abrir el archivo");
@@ -57,7 +69,7 @@ void leer_pseudo(){
 	}
 
     char* cadena;
-	t_list* lista_instrucciones = list_create();
+	instruccionREC->lista_de_instrucciones = list_create();
 
     while(feof(archivo) == 0)
 	{
@@ -76,6 +88,7 @@ void leer_pseudo(){
         
         printf("\n");
         printf("%s\n",cadena);
+		
 
         t_instruccion_unitaria *ptr_inst = malloc(sizeof(t_instruccion_unitaria));
 
@@ -112,19 +125,25 @@ void leer_pseudo(){
 			ptr_inst->parametro3_lenght = 0;
 		}
 
-		list_add(lista_instrucciones,ptr_inst);
-        free(cadena);
+		list_add((instruccionREC->lista_de_instrucciones),ptr_inst);
+		free(cadena);
 	}
-   
+
+	queue_push(queue_instrucciones,instruccionREC); //aca se van guardando todos lo procesos
+	//es una cola de la strcut que tiene el pid, el path y la lista con todas las intrscuinoes
+        
+	
     //Para imprimir cuantos elementos tiene la lista
-    // int total = list_size(lista_instrucciones);
-    // printf("%i",total);
+    //int total = list_size(instruccionREC->lista_de_instrucciones);
+    //printf("holaaaaaaaaaaaaa \n");
+	//Despues de haber leido de consola, si queremos imprimir algo, poner un barra n para que se limpie el buffer de salida
+
 
 	//dictionary_put(lista_instrucciones_porPID, string_itoa(pid),lista_instrucciones);
 
 	//enviar_mensaje("OK", cliente_fd, INICIAR_PROCESO);
 
-	//free(path);
+	free(path);
 	fclose(archivo);
 }
 

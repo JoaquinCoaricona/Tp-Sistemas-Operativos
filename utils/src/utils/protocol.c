@@ -192,6 +192,38 @@ void *fetch_PCB(int client_socket,t_pcb *PCBrec)
     free(buffer2);
 }
 
+void *fetch_pathYpid(int client_socket,t_instrucciones *instruccionREC)
+{
+    int total_size;
+    int offset = 0;
+   
+    void *buffer2;
+   
+    int tama; //Solo para recibir el size que esta al principio del buffer
+    int lpath;
+
+
+    buffer2 = fetch_buffer(&total_size, client_socket);
+
+    memcpy(&(instruccionREC->pid),buffer2 + offset, sizeof(int)); //RECIBO EL TAMAÑO DEL PID(UN INT)
+    offset += sizeof(int);
+    
+    memcpy(&(instruccionREC->pid),buffer2 + offset, sizeof(int)); //RECIBO EL PID REAL
+    offset += sizeof(int);
+
+    memcpy(&(lpath), buffer2 + offset, sizeof(int)); // RECIBO EL LENGTH DEL PATH
+    offset += sizeof(int);
+    instruccionREC->path = malloc(lpath);
+
+    memcpy(instruccionREC->path,buffer2 + offset, lpath);
+    
+    printf("\n");
+    printf("%s\n",instruccionREC->path);
+  
+    free(buffer2);
+
+}
+
 
 
 

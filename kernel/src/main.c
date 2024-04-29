@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
 
     add_to_packet(packet_handshake, buffer->stream, buffer->size);
     //packet = serialize_packet(packet, buffer->size);
-    send_packet(packet_handshake, memory_socket);
+    //send_packet(packet_handshake, memory_socket);
 
     log_info(logger, "Handshake enviado");
 
@@ -151,7 +151,6 @@ void* manage_request_from_input_output(void *args)
             close_conection(client_socket);
             client_socket = -1;
         break;
-
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
             return;
@@ -164,4 +163,21 @@ void* manage_request_from_input_output(void *args)
 
     log_warning(logger, "Conexion cerrada %s", server_name);
     return;
+}
+
+void enviar_path_a_memoria(char *path){
+    //ENVIAR PATH A MEMORIA
+
+    //Declaraciones
+    t_buffer *bufferMemoria;
+    t_packet *packetMemoria;
+    int pid = 5;
+
+    //Inicializar Buffer y Packet
+    bufferMemoria   = create_buffer();
+    packetMemoria = create_packet(PATH_A_MEMORIA, bufferMemoria);
+    add_to_packet(packetMemoria,&pid, sizeof(int));
+    add_to_packet(packetMemoria,path,(strlen(path)+1));
+    send_packet(packetMemoria, memory_socket);
+
 }

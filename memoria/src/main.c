@@ -1,10 +1,12 @@
 #include "main.h"
-#include "instrucciones.h"
+
+char *PATH_CONFIG;
 
 int main(int argc, char *argv[])
 {
     char *PORT;
     char *IP;
+   
     int MEM_SIZE;
     int PAGE_SIZE;
     t_list *packet;
@@ -18,6 +20,7 @@ int main(int argc, char *argv[])
 
     PORT = config_get_string_value(config, "PUERTO_ESCUCHA");
     IP = config_get_string_value(config, "IP");
+    PATH_CONFIG = config_get_string_value(config, "PATH_INSTRUCCIONES");
 
     initialize_queue_and_semaphore_memoria();
 

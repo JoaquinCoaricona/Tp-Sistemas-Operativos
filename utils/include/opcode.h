@@ -27,6 +27,7 @@ typedef enum
     HANDSHAKE_ENTRADA_SALIDA,
     HANDSHAKE_CPU,
     CREAR_PROCESO,
+    PATH_A_MEMORIA,
     
     // entrada - salida
     EJECUTAR_SCRIPT,

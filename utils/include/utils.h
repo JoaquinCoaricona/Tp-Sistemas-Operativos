@@ -17,6 +17,7 @@
 #include <commons/string.h>
 #include <commons/config.h>
 #include <readline/readline.h>
+#include <commons/collections/queue.h>
 #include <string.h>
 #include "sockets.h"
 #include "logger.h"
@@ -26,7 +27,7 @@
 #include "comunication.h"
 
 // STRUCTS
-
+extern t_queue *queue_instrucciones;
 
 
 //Registros
@@ -82,6 +83,13 @@ typedef struct {
 
 } t_pcb;
 
+
+typedef struct
+{
+int pid;
+char* path;
+t_list* lista_de_instrucciones;
+}t_instrucciones;
 
 
 
