@@ -93,7 +93,7 @@ void leer_pseudo(int client_socket){
 
         t_instruccion_unitaria *ptr_inst = malloc(sizeof(t_instruccion_unitaria));
 		
-
+		
 
 
 		char *token = strdup(strtok(cadena," "));

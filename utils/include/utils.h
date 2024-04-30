@@ -51,13 +51,13 @@ typedef struct {
     char* opcode;
 	int opcode_length;
 	int parameter1_length;
-	int parameter2_length;
+	int parameter2_length;    
 	int parameter3_length;
     int parameter4_length;
     int parameter5_length;
 	char* parameters[5];
 
-}t_instruction;
+}t_instruction;  // no usamos esta estructura
 
 //Process state
 typedef enum {

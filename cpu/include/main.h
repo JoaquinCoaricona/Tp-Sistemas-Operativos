@@ -2,6 +2,8 @@
 #define MAIN_H_
 
 #include "../include/utils.h"
+#include "../include/opcode.h"
+
 
 void* manage_interrupt_request(void *args);
 void manage_dispatch_request();

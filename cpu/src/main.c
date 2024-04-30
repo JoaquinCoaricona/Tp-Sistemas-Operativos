@@ -27,6 +27,7 @@ int main(int argc, char *argv[])
     int client_fd = create_conection(logger, memory_IP, memory_PORT);
     log_info(logger, "Conectado al servidor de memoria %s:%s", memory_IP, memory_PORT);
 
+    
     // Send handshake
     buffer = create_buffer();
     packet = create_packet(HANDSHAKE_CPU, buffer);
@@ -34,7 +35,7 @@ int main(int argc, char *argv[])
     add_to_packet(packet, buffer->stream, buffer->size);
     //packet = serialize_packet(packet, buffer->size);
     //send_packet(packet, client_fd);
-    pedirInstruccion(5,2,client_fd);
+    
 
     log_info(logger, "Handshake enviado");
 
@@ -53,7 +54,10 @@ int main(int argc, char *argv[])
     pthread_create(&thread_memory_peticions,NULL,manage_interrupt_request,process_conection_arguments);
     pthread_detach(thread_memory_peticions);
     
-    manage_dispatch_request();
+
+    pedirInstruccion(5,2,client_fd);
+
+    //manage_dispatch_request();
 
     return 0;
 }
@@ -147,7 +151,7 @@ void manage_dispatch_request()
     return;
 }
 
-void pedirInstruccion(int pid, int pc,int client_fd){
+t_instruccion_unitaria * pedirInstruccion(int pid, int pc,int client_fd){
     t_buffer *bufferInstruccion;
     t_packet *packetInstruccion;
 
@@ -160,7 +164,81 @@ void pedirInstruccion(int pid, int pc,int client_fd){
     add_to_packet(packetInstruccion,&pc,sizeof(int));
     send_packet(packetInstruccion, client_fd); //client es el socket de memoria
 
+    op_code opcode = recibir_operacion(client_fd); 
+
+    if (opcode != MEMORIA_ENVIA_INSTRUCCION) {
+		//log_error(logger,"No se pudo recibir la instruccion de memoria! codigo de operacion recibido: %d",opcode);
+		printf("EROR AL RECIBIR EL CODIGO");
+        exit -1;
+	}
+
+    t_instruccion_unitaria *instruccion = malloc(sizeof(t_instruccion_unitaria));
+    instruccion->parametro1_length = 0;
+    instruccion->parametro2_length = 0;
+    instruccion->parametro3_length = 0;
+
+    int total_size;
+    int offset = 0;
+    void *buffer;
+   
+    buffer = fetch_buffer(&total_size, client_fd);
+
+   
+	memcpy(&(instruccion->opcode_lenght), buffer + offset, sizeof(int));
+	offset+=sizeof(int);
+	instruccion->opcode = malloc( instruccion->opcode_lenght);
+	memcpy( instruccion->opcode, buffer+offset,  instruccion->opcode_lenght);
+	offset+= instruccion->opcode_lenght;
+
+	memcpy(&( instruccion->parametro1_lenght), buffer+offset, sizeof(int));
+	offset+=sizeof(int);
+
+    if(instruccion->parametro1_lenght != 0){
+
+        instruccion->parametros[0] = malloc( instruccion->parametro1_lenght);
+	    memcpy( instruccion->parametros[0], buffer + offset,  instruccion->parametro1_lenght);
+        offset +=  instruccion->parametro1_lenght;
+
+        memcpy(&(instruccion->parametro2_lenght), buffer+offset, sizeof(int));
+	    offset+=sizeof(int);
+
+        if(instruccion->parametro2_lenght != 0){
+            instruccion->parametros[1] = malloc( instruccion->parametro2_lenght);
+	        memcpy( instruccion->parametros[1], buffer + offset,  instruccion->parametro2_lenght);
+	        offset +=  instruccion->parametro2_lenght;
+
+            memcpy(&( instruccion->parametro3_lenght), buffer+offset, sizeof(int));
+	        offset+=sizeof(int);
+
+            if(instruccion->parametro3_lenght != 0){
+                	instruccion->parametros[2] = malloc( instruccion->parametro3_lenght);
+	                memcpy( instruccion->parametros[2], buffer + offset,  instruccion->parametro3_lenght);
+	                offset +=  instruccion->parametro3_lenght;
+            }
+
+        } 
+    }
+
+
+
+
+    free(buffer)
+    return instruccion;
+
 }
+
+int recibir_operacion(int client_fd)
+{
+	int cod_op;
+	if(recv(client_fd, &cod_op, sizeof(int), MSG_WAITALL) > 0)
+		return cod_op;
+	else
+	{
+		close(socket_cliente);
+		return -1;
+	}
+}
+
 //hay que ver el tema de los hilos porque memoria no escucha en dispatch ni interrupt
 // por otro lado cuando yo hago pedir instruccion aca en cpu lo envio por un puerto que despues no se si
 // se usa como servidor para recibir las instrucciones, en el tp resuelto por el mismo socket que llego hacen
