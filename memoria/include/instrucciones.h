@@ -12,7 +12,9 @@ typedef struct {
 	int parametro1_lenght;
 	int parametro2_lenght;
 	int parametro3_lenght;
-	char* parametros[3];
+	int parametro4_lenght;
+	int parametro5_lenght;
+	char* parametros[5];
 
 }t_instruccion_unitaria;
 

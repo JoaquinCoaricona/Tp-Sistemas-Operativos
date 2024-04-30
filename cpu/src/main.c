@@ -57,8 +57,8 @@ int main(int argc, char *argv[])
     pthread_detach(thread_memory_peticions);
     
 
-    ciclo_de_instruccion();
-    pedirInstruccion(5,2,client_fd_memoria);
+    //ciclo_de_instruccion();
+    //pedirInstruccion(5,2,client_fd_memoria);
 
     //manage_dispatch_request();
 
@@ -217,6 +217,28 @@ t_instruccion_unitaria *pedirInstruccion(int pid, int pc,int client_fd){
                 	instruccion->parametros[2] = malloc( instruccion->parametro3_lenght);
 	                memcpy( instruccion->parametros[2], buffer + offset,  instruccion->parametro3_lenght);
 	                offset +=  instruccion->parametro3_lenght;
+
+                    memcpy(&( instruccion->parametro4_lenght), buffer+offset, sizeof(int));
+	                offset+=sizeof(int);
+
+                    if(instruccion->parametro4_lenght != 0){
+                	    instruccion->parametros[3] = malloc( instruccion->parametro4_lenght);
+	                    memcpy( instruccion->parametros[3], buffer + offset,  instruccion->parametro4_lenght);
+	                    offset +=  instruccion->parametro4_lenght;
+
+                        memcpy(&( instruccion->parametro5_lenght), buffer+offset, sizeof(int));
+	                    offset+=sizeof(int);
+
+                        if(instruccion->parametro5_lenght != 0){
+                	        instruccion->parametros[4] = malloc( instruccion->parametro5_lenght);
+	                        memcpy( instruccion->parametros[4], buffer + offset,  instruccion->parametro5_lenght);
+	                        
+
+                    
+            }
+                    
+            }
+
             }
 
         } 
@@ -251,3 +273,156 @@ int recibir_operacion(int client_fd)
 
 // el archivo que hay que ver es el de cpu.c en el resuelto
 
+void *ciclo_de_instruccion(){
+
+}
+
+
+//FETCH DECODE, EXCEC y CHECK INTERRUPT
+void manejar_peticion_al_cpu(int socket_kernel) {
+	t_contexto_ejec *contexto_actual = recibir_contexto_de_ejecucion(socket_kernel);
+	continuar_con_el_ciclo_instruccion = true;
+
+	pid_ejecutando = contexto_actual->pid;
+	while (continuar_con_el_ciclo_instruccion) {
+
+		//FETCH
+
+		log_info(logger, "Fetch Instrucción: “PID: %d - FETCH - Program Counter: %d“",contexto_actual->pid, contexto_actual->program_counter);
+
+		contexto_actual->instruccion = recibir_instruccion_memoria(contexto_actual->program_counter,contexto_actual->pid);
+
+	t_instruccion *instruccion = contexto_actual->instruccion;	
+
+contexto_actual->program_counter++;
+
+		//DECODE y EXECUTE
+
+		if (strcmp(instruccion->opcode, "SET") == 0) {
+			manejar_instruccion_set(&contexto_actual, instruccion);
+		}
+
+		if (strcmp(instruccion->opcode, "SUM") == 0) {
+			manejar_instruccion_sum(&contexto_actual, instruccion);
+
+		}
+		if (strcmp(instruccion->opcode, "SUB") == 0) {
+			manejar_instruccion_sub(&contexto_actual, instruccion);
+
+		}
+		if (strcmp(instruccion->opcode, "JNZ") == 0) {
+
+			manejar_instruccion_jnz(&contexto_actual, instruccion);
+
+		}
+
+		if (strcmp(instruccion->opcode, "SLEEP") == 0) {
+
+			devolver_a_kernel(contexto_actual, SLEEP, socket_kernel);
+			continuar_con_el_ciclo_instruccion = false;
+		}
+
+		if (strcmp(instruccion->opcode, "MOV_IN") == 0) {
+			//pongo -- porque no deberia mover el program counter
+			contexto_actual->program_counter--;
+			bool es_pagefault = decodificar_direccion_logica(&contexto_actual, 1);
+
+			if (es_pagefault) {
+				continuar_con_el_ciclo_instruccion = false;
+			} else {
+				contexto_actual->program_counter++;
+				manejar_mov_in(&contexto_actual, instruccion);
+			}
+		}
+
+		if (strcmp(instruccion->opcode, "MOV_OUT") == 0) {
+
+			//pongo -- porque no deberia mover el program counter
+			contexto_actual->program_counter--;
+			bool es_pagefault = decodificar_direccion_logica(&contexto_actual, 0);
+
+			if (es_pagefault) {
+				continuar_con_el_ciclo_instruccion = false;
+			} else {
+				contexto_actual->program_counter++;
+				manejar_mov_out(&contexto_actual, instruccion);
+			}
+		}
+
+		if (strcmp(instruccion->opcode, "F_OPEN") == 0) {
+			log_info(logger, "abierndo archivo, llamando a kernel");//TODO borrar log
+			devolver_a_kernel(contexto_actual, ABRIR_ARCHIVO, socket_kernel);
+			continuar_con_el_ciclo_instruccion = false;
+		}
+		if (strcmp(instruccion->opcode, "F_CLOSE") == 0) {
+			devolver_a_kernel(contexto_actual, CERRAR_ARCHIVO, socket_kernel);
+			continuar_con_el_ciclo_instruccion = false;
+		}
+		if (strcmp(instruccion->opcode, "F_SEEK") == 0) {
+			devolver_a_kernel(contexto_actual, APUNTAR_ARCHIVO, socket_kernel);
+			continuar_con_el_ciclo_instruccion = false;
+		}
+		if (strcmp(instruccion->opcode, "F_READ") == 0) {
+			//pongo -- porque no deberia mover el program counter
+			contexto_actual->program_counter--;
+			bool es_pagefault = decodificar_direccion_logica(&contexto_actual, 1);
+
+			if(!es_pagefault) {
+				contexto_actual->program_counter++;
+				contexto_actual->instruccion->parametros[2] = string_itoa(tamano_pagina);
+				contexto_actual->instruccion->parametro3_lenght = strlen(contexto_actual->instruccion->parametros[2] )+1;
+
+				devolver_a_kernel(contexto_actual, LEER_ARCHIVO, socket_kernel);
+			}
+
+			continuar_con_el_ciclo_instruccion = false;
+		}
+		if (strcmp(instruccion->opcode, "F_WRITE") == 0) {
+			//pongo -- porque no deberia mover el program counter
+			contexto_actual->program_counter--;
+			bool es_pagefault = decodificar_direccion_logica(&contexto_actual, 1);
+
+			if(!es_pagefault) {
+				contexto_actual->program_counter++;
+				contexto_actual->instruccion->parametros[2] = string_itoa(tamano_pagina);
+				contexto_actual->instruccion->parametro3_lenght = strlen(contexto_actual->instruccion->parametros[2] )+1;
+				devolver_a_kernel(contexto_actual, ESCRIBIR_ARCHIVO, socket_kernel);
+			}
+			continuar_con_el_ciclo_instruccion = false;
+		}
+		if (strcmp(instruccion->opcode, "F_TRUNCATE") == 0) {
+			devolver_a_kernel(contexto_actual, TRUNCAR_ARCHIVO, socket_kernel);
+			continuar_con_el_ciclo_instruccion = false;
+		}
+
+		if (strcmp(instruccion->opcode, "WAIT") == 0) {
+
+			devolver_a_kernel(contexto_actual, APROPIAR_RECURSOS, socket_kernel);
+			continuar_con_el_ciclo_instruccion = false;
+		}
+		if (strcmp(instruccion->opcode, "SIGNAL") == 0) {
+
+			devolver_a_kernel(contexto_actual, DESALOJAR_RECURSOS, socket_kernel);
+			continuar_con_el_ciclo_instruccion = false;
+		}
+
+		if (strcmp(instruccion->opcode, "EXIT") == 0) {
+			devolver_a_kernel(contexto_actual, FINALIZAR_PROCESO, socket_kernel);
+
+			continuar_con_el_ciclo_instruccion = false;
+		}
+
+		//CHECK INTERRUPT
+		if (hay_interrupcion_pendiente && pid_a_desalojar!=NULL &&string_equals_ignore_case(pid_a_desalojar, string_itoa(contexto_actual->pid))) {
+			log_info(logger, "Atendiendo interrupcion a %s y devuelvo a kernel", pid_a_desalojar);
+			continuar_con_el_ciclo_instruccion = false;
+			devolver_a_kernel(contexto_actual, INTERRUPCION, socket_kernel);
+			hay_interrupcion_pendiente = false;
+			free(pid_a_desalojar);
+			pid_a_desalojar = NULL;
+		}
+	}
+
+	pid_ejecutando = 0;
+	contexto_ejecucion_destroy(contexto_actual);
+}

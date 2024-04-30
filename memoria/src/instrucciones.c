@@ -101,9 +101,11 @@ void leer_pseudo(int client_socket){
         ptr_inst->opcode = token;
         ptr_inst->opcode_lenght = strlen(ptr_inst->opcode) + 1;
         
-        ptr_inst->parametros[2] = NULL;
         ptr_inst->parametros[0] = NULL;
         ptr_inst->parametros[1] = NULL;
+        ptr_inst->parametros[2] = NULL;
+        ptr_inst->parametros[3] = NULL;
+        ptr_inst->parametros[4] = NULL;
 
 		//token = strtok(NULL, " ");
 		token = strdup(strtok(NULL, " "));
@@ -129,6 +131,16 @@ void leer_pseudo(int client_socket){
 			ptr_inst->parametro3_lenght = strlen(ptr_inst->parametros[2])+1;
 		} else {
 			ptr_inst->parametro3_lenght = 0;
+		}
+		if(ptr_inst->parametros[3] != NULL){
+			ptr_inst->parametro4_lenght = strlen(ptr_inst->parametros[3])+1;
+		} else {
+			ptr_inst->parametro4_lenght = 0;
+		}
+		if(ptr_inst->parametros[4] != NULL){
+			ptr_inst->parametro5_lenght = strlen(ptr_inst->parametros[4])+1;
+		} else {
+			ptr_inst->parametro5_lenght = 0;
 		}
 
 		list_add((instruccionREC->lista_de_instrucciones),ptr_inst);
@@ -213,6 +225,8 @@ void devolverInstruccion(int client_socket){
 	add_to_packet(paquete_instruccion,instruccionPC->parametros[0],instruccionPC->parametro1_lenght);
 	add_to_packet(paquete_instruccion,instruccionPC->parametros[1],instruccionPC->parametro2_lenght);
 	add_to_packet(paquete_instruccion,instruccionPC->parametros[2],instruccionPC->parametro3_lenght);
+	add_to_packet(paquete_instruccion,instruccionPC->parametros[3],instruccionPC->parametro4_lenght);
+	add_to_packet(paquete_instruccion,instruccionPC->parametros[4],instruccionPC->parametro5_lenght);
 
 	send(paquete_instruccion,client_fd);
 	
