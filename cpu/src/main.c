@@ -1,8 +1,10 @@
 #include "main.h"
 // #include "../include/utils.h"
 
-    t_log *logger;
+t_log *logger;
 int server_dispatch_fd;
+int client_fd_memoria;
+
 int main(int argc, char *argv[])
 {
     char *memory_PORT;
@@ -24,7 +26,7 @@ int main(int argc, char *argv[])
     memory_IP = config_get_string_value(config, "IP_MEMORIA");
 
     // Conect to server
-    int client_fd = create_conection(logger, memory_IP, memory_PORT);
+    client_fd_memoria = create_conection(logger, memory_IP, memory_PORT);
     log_info(logger, "Conectado al servidor de memoria %s:%s", memory_IP, memory_PORT);
 
     
@@ -55,7 +57,8 @@ int main(int argc, char *argv[])
     pthread_detach(thread_memory_peticions);
     
 
-    pedirInstruccion(5,2,client_fd);
+    ciclo_de_instruccion();
+    pedirInstruccion(5,2,client_fd_memoria);
 
     //manage_dispatch_request();
 
@@ -151,7 +154,7 @@ void manage_dispatch_request()
     return;
 }
 
-t_instruccion_unitaria * pedirInstruccion(int pid, int pc,int client_fd){
+t_instruccion_unitaria *pedirInstruccion(int pid, int pc,int client_fd){
     t_buffer *bufferInstruccion;
     t_packet *packetInstruccion;
 
@@ -222,7 +225,7 @@ t_instruccion_unitaria * pedirInstruccion(int pid, int pc,int client_fd){
 
 
 
-    free(buffer)
+    free(buffer);
     return instruccion;
 
 }
