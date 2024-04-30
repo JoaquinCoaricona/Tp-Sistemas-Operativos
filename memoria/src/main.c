@@ -12,6 +12,8 @@ int main(int argc, char *argv[])
     t_list *packet;
     t_log *logger;
 
+    initialize_queue_and_semaphore_memoria();
+
     // LOGGER
     logger = initialize_logger("memoria.log", "memoria", true, LOG_LEVEL_INFO);
 

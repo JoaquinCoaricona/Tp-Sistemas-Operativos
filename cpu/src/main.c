@@ -92,6 +92,9 @@ void* manage_interrupt_request(void *args)
         case INTERRUPCION:
             //Manejar una interrupcion
             break;
+        // case MEMORIA_ENVIA_INSTRUCCION:
+        //     fetch_instruccion_recibida_de_memoria(client_socket);
+        // break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
             return;
@@ -158,3 +161,12 @@ void pedirInstruccion(int pid, int pc,int client_fd){
     send_packet(packetInstruccion, client_fd); //client es el socket de memoria
 
 }
+//hay que ver el tema de los hilos porque memoria no escucha en dispatch ni interrupt
+// por otro lado cuando yo hago pedir instruccion aca en cpu lo envio por un puerto que despues no se si
+// se usa como servidor para recibir las instrucciones, en el tp resuelto por el mismo socket que llego hacen
+// la devolucion
+
+// Revisar para que sirve dispath y interrurpot
+
+// el archivo que hay que ver es el de cpu.c en el resuelto
+

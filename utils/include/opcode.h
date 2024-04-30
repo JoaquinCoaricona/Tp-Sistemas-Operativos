@@ -29,6 +29,7 @@ typedef enum
     CREAR_PROCESO,
     PATH_A_MEMORIA,
     SOL_INSTRUCCION,
+    MEMORIA_ENVIA_INSTRUCCION,
     
     // entrada - salida
     EJECUTAR_SCRIPT,

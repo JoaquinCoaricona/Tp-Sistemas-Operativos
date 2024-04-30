@@ -72,14 +72,14 @@ int main(int argc, char *argv[])
 
     log_info(logger, "Handshake enviado");
 
-    cpu_dispatch_socket = create_conection(logger, cpu_IP, cpu_dispatch_PORT);
-    log_info(logger, "Conectado al servidor de cpu %s:%s", cpu_IP, cpu_dispatch_PORT);
+    // cpu_dispatch_socket = create_conection(logger, cpu_IP, cpu_dispatch_PORT);
+    // log_info(logger, "Conectado al servidor de cpu %s:%s", cpu_IP, cpu_dispatch_PORT);
 
-    cpu_interrupt_socket = create_conection(logger, cpu_IP, cpu_interrupt_PORT);
-    log_info(logger, "Conectado al servidor de cpu %s:%s", cpu_IP, cpu_interrupt_PORT);
+    // cpu_interrupt_socket = create_conection(logger, cpu_IP, cpu_interrupt_PORT);
+    // log_info(logger, "Conectado al servidor de cpu %s:%s", cpu_IP, cpu_interrupt_PORT);
 
-    send_packet(packet_handshake, cpu_dispatch_socket);
-    send_packet(packet_handshake, cpu_interrupt_socket);
+    // send_packet(packet_handshake, cpu_dispatch_socket);
+    // send_packet(packet_handshake, cpu_interrupt_socket);
 
     //send_packet(packetPCB, cpu_dispatch_socket);
 

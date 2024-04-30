@@ -7,6 +7,7 @@ t_list *listaINSTRUCCIONES;
 
 void initialize_queue_and_semaphore_memoria() {
     //queue_instrucciones = queue_create();
+	listaINSTRUCCIONES = list_create();
 }
 
 void recibir_proceso(int client_socket,t_instrucciones *instRec) {
@@ -91,8 +92,12 @@ void leer_pseudo(int client_socket){
 		
 
         t_instruccion_unitaria *ptr_inst = malloc(sizeof(t_instruccion_unitaria));
+		
 
-        char *token = strtok(cadena," ");
+
+
+		char *token = strdup(strtok(cadena," "));
+        //char *token = strtok(cadena," ");
         ptr_inst->opcode = token;
         ptr_inst->opcode_lenght = strlen(ptr_inst->opcode) + 1;
         
@@ -100,7 +105,8 @@ void leer_pseudo(int client_socket){
         ptr_inst->parametros[0] = NULL;
         ptr_inst->parametros[1] = NULL;
 
-		token = strtok(NULL, " ");
+		//token = strtok(NULL, " ");
+		token = strdup(strtok(NULL, " "));
 		int n = 0;
 		while(token != NULL)
 		{
@@ -191,19 +197,28 @@ void devolverInstruccion(int client_socket){
 	
 	t_instruccion_unitaria* instruccionPC;
 
-	t_list *buscadorProceso = list_filter(listaINSTRUCCIONES,buscarPorPid);
-    t_instrucciones *procesoBuscado = list_get(buscadorProceso, 1);
-	instruccionPC = list_get(procesoBuscado->lista_de_instrucciones,pc);
-	
-	printf(" \n %s \n",instruccionPC->opcode); 
 
+    t_instrucciones *procesoBuscado = list_find(listaINSTRUCCIONES,buscarPorPid);
+	instruccionPC = list_get(procesoBuscado->lista_de_instrucciones,pc-1); // list get empieza en 0, por eso el -1
+	
+	//printf(" \n %s \n",instruccionPC->opcode); 
+
+
+	//Ahora vamos a enviar la instruccion a CPU
+
+	buffer = create_buffer();
+    paquete_instruccion = create_packet(MEMORIA_ENVIA_INSTRUCCION, buffer);
+
+    add_to_packet(paquete_instruccion,instruccionPC->opcode,instruccionPC->opcode_lenght);
+	add_to_packet(paquete_instruccion,instruccionPC->parametros[0],instruccionPC->parametro1_lenght);
+	add_to_packet(paquete_instruccion,instruccionPC->parametros[1],instruccionPC->parametro2_lenght);
+	add_to_packet(paquete_instruccion,instruccionPC->parametros[2],instruccionPC->parametro3_lenght);
+
+	send(paquete_instruccion,client_fd);
 	
 	free(buffer);
 
-
-
 }
-
 
 
 
