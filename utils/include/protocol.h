@@ -35,7 +35,7 @@
  * 
  */
 
-void *fetch_pathYpid(int client_socket,t_instrucciones *instruccionREC);
+//void *fetch_pathYpid(int client_socket,t_instrucciones *instruccionREC);
 typedef struct
 {
     int size;

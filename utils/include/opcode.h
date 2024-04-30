@@ -28,6 +28,7 @@ typedef enum
     HANDSHAKE_CPU,
     CREAR_PROCESO,
     PATH_A_MEMORIA,
+    SOL_INSTRUCCION,
     
     // entrada - salida
     EJECUTAR_SCRIPT,

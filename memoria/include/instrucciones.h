@@ -1,8 +1,7 @@
 #ifndef INSTRUCCIONES_H_
 #define INSTRUCCIONES_H_
 #include "../include/utils.h"
-#include <commons/collections/queue.h>
-#include "../../utils/include/protocol.h" estas dos lineas estaban aca pero no se porque funciona al sacarlas
+#include "../../utils/include/protocol.h" //estas dos lineas estaban aca pero no se porque funciona al sacarlas
 
 
 void leer_pseudo();
@@ -18,6 +17,6 @@ typedef struct {
 }t_instruccion_unitaria;
 
 extern char *PATH_CONFIG;
-extern t_queue* queue_instrucciones;
+extern t_list *listaINSTRUCCIONES;
 
 #endif /* MAIN_H_ */

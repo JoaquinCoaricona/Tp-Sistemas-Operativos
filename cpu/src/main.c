@@ -33,7 +33,8 @@ int main(int argc, char *argv[])
 
     add_to_packet(packet, buffer->stream, buffer->size);
     //packet = serialize_packet(packet, buffer->size);
-    send_packet(packet, client_fd);
+    //send_packet(packet, client_fd);
+    pedirInstruccion(5,2,client_fd);
 
     log_info(logger, "Handshake enviado");
 
@@ -143,3 +144,17 @@ void manage_dispatch_request()
     return;
 }
 
+void pedirInstruccion(int pid, int pc,int client_fd){
+    t_buffer *bufferInstruccion;
+    t_packet *packetInstruccion;
+
+    
+    //Inicializar Buffer y Packet
+    
+    bufferInstruccion   = create_buffer();
+    packetInstruccion = create_packet(SOL_INSTRUCCION, bufferInstruccion);
+    add_to_packet(packetInstruccion,&pid, sizeof(int));
+    add_to_packet(packetInstruccion,&pc,sizeof(int));
+    send_packet(packetInstruccion, client_fd); //client es el socket de memoria
+
+}

@@ -18,6 +18,7 @@
 #include <commons/config.h>
 #include <readline/readline.h>
 #include <commons/collections/queue.h>
+#include <commons/collections/list.h>
 #include <string.h>
 #include "sockets.h"
 #include "logger.h"
@@ -27,7 +28,7 @@
 #include "comunication.h"
 
 // STRUCTS
-extern t_queue *queue_instrucciones;
+//extern t_queue *queue_instrucciones;
 
 
 //Registros

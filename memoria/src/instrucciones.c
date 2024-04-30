@@ -2,11 +2,11 @@
 
 
 
-
-t_queue* queue_instrucciones;
+int pidBUSCADO;
+t_list *listaINSTRUCCIONES;
 
 void initialize_queue_and_semaphore_memoria() {
-    queue_instrucciones = queue_create();
+    //queue_instrucciones = queue_create();
 }
 
 void recibir_proceso(int client_socket,t_instrucciones *instRec) {
@@ -129,7 +129,9 @@ void leer_pseudo(int client_socket){
 		free(cadena);
 	}
 
-	queue_push(queue_instrucciones,instruccionREC); //aca se van guardando todos lo procesos
+	list_add(listaINSTRUCCIONES,instruccionREC);
+	
+	//aca se van guardando todos lo procesos
 	//es una cola de la strcut que tiene el pid, el path y la lista con todas las intrscuinoes
         
 	
@@ -146,6 +148,62 @@ void leer_pseudo(int client_socket){
 	free(path);
 	fclose(archivo);
 }
+
+
+bool buscarPorPid(t_instrucciones* Instruccion) {
+	return Instruccion->pid == pidBUSCADO;
+}
+
+
+
+void devolverInstruccion(int client_socket){
+
+	//conseguir los valores del PID y el PC
+	
+	int total_size;
+    int offset = 0;
+    
+    void *buffer;
+   
+    int tama; //Solo para recibir el size que esta al principio del buffer
+
+	int pid;
+	int pc;
+    
+    buffer = fetch_buffer(&total_size, client_socket);
+    
+   
+    
+    offset += sizeof(int); //para saltearme el tanaño de la variable int que me mando antes del pid
+	memcpy(&pid,buffer + offset, sizeof(int)); //RECIBO EL pid
+    offset += sizeof(int);
+    offset += sizeof(int);//para saltearme el length de int
+	memcpy(&pc,buffer + offset, sizeof(int)); //RECIBO EL pc
+	
+	// FIN RECEPCION PID Y PC	
+
+	printf(" \n PID RECIBIDO = %i \n",pid);
+	printf("PC RECIBIDO = %i \n",pc);
+
+	pidBUSCADO = pid;
+	
+
+	
+	t_instruccion_unitaria* instruccionPC;
+
+	t_list *buscadorProceso = list_filter(listaINSTRUCCIONES,buscarPorPid);
+    t_instrucciones *procesoBuscado = list_get(buscadorProceso, 1);
+	instruccionPC = list_get(procesoBuscado->lista_de_instrucciones,pc);
+	
+	printf(" \n %s \n",instruccionPC->opcode); 
+
+	
+	free(buffer);
+
+
+
+}
+
 
 
 

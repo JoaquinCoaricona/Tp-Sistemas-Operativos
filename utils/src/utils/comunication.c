@@ -59,6 +59,9 @@ static void process_conection(void *args)
             close_conection(client_socket);
             client_socket = -1;
         break;
+        case SOL_INSTRUCCION:
+            devolverInstruccion(client_socket);
+        break;
         case PATH_A_MEMORIA:
             
             t_instrucciones *instruccionREC = malloc(sizeof(t_instrucciones));
