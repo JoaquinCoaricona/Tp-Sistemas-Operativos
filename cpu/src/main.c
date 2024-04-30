@@ -309,15 +309,15 @@ void *ciclo_de_instruccion(int socket_kernel){
 			continuar_con_el_ciclo_instruccion = false;
 		}       
 
-        //INICIO FASE CHECK INTERRUPT
-        if(hay_interrupcion_pendiente && pid_a_desalojar!=NULL &&string_equals_ignore_case(pid_a_desalojar, string_itoa(contexto_actual->pid))) {
-		    log_info(logger, "Atendiendo interrupcion a %s y devuelvo a kernel", pid_a_desalojar);
-		    continuar_con_el_ciclo_instruccion = false;
-		    devolver_a_kernel(contexto_actual, INTERRUPCION, socket_kernel);
-		    hay_interrupcion_pendiente = false;
-		    free(pid_a_desalojar);
-		    pid_a_desalojar = NULL;
-		}
+        // //INICIO FASE CHECK INTERRUPT
+        // if(hay_interrupcion_pendiente && pid_a_desalojar!=NULL &&string_equals_ignore_case(pid_a_desalojar, string_itoa(contexto_actual->pid))) {
+		//     log_info(logger, "Atendiendo interrupcion a %s y devuelvo a kernel", pid_a_desalojar);
+		//     continuar_con_el_ciclo_instruccion = false;
+		//     devolver_a_kernel(contexto_actual, INTERRUPCION, socket_kernel);
+		//     hay_interrupcion_pendiente = false;
+		//     free(pid_a_desalojar);
+		//     pid_a_desalojar = NULL;
+		// }
 
     }
 
