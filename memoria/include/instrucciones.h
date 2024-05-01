@@ -1,8 +1,7 @@
 #ifndef INSTRUCCIONES_H_
 #define INSTRUCCIONES_H_
 #include "../include/utils.h"
-#include <commons/collections/queue.h>
-#include "../../utils/include/protocol.h" estas dos lineas estaban aca pero no se porque funciona al sacarlas
+#include "../../utils/include/protocol.h" //estas dos lineas estaban aca pero no se porque funciona al sacarlas
 
 
 void leer_pseudo();
@@ -13,11 +12,13 @@ typedef struct {
 	int parametro1_lenght;
 	int parametro2_lenght;
 	int parametro3_lenght;
-	char* parametros[3];
+	int parametro4_lenght;
+	int parametro5_lenght;
+	char* parametros[5];
 
 }t_instruccion_unitaria;
 
 extern char *PATH_CONFIG;
-extern t_queue* queue_instrucciones;
+extern t_list *listaINSTRUCCIONES;
 
 #endif /* MAIN_H_ */

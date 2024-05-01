@@ -18,6 +18,7 @@
 #include <commons/config.h>
 #include <readline/readline.h>
 #include <commons/collections/queue.h>
+#include <commons/collections/list.h>
 #include <string.h>
 #include "sockets.h"
 #include "logger.h"
@@ -27,7 +28,7 @@
 #include "comunication.h"
 
 // STRUCTS
-extern t_queue *queue_instrucciones;
+//extern t_queue *queue_instrucciones;
 
 
 //Registros
@@ -50,13 +51,13 @@ typedef struct {
     char* opcode;
 	int opcode_length;
 	int parameter1_length;
-	int parameter2_length;
+	int parameter2_length;    
 	int parameter3_length;
     int parameter4_length;
     int parameter5_length;
 	char* parameters[5];
 
-}t_instruction;
+}t_instruction;  // no usamos esta estructura
 
 //Process state
 typedef enum {
@@ -69,7 +70,7 @@ typedef enum {
 
 //PCB
 typedef struct {
-    pid_t pid; //! Process ID pid_t from "https://man7.org/linux/man-pages/man2/fork.2.html"
+    int pid; //! Process ID pid_t from "https://man7.org/linux/man-pages/man2/fork.2.html"
     int program_counter;
     int quantum;
     t_process_state state; // pueden ser "NEW", "READY", "EXEC", "BLOCKED" y "EXIT"

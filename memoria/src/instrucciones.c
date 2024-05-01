@@ -2,11 +2,12 @@
 
 
 
-
-t_queue* queue_instrucciones;
+int pidBUSCADO;
+t_list *listaINSTRUCCIONES;
 
 void initialize_queue_and_semaphore_memoria() {
-    queue_instrucciones = queue_create();
+    //queue_instrucciones = queue_create();
+	listaINSTRUCCIONES = list_create();
 }
 
 void recibir_proceso(int client_socket,t_instrucciones *instRec) {
@@ -91,16 +92,23 @@ void leer_pseudo(int client_socket){
 		
 
         t_instruccion_unitaria *ptr_inst = malloc(sizeof(t_instruccion_unitaria));
+		
+		
 
-        char *token = strtok(cadena," ");
+
+		char *token = strdup(strtok(cadena," "));
+        //char *token = strtok(cadena," ");
         ptr_inst->opcode = token;
         ptr_inst->opcode_lenght = strlen(ptr_inst->opcode) + 1;
         
-        ptr_inst->parametros[2] = NULL;
         ptr_inst->parametros[0] = NULL;
         ptr_inst->parametros[1] = NULL;
+        ptr_inst->parametros[2] = NULL;
+        ptr_inst->parametros[3] = NULL;
+        ptr_inst->parametros[4] = NULL;
 
-		token = strtok(NULL, " ");
+		//token = strtok(NULL, " ");
+		token = strdup(strtok(NULL, " "));
 		int n = 0;
 		while(token != NULL)
 		{
@@ -124,12 +132,24 @@ void leer_pseudo(int client_socket){
 		} else {
 			ptr_inst->parametro3_lenght = 0;
 		}
+		if(ptr_inst->parametros[3] != NULL){
+			ptr_inst->parametro4_lenght = strlen(ptr_inst->parametros[3])+1;
+		} else {
+			ptr_inst->parametro4_lenght = 0;
+		}
+		if(ptr_inst->parametros[4] != NULL){
+			ptr_inst->parametro5_lenght = strlen(ptr_inst->parametros[4])+1;
+		} else {
+			ptr_inst->parametro5_lenght = 0;
+		}
 
 		list_add((instruccionREC->lista_de_instrucciones),ptr_inst);
 		free(cadena);
 	}
 
-	queue_push(queue_instrucciones,instruccionREC); //aca se van guardando todos lo procesos
+	list_add(listaINSTRUCCIONES,instruccionREC);
+	
+	//aca se van guardando todos lo procesos
 	//es una cola de la strcut que tiene el pid, el path y la lista con todas las intrscuinoes
         
 	
@@ -145,6 +165,73 @@ void leer_pseudo(int client_socket){
 
 	free(path);
 	fclose(archivo);
+}
+
+
+bool buscarPorPid(t_instrucciones* Instruccion) {
+	return Instruccion->pid == pidBUSCADO;
+}
+
+
+
+void devolverInstruccion(int client_socket){
+
+	//conseguir los valores del PID y el PC
+	
+	int total_size;
+    int offset = 0;
+    
+    void *buffer;
+   
+    int tama; //Solo para recibir el size que esta al principio del buffer
+
+	int pid;
+	int pc;
+    
+    buffer = fetch_buffer(&total_size, client_socket);
+    
+   
+    
+    offset += sizeof(int); //para saltearme el tanaño de la variable int que me mando antes del pid
+	memcpy(&pid,buffer + offset, sizeof(int)); //RECIBO EL pid
+    offset += sizeof(int);
+    offset += sizeof(int);//para saltearme el length de int
+	memcpy(&pc,buffer + offset, sizeof(int)); //RECIBO EL pc
+	
+	// FIN RECEPCION PID Y PC	
+
+	//printf(" \n PID RECIBIDO = %i \n",pid);
+	//printf("PC RECIBIDO = %i \n",pc);
+
+	pidBUSCADO = pid;
+	
+
+	
+	t_instruccion_unitaria* instruccionPC;
+
+
+    t_instrucciones *procesoBuscado = list_find(listaINSTRUCCIONES,buscarPorPid);
+	instruccionPC = list_get(procesoBuscado->lista_de_instrucciones,pc-1); // list get empieza en 0, por eso el -1
+	
+	//printf(" \n %s \n",instruccionPC->opcode); 
+
+
+	//Ahora vamos a enviar la instruccion a CPU
+
+	buffer = create_buffer();
+    paquete_instruccion = create_packet(MEMORIA_ENVIA_INSTRUCCION, buffer);
+
+    add_to_packet(paquete_instruccion,instruccionPC->opcode,instruccionPC->opcode_lenght);
+	add_to_packet(paquete_instruccion,instruccionPC->parametros[0],instruccionPC->parametro1_lenght);
+	add_to_packet(paquete_instruccion,instruccionPC->parametros[1],instruccionPC->parametro2_lenght);
+	add_to_packet(paquete_instruccion,instruccionPC->parametros[2],instruccionPC->parametro3_lenght);
+	add_to_packet(paquete_instruccion,instruccionPC->parametros[3],instruccionPC->parametro4_lenght);
+	add_to_packet(paquete_instruccion,instruccionPC->parametros[4],instruccionPC->parametro5_lenght);
+
+	send(paquete_instruccion,client_fd);
+	
+	free(buffer);
+
 }
 
 
