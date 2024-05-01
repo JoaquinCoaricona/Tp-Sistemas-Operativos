@@ -42,7 +42,7 @@ void levantar_consola(t_log *logger) {
 			printf("%s\n",comando);
 			printf("%s\n",parametro);
 		} else if (strcmp(comando,"INICIAR_PROCESO") == 0) {
-			iniciar_proceso(parametro); //Incluye parametro path
+			create_process(parametro); //Incluye parametro path
 			//enviar_path_a_memoria(parametro);
 		} else if (strcmp(comando, "FINALIZAR_PROCESO") == 0) {
 			//hay que hacer un atoi
