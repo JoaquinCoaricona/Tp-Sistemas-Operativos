@@ -5,8 +5,11 @@
 int memory_socket;
 int cpu_dispatch_socket;
 int cpu_interrupt_socket;
+int PID; //Global
 t_log *logger;
 t_pcb *pcbEJECUTANDO;
+
+
 int main(int argc, char *argv[])
 {
 
@@ -265,9 +268,9 @@ void iniciar_proceso(char *path){
     //ENVIO EL PATH A MEMORIA PARA QUE BUSRQUE LAS INTRUCCIONES EN EL ARCHIVO
     enviar_path_a_memoria(path);
     
-    //CREO EL PCB
-    t_pcb *PCB = initializePCB();
-    enterNew(PCB);
+    //CREACION DE UN NUEVO PROCESO
+    create_process(PID); //Agrega proceso a la cola NEW
+    PID += 1; //Se le aumenta 1 al PID para que no se repitan los procesos
     t_pcb PRUEBA;
     int tamanioPCB = sizeof(PRUEBA);
     
