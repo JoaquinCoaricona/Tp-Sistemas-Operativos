@@ -182,8 +182,9 @@ void devolverInstruccion(int client_socket){
     int offset = 0;
     
     void *buffer;
+	
    
-    int tama; //Solo para recibir el size que esta al principio del buffer
+
 
 	int pid;
 	int pc;
@@ -219,7 +220,8 @@ void devolverInstruccion(int client_socket){
 	//Ahora vamos a enviar la instruccion a CPU
 
 	buffer = create_buffer();
-    paquete_instruccion = create_packet(MEMORIA_ENVIA_INSTRUCCION, buffer);
+	
+    t_packet *paquete_instruccion = create_packet(MEMORIA_ENVIA_INSTRUCCION, buffer);
 
     add_to_packet(paquete_instruccion,instruccionPC->opcode,instruccionPC->opcode_lenght);
 	add_to_packet(paquete_instruccion,instruccionPC->parametros[0],instruccionPC->parametro1_lenght);
@@ -228,7 +230,7 @@ void devolverInstruccion(int client_socket){
 	add_to_packet(paquete_instruccion,instruccionPC->parametros[3],instruccionPC->parametro4_lenght);
 	add_to_packet(paquete_instruccion,instruccionPC->parametros[4],instruccionPC->parametro5_lenght);
 
-	send(paquete_instruccion,client_fd);
+	send_packet(paquete_instruccion,client_socket);
 	
 	free(buffer);
 
