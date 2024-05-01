@@ -21,9 +21,8 @@ int main(int argc, char *argv[])
     char *cpu_IP;
     char *kernel_IP;
     t_buffer *buffer;
-    t_buffer *bufferPCB;
     t_packet *packet_handshake;
-    t_packet *packetPCB;
+   
 
 
     // LOGGER
@@ -265,16 +264,18 @@ void enviar_path_a_memoria(char *path){
 }
 
 void create_process(char* path) {
-	//ENVIO EL PATH A MEMORIA PARA QUE BUSRQUE LAS INTRUCCIONES EN EL ARCHIVO
-    enviar_path_a_memoria(path);
+
     
     //CREACION DE UN NUEVO PROCESO
     t_pcb *PCB = initializePCB(PID); 
     PID += 1; 
     enterNew(PCB);
-    int sizePCB = sizeof(PCB)
+    int sizePCB = sizeof(PCB);
 
-    
+    t_buffer *bufferPCB;
+ 
+    t_packet *packetPCB;
+
     enviar_path_a_memoria(path);
     
     //ENVIAR PCB esto en realidad se deberia hacer cuando le toque ejecturse
