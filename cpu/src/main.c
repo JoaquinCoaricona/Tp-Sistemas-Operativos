@@ -288,7 +288,7 @@ void *ciclo_de_instruccion(int socket_kernel){
         
         //INICIO FASES DECODE y EXECUTE
         if (strcmp(instruccion_ACTUAL->opcode, "SET") == 0) {
-			manejar_instruccion_set(&contexto_actual, instruccion);
+			operacion_set(PCBACTUAL, instruccion_ACTUAL);
 		}
         if (strcmp(instruccion->opcode, "SUM") == 0) {
 			manejar_instruccion_sum(&contexto_actual, instruccion);
