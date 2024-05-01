@@ -41,6 +41,9 @@ typedef enum
     PACKET,
     INTERRUPCION,
     PETICION_CPU,
+    INTERRUPCION_RTA_FALLIDA,
+    INTERRUPCION_RTA_CON_PCB,
+
 
 } op_code;
 

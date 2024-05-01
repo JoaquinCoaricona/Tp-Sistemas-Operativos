@@ -5,6 +5,7 @@ t_log *logger;
 int server_dispatch_fd;
 int client_fd_memoria;
 bool continuar_con_el_ciclo_instruccion;
+bool hay_interrupcion_pendiente = false;
 int pid_ejecutando;
 int pid_a_desalojar;
 
@@ -179,13 +180,13 @@ t_instruccion_unitaria *pedirInstruccion(int pid, int pc,int client_fd){
     if (opcode != MEMORIA_ENVIA_INSTRUCCION) {
 		//log_error(logger,"No se pudo recibir la instruccion de memoria! codigo de operacion recibido: %d",opcode);
 		printf("EROR AL RECIBIR EL CODIGO");
-        exit -1;
+        exit ;
 	}
 
     t_instruccion_unitaria *instruccion = malloc(sizeof(t_instruccion_unitaria));
-    instruccion->parametro1_length = 0;
-    instruccion->parametro2_length = 0;
-    instruccion->parametro3_length = 0;
+    instruccion->parametro1_lenght = 0;
+    instruccion->parametro2_lenght = 0;
+    instruccion->parametro3_lenght = 0;
 
     int total_size;
     int offset = 0;
@@ -257,7 +258,7 @@ int recibir_operacion(int client_fd)
 		return cod_op;
 	else
 	{
-		close(socket_cliente);
+		close(client_fd);
 		return -1;
 	}
 }
@@ -273,7 +274,7 @@ int recibir_operacion(int client_fd)
 
 
 //FETCH DECODE, EXCEC y CHECK INTERRUPT
-void *ciclo_de_instruccion(int socket_kernel){
+void ciclo_de_instruccion(int socket_kernel){
     t_pcb* PCBACTUAL = NULL;
     fetch_PCB(socket_kernel,PCBACTUAL);
     continuar_con_el_ciclo_instruccion = true;
@@ -291,25 +292,25 @@ void *ciclo_de_instruccion(int socket_kernel){
         if (strcmp(instruccion_ACTUAL->opcode, "SET") == 0) {
 			operacion_set(PCBACTUAL, instruccion_ACTUAL);
 		}
-        if (strcmp(instruccion->opcode, "SUM") == 0) {
-			manejar_instruccion_sum(&PCBACTUAL, instruccion_ACTUAL);
+        if (strcmp(instruccion_ACTUAL->opcode, "SUM") == 0) {
+			operacion_sum(&PCBACTUAL, instruccion_ACTUAL);
 
 		}
-		if (strcmp(instruccion->opcode, "SUB") == 0) {
-			manejar_instruccion_sub(&PCBACTUAL, instruccion_ACTUAL);
+		if (strcmp(instruccion_ACTUAL->opcode, "SUB") == 0) {
+			operacion_sub(&PCBACTUAL, instruccion_ACTUAL);
 
 		}
-		if (strcmp(instruccion->opcode, "JNZ") == 0) {
+		if (strcmp(instruccion_ACTUAL->opcode, "JNZ") == 0) {
 
-			manejar_instruccion_jnz(&PCBACTUAL, instruccion_ACTUAL);
+			operacion_jnz(&PCBACTUAL, instruccion_ACTUAL);
 
 		}
-        // if (strcmp(instruccion->opcode, "IO_GEN_SLEEP") == 0) {
+        // if (strcmp(instruccion_ACTUAL->opcode, "IO_GEN_SLEEP") == 0) {
 
 		// 	devolver_a_kernel(PCBACTUAL, SLEEP, socket_kernel);
 		// 	continuar_con_el_ciclo_instruccion = false;
 		// }    
-        if (strcmp(instruccion->opcode, "EXIT") == 0) {
+        if (strcmp(instruccion_ACTUAL->opcode, "EXIT") == 0) {
             
             continuar_con_el_ciclo_instruccion = false;
             pid_ejecutando = 0;
@@ -329,8 +330,8 @@ void *ciclo_de_instruccion(int socket_kernel){
     }
 
 	pid_ejecutando = 0;
-	contexto_ejecucion_destroy(PCBACTUAL);
-
+	//contexto_ejecucion_destroy(PCBACTUAL);
+    free(PCBACTUAL); //aca hay que crear una funcion destroy
 
 }
 
@@ -383,6 +384,9 @@ void recibir_interrupcion(int socket_kernel) {
 }
 
 void responder_a_kernel(char *mensaje ,int socket){
+
+    t_buffer *buffer_rta;
+    t_packet *packet_rta;
     buffer_rta = create_buffer();
     packet_rta = create_packet(INTERRUPCION_RTA_FALLIDA, buffer_rta);
 
@@ -394,8 +398,10 @@ void responder_a_kernel(char *mensaje ,int socket){
 }
 void devolver_a_kernel(t_pcb *contexto_actual, int socket_kernel,char *motivo){
 
+    t_buffer *buffer_rta;
+    t_packet *packet_rta;
     buffer_rta = create_buffer();
-    packet_rta = create_packet(INTERRUPCION_RTA_CON_PCB, buffer_rta);
+    packet_rta = create_packet(INTERRUPCION_RTA_CON_PCB,buffer_rta);
 
     int length_motivo = strlen(motivo) + 1;
     add_to_packet(packet_rta, motivo, length_motivo); //DEVUELVO EL MOTIVO DE INTERRUPCION

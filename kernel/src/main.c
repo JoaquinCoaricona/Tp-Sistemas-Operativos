@@ -5,6 +5,7 @@
 int memory_socket;
 int cpu_dispatch_socket;
 int cpu_interrupt_socket;
+int PID = 1;
 t_log *logger;
 t_pcb *pcbEJECUTANDO;
 int main(int argc, char *argv[])
@@ -250,8 +251,8 @@ void enviar_path_a_memoria(char *path){
     //Declaraciones
     t_buffer *bufferMemoria;
     t_packet *packetMemoria;
-    int pid = 5;
-
+    //int pid = 5;
+    int pid = PID;
     //Inicializar Buffer y Packet
     bufferMemoria   = create_buffer();
     packetMemoria = create_packet(PATH_A_MEMORIA, bufferMemoria);
@@ -263,13 +264,14 @@ void enviar_path_a_memoria(char *path){
 
 void iniciar_proceso(char *path){
     //ENVIO EL PATH A MEMORIA PARA QUE BUSRQUE LAS INTRUCCIONES EN EL ARCHIVO
-    enviar_path_a_memoria(path);
     
     //CREO EL PCB
     t_pcb *PCB = initializePCB();
     enterNew(PCB);
     t_pcb PRUEBA;
     int tamanioPCB = sizeof(PRUEBA);
+    
+    enviar_path_a_memoria(path);
     
     //ENVIAR PCB esto en realidad se deberia hacer cuando le toque ejecturse
     
