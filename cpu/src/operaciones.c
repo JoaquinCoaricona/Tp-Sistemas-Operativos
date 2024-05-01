@@ -138,8 +138,10 @@ void operacion_jnz(t_pcb* contexto, t_instruccion_unitaria* instruccion)
     if(obtener_valor_del_registro(cadena,contexto) != 0){
         contexto->program_counter = valor;
     }
-    free()
+    free(cadena)
 
 }
 
+//IO_GEN_SLEEP (Interfaz, Unidades de trabajo): Esta instrucción solicita al Kernel que se
+//envíe a una interfaz de I/O a que realice un sleep por una cantidad de unidades de trabajo.
 

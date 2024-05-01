@@ -6,6 +6,7 @@ int server_dispatch_fd;
 int client_fd_memoria;
 bool continuar_con_el_ciclo_instruccion;
 int pid_ejecutando;
+int pid_a_desalojar;
 
 int main(int argc, char *argv[])
 {
@@ -99,7 +100,7 @@ void* manage_interrupt_request(void *args)
             client_socket = -1;
             break;
         case INTERRUPCION:
-            //Manejar una interrupcion
+            recibir_interrupcion(client_socket);
             break;
         // case MEMORIA_ENVIA_INSTRUCCION:
         //     fetch_instruccion_recibida_de_memoria(client_socket);
@@ -291,38 +292,111 @@ void *ciclo_de_instruccion(int socket_kernel){
 			operacion_set(PCBACTUAL, instruccion_ACTUAL);
 		}
         if (strcmp(instruccion->opcode, "SUM") == 0) {
-			manejar_instruccion_sum(&contexto_actual, instruccion);
+			manejar_instruccion_sum(&PCBACTUAL, instruccion_ACTUAL);
 
 		}
 		if (strcmp(instruccion->opcode, "SUB") == 0) {
-			manejar_instruccion_sub(&contexto_actual, instruccion);
+			manejar_instruccion_sub(&PCBACTUAL, instruccion_ACTUAL);
 
 		}
 		if (strcmp(instruccion->opcode, "JNZ") == 0) {
 
-			manejar_instruccion_jnz(&contexto_actual, instruccion);
+			manejar_instruccion_jnz(&PCBACTUAL, instruccion_ACTUAL);
 
 		}
-        if (strcmp(instruccion->opcode, "IO_GEN_SLEEP") == 0) {
+        // if (strcmp(instruccion->opcode, "IO_GEN_SLEEP") == 0) {
 
-			devolver_a_kernel(contexto_actual, SLEEP, socket_kernel);
-			continuar_con_el_ciclo_instruccion = false;
-		}       
+		// 	devolver_a_kernel(PCBACTUAL, SLEEP, socket_kernel);
+		// 	continuar_con_el_ciclo_instruccion = false;
+		// }       
 
         // //INICIO FASE CHECK INTERRUPT
-        // if(hay_interrupcion_pendiente && pid_a_desalojar!=NULL &&string_equals_ignore_case(pid_a_desalojar, string_itoa(contexto_actual->pid))) {
-		//     log_info(logger, "Atendiendo interrupcion a %s y devuelvo a kernel", pid_a_desalojar);
-		//     continuar_con_el_ciclo_instruccion = false;
-		//     devolver_a_kernel(contexto_actual, INTERRUPCION, socket_kernel);
-		//     hay_interrupcion_pendiente = false;
-		//     free(pid_a_desalojar);
-		//     pid_a_desalojar = NULL;
-		// }
+        if(hay_interrupcion_pendiente && (pid_a_desalojar == pid_ejecutando)) {
+		//  log_info(logger, "Atendiendo interrupcion a %s y devuelvo a kernel", pid_a_desalojar);
+		    continuar_con_el_ciclo_instruccion = false;
+		    devolver_a_kernel(PCBACTUAL, socket_kernel);
+		    hay_interrupcion_pendiente = false;
+	        pid_a_desalojar = 0;
+		}
 
     }
 
 	pid_ejecutando = 0;
 	contexto_ejecucion_destroy(PCBACTUAL);
+
+
+}
+
+void recibir_interrupcion(int socket_kernel) {
+
+	
+
+    int total_size;
+    int offset = 0;
+    
+    void *buffer;
+   
+    int length_motivo;
+    char *motivo = NULL;
+   
+    buffer = fetch_buffer(&total_size, socket_kernel);
+    
+    
+    memcpy(&length_motivo,buffer + offset, sizeof(int)); //RECIBO EL TAMAÑO DEL STRING MOTIVO
+    offset += sizeof(int);
+
+    motivo = malloc(length_motivo);
+    memcpy(motivo,buffer + offset, length_motivo); //RECIBO EL STRING MOTIVO
+    offset += length_motivo;
+
+    offset += sizeof(int); //SALTEO EL TAMAÑO DEL INT PID 
+    
+    memcpy(&pid_a_desalojar,buffer + offset, sizeof(int)); //RECIBO EL PID
+
+
+    free(buffer);
+
+    hay_interrupcion_pendiente = true;
+
+
+	if(!continuar_con_el_ciclo_instruccion){//si no hay nadie ejecutando
+		hay_interrupcion_pendiente = false;
+        pid_a_desalojar = 0;
+		responder_a_kernel("NO hay nadie", socket_kernel);
+        
+    }else if(pid_ejecutando && pid_a_desalojar != pid_ejecutando ){//si esta ejecutando otro proceso del que hay que desalojar
+		hay_interrupcion_pendiente = false;
+		pid_a_desalojar = 0;
+		responder_a_kernel("El proceso ya fue desalojado, esta ejecutando otro proceso", socket_kernel);
+	}
+
+    //TENGO QUE IMPRIMIR EL MOTIVO DE LA INTERRUPCION QUE LLEGO DESDE KERNEL
+	free(motivo);
+
+}
+
+void responder_a_kernel(char *mensaje ,int socket){
+    buffer_rta = create_buffer();
+    packet_rta = create_packet(INTERRUPCION_RTA_FALLIDA, buffer_rta);
+
+    int length_rta = strlen(mensaje) + 1;
+
+    add_to_packet(packet_rta, mensaje, length_rta);
+    
+    send_packet(packet_rta, socket);
+}
+void devolver_a_kernel(t_pcb *contexto_actual, int socket_kernel,char *motivo){
+
+    buffer_rta = create_buffer();
+    packet_rta = create_packet(INTERRUPCION_RTA_CON_PCB, buffer_rta);
+
+    int length_motivo = strlen(motivo) + 1;
+    add_to_packet(packet_rta, motivo, length_motivo); //DEVUELVO EL MOTIVO DE INTERRUPCION
+
+    int tamanioPCB = sizeof(t_pcb);
+    add_to_packet(packet_rta, contexto_actual, tamanioPCB); //CARGO EL PCB ACTUALIZADO
+    
+    send_packet(packet_rta, socket_kernel);
 
 }
 
