@@ -42,12 +42,14 @@ int main(int argc, char *argv[])
    
     //PRUEBAAAA
     initialize_queue_and_semaphore();
-    // t_pcb *PCB = initializePCB();
+
+    //Iniciar Proceso
+    create_process("src/programa1.txt");
+    create_process("src/programa2.txt");
+
 
     
-    // enterNew(PCB,logger);
-    // t_pcb PRUEBA;
-
+    
     // Conect to server
     memory_socket = create_conection(logger, memory_IP, memory_PORT);
     log_info(logger, "Conectado al servidor de memoria %s:%s", memory_IP, memory_PORT);
@@ -108,7 +110,7 @@ int main(int argc, char *argv[])
     pthread_create(&thread_dispatch,NULL,manage_request_from_dispatch,process_conection_arguments_dispatch);
     pthread_detach(thread_dispatch);
 
-    
+
 
     levantar_consola(logger);
     return 0;
@@ -264,21 +266,24 @@ void enviar_path_a_memoria(char *path){
 
 }
 
-void iniciar_proceso(char *path){
-    //ENVIO EL PATH A MEMORIA PARA QUE BUSRQUE LAS INTRUCCIONES EN EL ARCHIVO
+void create_process(char* path) {
+	//ENVIO EL PATH A MEMORIA PARA QUE BUSRQUE LAS INTRUCCIONES EN EL ARCHIVO
     enviar_path_a_memoria(path);
     
     //CREACION DE UN NUEVO PROCESO
-    create_process(PID); //Agrega proceso a la cola NEW
-    PID += 1; //Se le aumenta 1 al PID para que no se repitan los procesos
-    t_pcb PRUEBA;
-    int tamanioPCB = sizeof(PRUEBA);
+    t_pcb *PCB = initializePCB(PID); 
+    PID += 1; 
+    enterNew(PCB);
+    int sizePCB = sizeof(PCB)
+
     
     //ENVIAR PCB esto en realidad se deberia hacer cuando le toque ejecturse
-    
     bufferPCB = create_buffer();
     packetPCB = create_packet(PCB_REC, bufferPCB);
-    add_to_packet(packetPCB, PCB, tamanioPCB);
+    add_to_packet(packetPCB, PCB, sizePCB);
     send_packet(packetPCB, cpu_dispatch_socket);
+}
 
+void end_process(){
+    
 }

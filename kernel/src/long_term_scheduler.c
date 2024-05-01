@@ -35,22 +35,8 @@ void initialize_queue_and_semaphore() {
 
 }
 
-// Agrega un nuevo proceso a la cola de NEW
-void create_process(PID) {
-	t_pcb* PCB = initializePCB(PID);
-
-	PCB->pid = PID; //Asigna el PID global al PCB del nuevo proceso
-	enterNew(PCB); 
-}
-	
 
 
-//Finalizacion de Proceso
-void end_process() {
-
-}
-
-//Planificar largo plazo
 void long_term_scheduler() {
 
 }
