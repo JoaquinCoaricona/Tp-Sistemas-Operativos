@@ -39,11 +39,11 @@ int main(int argc, char *argv[])
    
     //PRUEBAAAA
     initialize_queue_and_semaphore();
-    t_pcb *PCB = initializePCB();
+    // t_pcb *PCB = initializePCB();
 
     
-    enterNew(PCB,logger);
-    t_pcb PRUEBA;
+    // enterNew(PCB,logger);
+    // t_pcb PRUEBA;
 
     // Conect to server
     memory_socket = create_conection(logger, memory_IP, memory_PORT);
@@ -57,11 +57,11 @@ int main(int argc, char *argv[])
 
 
 
-    int tamanioPCB = sizeof(PRUEBA);
-    //ENVIAR PCB
-    bufferPCB = create_buffer();
-    packetPCB = create_packet(PCB_REC, bufferPCB);
-    add_to_packet(packetPCB, PCB, tamanioPCB);
+    // int tamanioPCB = sizeof(PRUEBA);
+    // ENVIAR PCB
+    // bufferPCB = create_buffer();
+    // packetPCB = create_packet(PCB_REC, bufferPCB);
+    // add_to_packet(packetPCB, PCB, tamanioPCB);
 
    
     
@@ -72,14 +72,14 @@ int main(int argc, char *argv[])
 
     log_info(logger, "Handshake enviado");
 
-    // cpu_dispatch_socket = create_conection(logger, cpu_IP, cpu_dispatch_PORT);
-    // log_info(logger, "Conectado al servidor de cpu %s:%s", cpu_IP, cpu_dispatch_PORT);
+    cpu_dispatch_socket = create_conection(logger, cpu_IP, cpu_dispatch_PORT);
+    log_info(logger, "Conectado al servidor de cpu %s:%s", cpu_IP, cpu_dispatch_PORT);
 
-    // cpu_interrupt_socket = create_conection(logger, cpu_IP, cpu_interrupt_PORT);
-    // log_info(logger, "Conectado al servidor de cpu %s:%s", cpu_IP, cpu_interrupt_PORT);
+    cpu_interrupt_socket = create_conection(logger, cpu_IP, cpu_interrupt_PORT);
+    log_info(logger, "Conectado al servidor de cpu %s:%s", cpu_IP, cpu_interrupt_PORT);
 
-    // send_packet(packet_handshake, cpu_dispatch_socket);
-    // send_packet(packet_handshake, cpu_interrupt_socket);
+    send_packet(packet_handshake, cpu_dispatch_socket);
+    send_packet(packet_handshake, cpu_interrupt_socket);
 
     //send_packet(packetPCB, cpu_dispatch_socket);
 
@@ -179,5 +179,24 @@ void enviar_path_a_memoria(char *path){
     add_to_packet(packetMemoria,&pid, sizeof(int));
     add_to_packet(packetMemoria,path,(strlen(path)+1));
     send_packet(packetMemoria, memory_socket);
+
+}
+
+void iniciar_proceso(char *path){
+    //ENVIO EL PATH A MEMORIA PARA QUE BUSRQUE LAS INTRUCCIONES EN EL ARCHIVO
+    enviar_path_a_memoria(path);
+    
+    //CREO EL PCB
+    t_pcb *PCB = initializePCB();
+    enterNew(PCB);
+    t_pcb PRUEBA;
+    int tamanioPCB = sizeof(PRUEBA);
+    
+    //ENVIAR PCB esto en realidad se deberia hacer cuando le toque ejecturse
+    
+    bufferPCB = create_buffer();
+    packetPCB = create_packet(PCB_REC, bufferPCB);
+    add_to_packet(packetPCB, PCB, tamanioPCB);
+    send_packet(packetPCB, cpu_dispatch_socket);
 
 }

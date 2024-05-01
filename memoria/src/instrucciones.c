@@ -200,8 +200,8 @@ void devolverInstruccion(int client_socket){
 	
 	// FIN RECEPCION PID Y PC	
 
-	printf(" \n PID RECIBIDO = %i \n",pid);
-	printf("PC RECIBIDO = %i \n",pc);
+	//printf(" \n PID RECIBIDO = %i \n",pid);
+	//printf("PC RECIBIDO = %i \n",pc);
 
 	pidBUSCADO = pid;
 	

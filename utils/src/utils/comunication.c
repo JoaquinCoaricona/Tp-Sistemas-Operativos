@@ -37,8 +37,8 @@ static void process_conection(void *args)
             packet = fetch_packet(client_socket);
             log_info(logger, "Packet received");
 
-            close_conection(client_socket);
-            client_socket = -1;
+            //close_conection(client_socket);
+            //client_socket = -1;
             break;
         case PCB_REC:
             t_pcb *PCBRECB = malloc(sizeof(t_pcb));
@@ -50,21 +50,21 @@ static void process_conection(void *args)
             //al resultado de la funcion. Eso devolvia solo la direccion pero no se podia acceder a los campos
             //para solucionarlo habia que crear ese puntero y pasarlo como parametro directamente y que en la funcion
             //escriban sobre ese puntero y despues ya no te devuelve nada porque le pasaste el puntero
-            close_conection(client_socket);
-            client_socket = -1;
+            //close_conection(client_socket);
+            //client_socket = -1;
             break;
         case CREAR_PROCESO:
             
             log_info(logger,"Se Envio Un Proceso a Crear");
-            close_conection(client_socket);
-            client_socket = -1;
+            //close_conection(client_socket);
+            //client_socket = -1;
         break;
         case SOL_INSTRUCCION:
             devolverInstruccion(client_socket);
         break;
         case PATH_A_MEMORIA:
             
-            t_instrucciones *instruccionREC = malloc(sizeof(t_instrucciones));
+            //t_instrucciones *instruccionREC = malloc(sizeof(t_instrucciones));
             leer_pseudo(client_socket);
 
             

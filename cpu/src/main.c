@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
     //ciclo_de_instruccion();
     //pedirInstruccion(5,2,client_fd_memoria);
 
-    //manage_dispatch_request();
+    manage_dispatch_request();
 
     return 0;
 }
@@ -134,8 +134,8 @@ void manage_dispatch_request()
             packet = fetch_packet(client_socket);
             log_info(logger, "Packet received");
 
-            close_conection(client_socket);
-            client_socket = -1;
+            //close_conection(client_socket);
+            //client_socket = -1;
             break;
         case PETICION_CPU:
             //Manejar una peticion a CPU
@@ -308,7 +308,14 @@ void *ciclo_de_instruccion(int socket_kernel){
 
 		// 	devolver_a_kernel(PCBACTUAL, SLEEP, socket_kernel);
 		// 	continuar_con_el_ciclo_instruccion = false;
-		// }       
+		// }    
+        if (strcmp(instruccion->opcode, "EXIT") == 0) {
+            
+            continuar_con_el_ciclo_instruccion = false;
+            pid_ejecutando = 0;
+			devolver_a_kernel(PCBACTUAL,socket_kernel,"INSTRUCCION EXIT");
+
+		}   
 
         // //INICIO FASE CHECK INTERRUPT
         if(hay_interrupcion_pendiente && (pid_a_desalojar == pid_ejecutando)) {
@@ -396,7 +403,7 @@ void devolver_a_kernel(t_pcb *contexto_actual, int socket_kernel,char *motivo){
     int tamanioPCB = sizeof(t_pcb);
     add_to_packet(packet_rta, contexto_actual, tamanioPCB); //CARGO EL PCB ACTUALIZADO
     
-    send_packet(packet_rta, socket_kernel);
+    send_packet(packet_rta, server_dispatch_fd);
 
 }
 
