@@ -6,7 +6,7 @@ int memory_socket;
 int cpu_dispatch_socket;
 int cpu_interrupt_socket;
 t_log *logger;
-
+t_pcb *pcbEJECUTANDO;
 int main(int argc, char *argv[])
 {
 
@@ -218,14 +218,17 @@ void* manage_request_from_dispatch(void *args)
             //al resultado de la funcion. Eso devolvia solo la direccion pero no se podia acceder a los campos
             //para solucionarlo habia que crear ese puntero y pasarlo como parametro directamente y que en la funcion
             //escriban sobre ese puntero y despues ya no te devuelve nada porque le pasaste el puntero
-            close_conection(client_socket);
-            client_socket = -1;
+            // close_conection(client_socket);
+            // client_socket = -1;
             break;
         case CREAR_PROCESO:
             
             log_info(logger,"Se Envio Un Proceso a Crear");
             close_conection(client_socket);
             client_socket = -1;
+        break;
+        case INTERRUPCION_RTA_CON_PCB:
+            printf("Llego Un PCB");
         break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
