@@ -36,10 +36,13 @@ void initialize_queue_and_semaphore() {
 }
 
 //Creacion de Proceso
-// t_pcb create_process() { //Bruno
-// 	//TODO: cear un proceso
-// 	pid_t PID = fork();
-// 	t_pcb* PCB = initializePCB(PID);
+t_pcb create_process() { //Bruno
+	//TODO: cear un proceso
+ 	int PID;
+	t_pcb* PCB = initializePCB(PID);
+	
+
+	
 	
 // 	if (PCB->pid == 0) 
 // 	{
