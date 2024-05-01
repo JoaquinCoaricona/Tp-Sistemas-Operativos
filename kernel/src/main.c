@@ -255,12 +255,11 @@ void enviar_path_a_memoria(char *path){
     //Declaraciones
     t_buffer *bufferMemoria;
     t_packet *packetMemoria;
-    int pid = 5;
 
     //Inicializar Buffer y Packet
     bufferMemoria   = create_buffer();
     packetMemoria = create_packet(PATH_A_MEMORIA, bufferMemoria);
-    add_to_packet(packetMemoria,&pid, sizeof(int));
+    add_to_packet(packetMemoria,&PID, sizeof(int)); //! PID global
     add_to_packet(packetMemoria,path,(strlen(path)+1));
     send_packet(packetMemoria, memory_socket);
 
@@ -285,5 +284,5 @@ void create_process(char* path) {
 }
 
 void end_process(){
-    
+
 }
