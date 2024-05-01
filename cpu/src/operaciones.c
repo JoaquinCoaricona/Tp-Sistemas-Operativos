@@ -96,6 +96,50 @@ void operacion_set(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 //    resultado en el Registro Destino.
 void operacion_sum(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 {   
-    char* registro = strdup(instruccion->parametros[0]); 
+    char* origen  =  strdup(instruccion->parametros[1]);
+    char* destino =  strdup(instruccion->parametros[0]);
+
+    uint32_t origen_valor =   obtener_valor_del_registro(origen,PCBACTUAL);
+    uint32_t destino_valor =  obtener_valor_del_registro(destino,PCBACTUAL);
+
+    destino_valor += origen_valor; 
+    setear_registro(contexto,destino,destino_valor);
+    free(origen);
+    free(destino);
 
 }
+
+//SUB (Registro Destino, Registro Origen): Resta al Registro Destino el Registro Origen y 
+//     deja el resultado en el Registro Destino.
+
+void operacion_sub(t_pcb* contexto, t_instruccion_unitaria* instruccion)
+{   
+    char* origen  =  strdup(instruccion->parametros[1]);
+    char* destino =  strdup(instruccion->parametros[0]);
+
+    uint32_t origen_valor =   obtener_valor_del_registro(origen,PCBACTUAL);
+    uint32_t destino_valor =  obtener_valor_del_registro(destino,PCBACTUAL);
+
+    destino_valor -= origen_valor; 
+
+    setear_registro(contexto,destino,destino_valor);
+    free(origen);
+    free(destino);
+
+}
+
+//JNZ (Registro, Instrucción): Si el valor del registro es distinto de cero,
+//     actualiza el program counter al número de instrucción pasada por parámetro.
+void operacion_jnz(t_pcb* contexto, t_instruccion_unitaria* instruccion)
+{   
+    
+    uint32_t valor = atoi(instruccion->parametros[1]);
+    char* cadena = strdup(instruccion->parametros[0]);
+    if(obtener_valor_del_registro(cadena,contexto) != 0){
+        contexto->program_counter = valor;
+    }
+    free()
+
+}
+
+
