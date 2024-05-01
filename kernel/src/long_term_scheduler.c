@@ -35,43 +35,8 @@ void initialize_queue_and_semaphore() {
 
 }
 
-//Creacion de Proceso
-t_pcb create_process() { //Bruno
-	//TODO: cear un proceso
- 	int PID;
-	t_pcb* PCB = initializePCB(PID);
-	
-
-	
-	
-// 	if (PCB->pid == 0) 
-// 	{
-// 		//Codigo del hijo 
-// 	} else if (PCB->pid > 0) 
-// 	{
-// 		//Codigo del padre
-// 	} else 
-// 	{
-// 		//Error
-// 	}
 
 
-	//Asginar el PID
-	//Reservar espacio para estructuras (codigo, datos, pila, heap)
-	//Inicializar PCB
-	//Ubicar pcb en listas de planificacion
-
-
-
-//}
-
-
-//Finalizacion de Proceso
-void end_process() {
-
-}
-
-//Planificar largo plazo
 void long_term_scheduler() {
 
 }

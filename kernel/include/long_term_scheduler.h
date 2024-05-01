@@ -14,7 +14,7 @@ extern char* scheduler_algorithm;
 void enterNew(t_pcb *pcb,t_log *logger);
 
 void initialize_queue_and_semaphore();
-void create_process();
+void create_process(char* path);
 void end_process();
 void long_term_scheduler();
 

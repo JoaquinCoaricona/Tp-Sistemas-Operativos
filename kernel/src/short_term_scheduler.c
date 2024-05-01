@@ -63,7 +63,7 @@ void send_execution_context_to_CPU(t_pcb *process) {
 
 }
 
-t_pcb *initializePCB(pid_t PID){
+t_pcb *initializePCB(int PID){
         t_pcb *pcb = malloc(sizeof(t_pcb));
         
         pcb->pid = PID;
