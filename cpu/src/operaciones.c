@@ -42,6 +42,45 @@ void setear_registro(t_pcb *contexto, char* registro, uint32_t valor)
 
 }
 
+uint32_t obtener_valor_del_registro(char* registro_a_leer, t_pcb* contexto_actual){
+	uint32_t valor_leido = -1; //valor devuelto si se escribe mal el nombre del registro
+
+	if(strcmp(registro_a_leer,"AX")==0)
+	{
+		valor_leido= contexto_actual->registers->AX;
+
+	}else if(strcmp(registro_a_leer,"BX")==0)
+	{
+
+		valor_leido= contexto_actual->registers->BX;
+
+	}else if(strcmp(registro_a_leer,"CX")==0)
+	{
+
+		valor_leido= contexto_actual->registers->CX;
+
+	}else if(strcmp(registro_a_leer,"DX")==0)
+	{
+		valor_leido= contexto_actual->registers->DX;
+	}else if(strcmp(registro_a_leer,"EAX")==0)
+	{
+		valor_leido= contexto_actual->registers->EAX;
+	}else if(strcmp(registro_a_leer,"EBX")==0)
+	{
+		valor_leido= contexto_actual->registers->EBX;
+	}else if(strcmp(registro_a_leer,"ECX")==0)
+	{
+		valor_leido= contexto_actual->registers->ECX;
+	}else if(strcmp(registro_a_leer,"EDX")==0)
+	{
+		valor_leido= contexto_actual->registers->EDX;
+	}
+
+	//log_info(logger, "Se se lee en %s el valor: %d",registro_a_leer,  valor_leido);
+
+	return valor_leido;
+}
+
 
 //SET (Registro, Valor): Asigna al registro el valor pasado como parámetro.
 void operacion_set(t_pcb* contexto, t_instruccion_unitaria* instruccion)
@@ -51,4 +90,12 @@ void operacion_set(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 	setear_registro(contexto, registro, valor);
 
 	free(registro);
+}
+
+//SUM (Registro Destino, Registro Origen): Suma al Registro Destino el Registro Origen y deja el 
+//    resultado en el Registro Destino.
+void operacion_sum(t_pcb* contexto, t_instruccion_unitaria* instruccion)
+{   
+    char* registro = strdup(instruccion->parametros[0]); 
+
 }
