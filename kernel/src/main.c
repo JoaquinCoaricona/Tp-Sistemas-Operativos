@@ -331,12 +331,12 @@ void fetch_pcb_actualizado(server_socket){
     memcpy(&(PCBrec->registers.DI), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
     offset += sizeof(uint32_t);
 
-    log_info(logger, "Conectado al servidor de cpu %s:%s", cpu_IP, cpu_interrupt_PORT);
+   
     log_info(logger, "Motivo Recibido : %s",motivo);
     log_info(logger, "PID RECIBIDO : %i",PCBrec->pid);
-    log_info(logger, "PC RECIBIDO : %i",PCBrec->program_counter;
-    log_info(logger, "REGISTRO AX : %i",PCBrec->registers->AX);
-    log_info(logger, "REGISTRO BX : %i",PCBrec->registers->BX);
+    log_info(logger, "PC RECIBIDO : %i",PCBrec->program_counter);
+    log_info(logger, "REGISTRO AX : %i",PCBrec->registers.AX);
+    log_info(logger, "REGISTRO BX : %i",PCBrec->registers.BX);
 
 
 
