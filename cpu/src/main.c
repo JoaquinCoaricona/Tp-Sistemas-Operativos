@@ -275,7 +275,7 @@ int recibir_operacion(int client_fd)
 
 //FETCH DECODE, EXCEC y CHECK INTERRUPT
 void ciclo_de_instruccion(int socket_kernel){
-    t_pcb* PCBACTUAL = NULL;
+    t_pcb* PCBACTUAL  =  malloc(sizeof(t_pcb));
     fetch_PCB(socket_kernel,PCBACTUAL);
     continuar_con_el_ciclo_instruccion = true;
     pid_ejecutando = PCBACTUAL->pid;

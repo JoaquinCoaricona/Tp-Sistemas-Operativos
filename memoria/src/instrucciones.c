@@ -215,9 +215,12 @@ void devolverInstruccion(int client_socket){
 
 	
 	t_instruccion_unitaria* instruccionPC;
+	//t_instrucciones *getter = list_get(listaINSTRUCCIONES, 0);
 
-
-    t_instrucciones *procesoBuscado = list_find(listaINSTRUCCIONES,buscarPorPid);
+    t_instrucciones *procesoBuscado = list_find(listaINSTRUCCIONES,(void*)buscarPorPid);
+	
+    //t_instrucciones *procesoBuscado = list_get(listaINSTRUCCIONES, 0);
+	
 	instruccionPC = list_get(procesoBuscado->lista_de_instrucciones,pc-1); // list get empieza en 0, por eso el -1
 	
 	//printf(" \n %s \n",instruccionPC->opcode); 
