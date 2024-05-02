@@ -8,7 +8,7 @@
 #include <unistd.h>
 
 extern int id_counter;
-
+extern int quantum;
 //Iniciar PCB
 t_pcb *initializePCB();
 //FIFO

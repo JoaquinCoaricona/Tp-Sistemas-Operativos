@@ -26,4 +26,6 @@ extern sem_t sem_multiprogramacion;
 extern sem_t sem_ready;
 extern pthread_mutex_t mutex_state_new;
 extern pthread_mutex_t mutex_state_ready;
+extern pthread_mutex_t m_pid_evicted;
+
 #endif // LONG_TERM_SCHEDULER_H_

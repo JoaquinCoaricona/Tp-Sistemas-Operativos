@@ -10,6 +10,7 @@ t_log *logger;
 t_pcb *pcbEJECUTANDO;
 
 
+int quantum;
 int main(int argc, char *argv[])
 {
 
@@ -31,7 +32,7 @@ int main(int argc, char *argv[])
     // CONFIG
 //    t_config *config = initialize_config(logger, "../kernel.config");
     t_config *config = initialize_config(logger, "kernel.config");
-
+    quantum = config_get_int_value(config,"QUANTUM");
     memory_PORT = config_get_string_value(config, "PUERTO_MEMORIA");
     cpu_dispatch_PORT = config_get_string_value(config, "PUERTO_CPU_DISPATCH");
     cpu_interrupt_PORT = config_get_string_value(config, "PUERTO_CPU_INTERRUPT");

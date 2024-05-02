@@ -47,4 +47,6 @@ typedef struct
  * @return int 
  */
 int server_listen(t_log *logger, const char *server_name, int server_socket);
+void send_message(char* message, int socket, op_code operation_code){
+
 #endif // COMUNICATION_H

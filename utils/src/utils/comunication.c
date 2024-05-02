@@ -105,3 +105,14 @@ int server_listen(t_log *logger, const char *server_name, int server_socket)
 
     return 1;
 }
+void send_message(char* message, int socket, op_code operation_code){
+
+    t_buffer *message_buffer=create_buffer();
+    message_buffer->size = strlen(message)+1;
+
+    memcpy(message_buffer->stream,message,message_buffer->size);
+    t_packet* packet = create_packet(operation_code,message_buffer);
+
+    send_packet(packet,socket);
+    free(packet);
+}

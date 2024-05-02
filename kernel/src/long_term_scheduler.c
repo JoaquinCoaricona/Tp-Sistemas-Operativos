@@ -3,16 +3,23 @@
 //Semaforo
 sem_t m_execute_process;
 sem_t short_term_scheduler_semaphore;
+sem_t long_term_scheduler_semaphore;
+
 sem_t sem_ready;
 sem_t m_ready_queue;
 sem_t sem_hay_pcb_esperando_ready; //esto es para contar los PCB de ready
 sem_t sem_multiprogramacion; //hay que inicializarlo en 0
 pthread_mutex_t mutex_state_new;
 pthread_mutex_t mutex_state_ready;
+pthread_mutex_t m_pid_evicted;
+pthread_mutex_t m_short_term_scheduler;
+t_pcb* current_executing_process; 
+
 
 //Estado EXEC y BLOCKED no usan queue
 t_queue* queue_new;
 t_queue* queue_ready;
+t_queue* queue_ready_with_priority;
 t_queue* queue_exit;
 t_queue* queue_block;
 
@@ -23,7 +30,8 @@ char* scheduler_algorithm;
 void initialize_queue_and_semaphore() {
     queue_new = queue_create();
     queue_ready = queue_create();
-		queue_block = queue_create(); //Cola de procesos bloqueados
+	queue_ready_with_priority = queue_create();
+	queue_block = queue_create(); //Cola de procesos bloqueados
     queue_exit = queue_create();
     sem_init(&m_execute_process, 0, 1);
     sem_init(&sem_ready, 0, 0);
@@ -32,6 +40,9 @@ void initialize_queue_and_semaphore() {
     sem_init(&sem_multiprogramacion,0,0);//aca hay que poner en el segundo cero el grado de multipprogramacion
     sem_init(&m_ready_queue, 0, 1);
     pthread_mutex_init(&mutex_state_new, NULL);
+	pthread_mutex_init(&m_pid_evicted, NULL);
+	pthread_mutex_init(&m_short_term_scheduler, NULL);
+
 
 }
 
