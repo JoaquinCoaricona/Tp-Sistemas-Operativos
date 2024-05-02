@@ -254,7 +254,7 @@ void create_process(char* path) {
     PID += 1;  // CAMBIO DE ORDEN, primer creo el pcb y envio a memoria y despues sumo el pid. PARA QUE a cpu y memoria
                 //lleguen con el mismo pid, sino llegaba uno con uno y el otro con +1
                 
-    sleep(20);
+    sleep(3);
     
     //ENVIAR PCB esto en realidad se deberia hacer cuando le toque ejecturse
     bufferPCB = create_buffer();

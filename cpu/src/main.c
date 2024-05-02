@@ -45,8 +45,8 @@ int main(int argc, char *argv[])
 
     log_info(logger, "Handshake enviado");
 
-    server_dispatch_fd = initialize_server(logger, "cpu_dispatch_server", memory_IP, dispatch_PORT);
-    log_info(logger, "Server dispatch initialized");
+    server_dispatch_fd = initialize_server(logger, "cpu_dispatch_server", memory_IP, dispatch_PORT); //ACA CPU Y MEMORIA  
+    log_info(logger, "Server dispatch initialized");   //TIENEN LA MISMA IP PERO NO SON LA MISMA EN PC DISTINTIAS, TENER CUIDADO
 
 
     int server_interrupt_fd = initialize_server(logger, "cpu_interrupt_server", memory_IP, interrupt_PORT);
@@ -409,7 +409,7 @@ void devolver_a_kernel(t_pcb *contexto_actual, int socket_kernel,char *motivo){
     int tamanioPCB = sizeof(t_pcb);
     add_to_packet(packet_rta, contexto_actual, tamanioPCB); //CARGO EL PCB ACTUALIZADO
     
-    send_packet(packet_rta, server_dispatch_fd);
+    send_packet(packet_rta, socket_kernel);
 
 }
 
