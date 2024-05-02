@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
     logger = initialize_logger("cpu.log", "cpu", true, LOG_LEVEL_INFO);
 
     // CONFIG
-    t_config *config = initialize_config(logger, "cpu.config");
+    t_config *config = initialize_config(logger, "../cpu.config");
     memory_PORT = config_get_string_value(config, "PUERTO_MEMORIA");
     dispatch_PORT = config_get_string_value(config, "PUERTO_ESCUCHA_DISPATCH");
     interrupt_PORT = config_get_string_value(config, "PUERTO_ESCUCHA_INTERRUPT");
