@@ -123,7 +123,7 @@ void* manage_request_from_input_output(void *args)
 {
     int server_socket;
     char *server_name;
-    t_packet *packet;
+    t_list *packet;
 
     t_process_conection_args *arguments = (t_process_conection_args *)args;
 
@@ -135,9 +135,9 @@ void* manage_request_from_input_output(void *args)
 
     free(args);
 
+    int client_socket = wait_client(logger, server_name, server_socket);
     while (1)
     {
-        int client_socket = wait_client(logger, server_name, server_socket);
         int operation_code = fetch_codop(client_socket);
 
         switch (operation_code)
@@ -151,25 +151,7 @@ void* manage_request_from_input_output(void *args)
             close_conection(client_socket);
             client_socket = -1;
             break;
-        case PCB_REC:
-            t_pcb *PCBRECB = malloc(sizeof(t_pcb));
-            log_info(logger, "PCB %d recibido %s",operation_code, server_name);
-            fetch_PCB(client_socket,PCBRECB);
-            log_info(logger, "PCB RECIBIDO PID = %d PC = %d Q = %d ESTADO = %d",PCBRECB->pid,PCBRECB->program_counter,PCBRECB->quantum,PCBRECB->state);
-            //aca arriba intente loguear lo recibido en PCBRECB
-            //aca lo que hacia era crear un puntero antes de llamar a fetch_pcb y despues igualaba ese puntero
-            //al resultado de la funcion. Eso devolvia solo la direccion pero no se podia acceder a los campos
-            //para solucionarlo habia que crear ese puntero y pasarlo como parametro directamente y que en la funcion
-            //escriban sobre ese puntero y despues ya no te devuelve nada porque le pasaste el puntero
-            close_conection(client_socket);
-            client_socket = -1;
-            break;
-        case CREAR_PROCESO:
-            
-            log_info(logger,"Se Envio Un Proceso a Crear");
-            close_conection(client_socket);
-            client_socket = -1;
-        break;
+
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
             return;

@@ -105,3 +105,6 @@ int server_listen(t_log *logger, const char *server_name, int server_socket)
 
     return 1;
 }
+
+//TODO: Mover a memoria
+

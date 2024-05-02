@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
     char *IP_memoria;
     t_buffer *buffer;
     t_packet *packet;
-    char *PORT_kernel;
+    char *port_kernel;
     char *IP_kernel;
 
     t_log *logger;
@@ -22,26 +22,29 @@ int main(int argc, char *argv[])
 
     PORT_memoria = config_get_string_value(config, "PUERTO_MEMORIA");
     IP_memoria = config_get_string_value(config, "IP_MEMORIA");
+    
     PORT_kernel = config_get_string_value(config, "PUERTO_KERNEL");
     IP_kernel = config_get_string_value(config, "IP_KERNEL");
 
-    // Conect to server
-    socket_memoria = create_conection(logger, IP_memoria, PORT_memoria);
-    log_info(logger, "Conectado al servidor de memoria %s:%s", IP_memoria, PORT_memoria);
+    // Conect to server MEMORIA
+    //socket_memoria = create_conection(logger, IP_memoria, PORT_memoria);
+    //log_info(logger, "Conectado al servidor de memoria %s:%s", IP_memoria, PORT_memoria);
 
     // Send handshake
-    buffer = create_buffer();
-    packet = create_packet(HANDSHAKE_ENTRADA_SALIDA, buffer);
+    //buffer = create_buffer();
+    //packet = create_packet(HANDSHAKE_ENTRADA_SALIDA, buffer);
 
-    add_to_packet(packet, buffer->stream, buffer->size);
+    //add_to_packet(packet, buffer->stream, buffer->size);
     //packet = serialize_packet(packet, buffer->size);
-    send_packet(packet, socket_memoria);
+    //send_packet(packet, socket_memoria);
 
-    log_info(logger, "Handshake enviado");
+    //log_info(logger, "Handshake enviado");
     
     socket_kernel = create_conection(logger, IP_kernel, PORT_kernel);
-    log_info(logger, "Conectado al servidor de memoria %s:%s", IP_kernel, PORT_kernel);
-    send_packet(packet, socket_kernel);
+    log_info(logger, "Conectado al servidor de kernel %s:%s", IP_kernel, PORT_kernel);
+    
+
+    
 
     return 0;
 }
