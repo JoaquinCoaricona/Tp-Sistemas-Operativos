@@ -42,51 +42,21 @@ cd ..
 
 echo "Todos los módulos se han compilado correctamente."
 
-#Correr primer modulo
-echo "Corriendo memoria"
-cd memoria/bin
-./memoria
-if [ $? -ne 0 ]; then
-	echo "Error al ejecutar memoria"
-	exit 1
-fi 
-sleep 1
-cd ../../
 
-# Correr CPU
-echo "Corriendo CPU"
-cd cpu/bin
-./cpu
+run_module() {
+	x-terminal-emulator -e "$1"
+}
+
+run_module "memoria/bin/memoria"
+run_module "cpu/bin/cpu"
+run_module "kernel/bin/kernel/"
+run_module "entradasalida/bin/entradasalida"
+
 if [ $? -ne 0 ]; then
-	echo "Error al ejecutar cpu"
-	exit 1
+    echo "Error: Hubo un problema con la ejecución de los módulos."
+    exit 1
 fi
 
-sleep 1 
-cd ../../
-
-# Correr Kernel
-echo "Corriendo Kernel"
-cd kernel/bin
-./kernel
-
-if [ $? -ne 0 ]; then
-	echo "Error al ejecutar Kernel"
-	exit 1
-fi
-
-sleep 1
-
-
-# Correr Entrada y Salida
-echo "Corriendo Entrada y Salida"
-cd entradasalida/bin
-./entradasalida
-
-if [ $? -ne 0 ]; then
-	echo "Error al ejecutar Entrada y Salida"
-	exit 1
-fi
-cd ../../
+echo "Todos los módulos se ejecutaron correctamente."
 
 
