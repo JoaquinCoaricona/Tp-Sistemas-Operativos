@@ -274,3 +274,67 @@ void end_process(){
 
 }
 
+
+void fetch_pcb_actualizado(server_socket){
+    int total_size;
+    int offset = 0;
+    t_pcb *PCBrec = malloc(sizeof(t_pcb));
+    void *buffer;
+    int length_motivo;
+    char *motivo;
+    int tama; //Solo para recibir el size que esta al principio del buffer
+    
+    buffer = fetch_buffer(&total_size, server_socket);
+
+    offset += sizeof(int);  
+    memcpy(&length_motivo,buffer + offset, sizeof(int)); 
+    offset += sizeof(int);  
+    
+    motivo = malloc(length_motivo);
+    memcpy(motivo,buffer + offset, sizeof(length_motivo)); 
+    offset += sizeof(length_motivo);
+
+    offset += sizeof(int); //Salteo El tamaño del PCB
+
+    memcpy(&(PCBrec->pid),buffer + offset, sizeof(int)); //RECIBO EL PID
+    offset += sizeof(int);
+
+    memcpy(&(PCBrec->program_counter), buffer + offset, sizeof(int)); // RECIBO EL PROGRAM COUNTER
+    offset += sizeof(int);
+    
+    memcpy(&(PCBrec->quantum), buffer + offset, sizeof(int)); //RECIBO EL QUANTUM
+    offset += sizeof(int);
+
+    memcpy(&(PCBrec->state), buffer + offset, sizeof(t_process_state)); //RECIBO EL PROCESS STATE
+    offset += sizeof(t_process_state);
+
+    memcpy(&(PCBrec->registers.PC), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(PCBrec->registers.AX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
+    offset += sizeof(uint8_t);
+    memcpy(&(PCBrec->registers.BX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
+    offset += sizeof(uint8_t);
+    memcpy(&(PCBrec->registers.CX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
+    offset += sizeof(uint8_t);
+    memcpy(&(PCBrec->registers.DX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
+    offset += sizeof(uint8_t);
+    memcpy(&(PCBrec->registers.EAX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(PCBrec->registers.EBX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(PCBrec->registers.ECX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(PCBrec->registers.EDX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(PCBrec->registers.SI), buffer+ offset, sizeof(uint32_t)); //RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(PCBrec->registers.DI), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    offset += sizeof(uint32_t);
+
+    
+    free(buffer);   
+    free(motivo);
+
+}
+
+ 
