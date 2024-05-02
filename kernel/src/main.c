@@ -43,8 +43,8 @@ int main(int argc, char *argv[])
     initialize_queue_and_semaphore();
 
     //Iniciar Proceso
-    create_process("src/programa1.txt");
-    create_process("src/programa2.txt");
+    //create_process("src/programa1.txt");
+    //create_process("src/programa2.txt");
 
 
     
