@@ -55,7 +55,7 @@ void short_term_scheduler_fifo() {
      sem_post(&short_term_scheduler_semaphore);
     send_process(process);
 
-    uslepp(quantum*1000);//Transforma el quantum en milisegundos
+    uslepp(quantum);//Transforma el quantum en milisegundos
     
     pthread_mutex_lock(&m_pid_evicted);
     pid_interrupt = process->pid;
