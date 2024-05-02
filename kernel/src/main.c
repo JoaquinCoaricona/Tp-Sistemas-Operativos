@@ -82,8 +82,10 @@ int main(int argc, char *argv[])
     cpu_interrupt_socket = create_conection(logger, cpu_IP, cpu_interrupt_PORT);
     log_info(logger, "Conectado al servidor de cpu %s:%s", cpu_IP, cpu_interrupt_PORT);
 
-    send_packet(packet_handshake, cpu_dispatch_socket);
+    //send_packet(packet_handshake, cpu_dispatch_socket);
     send_packet(packet_handshake, cpu_interrupt_socket);
+
+    create_process("prueba1");
 
     //send_packet(packetPCB, cpu_dispatch_socket);
 
@@ -243,7 +245,8 @@ void create_process(char* path) {
     t_pcb *PCB = initializePCB(PID); 
     PID += 1; 
     enterNew(PCB);
-    int sizePCB = sizeof(PCB);
+    t_pcb *PCBPRUEBA;
+    int sizePCB = sizeof(PCBPRUEBA);
 
     t_buffer *bufferPCB;
  
