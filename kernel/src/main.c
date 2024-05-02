@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
     //send_packet(packet_handshake, cpu_dispatch_socket);
     send_packet(packet_handshake, cpu_interrupt_socket);
 
-    create_process("prueba1");
+    //create_process("prueba1");
 
     //send_packet(packetPCB, cpu_dispatch_socket);
 
@@ -285,15 +285,17 @@ void fetch_pcb_actualizado(server_socket){
     int tama; //Solo para recibir el size que esta al principio del buffer
     
     buffer = fetch_buffer(&total_size, server_socket);
-
-    offset += sizeof(int);  
+   
     memcpy(&length_motivo,buffer + offset, sizeof(int)); 
     offset += sizeof(int);  
+
+    
     
     motivo = malloc(length_motivo);
-    memcpy(motivo,buffer + offset, sizeof(length_motivo)); 
-    offset += sizeof(length_motivo);
-
+    memcpy(motivo,buffer + offset, length_motivo); //SI TENGO QUE COPIAR EL LENGTH, NO TENGO QUE PONER SIZEOF(LENGTH)
+    offset += length_motivo;        //tengo que poner directamente el length en el ultimo param de memcpy
+                                   // y lo mismo en el offset al sumarle, tengo que sumar lo que copie en memcpy
+    
     offset += sizeof(int); //Salteo El tamaño del PCB
 
     memcpy(&(PCBrec->pid),buffer + offset, sizeof(int)); //RECIBO EL PID

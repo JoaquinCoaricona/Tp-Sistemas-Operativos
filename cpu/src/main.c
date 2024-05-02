@@ -126,9 +126,16 @@ void* manage_interrupt_request(void *args)
 void manage_dispatch_request()
 {
     t_packet *packet;
+    int client_socket = wait_client(logger, "cpu_dispatch_server", server_dispatch_fd);
+    //ACA ANTES ESTE CLIENT CONNECT ESTABA DENTRO DEL WHILE, ENTONCES TENIA UN WAIT CLIENTE
+    //QUE SIEMPRE QUE EJECUTABA EL WHILE ESPERABA QUE LE MANDE UN CONNECT, PERO DEL OTRO LADO SOLO
+    //SE MANDA UNA SOLA VEZ EN EL MAIN, DESPUES LA CONEXION QUEDA ABIERTA. ENTONCES POR ESO SOLAMENTE
+    //SE EJECUTABA UNA VEZ Y DESPUES QUEDABA TRABAJO AHI EN EL WHILE PORQUE NO RECIBIA UN CONECT
+    //AHORA QUE ESTA AFUERA SOLO ESPERA UNA VEZ EL CONECT Y DESPUES EL FETCHCODOP DE ABAJO ES BLOQUEANTE
+    //PERO ES UN RECV Y ESPERA UN SEND QUE ES LO QUE LE MANDAN. Y POR ESO YA SE PUEDE PROBAR MAS DE UNA VEZ
+    
     while (1)
     {
-        int client_socket = wait_client(logger, "cpu_dispatch_server", server_dispatch_fd);
         int operation_code = fetch_codop(client_socket);
 
         switch (operation_code)
