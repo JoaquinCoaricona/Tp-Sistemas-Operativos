@@ -2,6 +2,24 @@
 int id_counter = 1;
 int pid_interrupt = 0;
 t_pcb *process_on_execute;
+
+//Loop infinito de planificacion
+void *run_short_term_scheduler(void *arg) {
+    while(1) {
+        if(string_equals_ignore_case(scheduler_algorithm, "FIFO")) {
+            short_term_scheduler_fifo();
+        }
+        else if(string_equals_ignore_case(scheduler_algorithm, "RR")) {
+            short_term_scheduler_round_robin();
+        }
+        else if(string_equals_ignore_case(scheduler_algorithm, "VRR")) {
+            short_term_scheduler_virtual_round_robin();
+        }
+    }
+
+    return NULL;
+}
+
 //FIFO
 void short_term_scheduler_fifo() {
     sem_wait(&short_term_scheduler_semaphore);
@@ -111,8 +129,11 @@ void short_term_scheduler_fifo() {
 // }
 
 void send_process(t_pcb *process) {
+
     sem_wait(&m_execute_process);
-    if(process -> state != "EXEC") {
+    executing_process = process;
+    if(strcmp(process -> state, "EXEC") != 0) {
+        log_info(logger, "PID: %d - Estado Anterior: %s - Estado Actual: %s", process -> pid, process -> state, "EXEC");
         string_append(&(process->state), "EXEC");
     }
     send_execution_context_to_CPU(process);

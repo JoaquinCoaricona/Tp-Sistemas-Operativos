@@ -9,6 +9,7 @@ int PID; //Global
 t_log *logger;
 t_pcb *pcbEJECUTANDO;
 
+int grado_multiprogramacion;
 
 int quantum;
 int main(int argc, char *argv[])
