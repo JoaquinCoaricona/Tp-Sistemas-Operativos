@@ -113,20 +113,20 @@ void short_term_scheduler_fifo() {
 
 }
 
-// //VRR
-// void short_term_scheduler_virtual_round_robin() {
-//     sem_wait(&short_term_scheduler_semaphore);
-//     sem_wait(&m_ready_queue);
 
-//     if(queue_size(queue_ready) == 0) {
-//         sem_post(&m_ready_queue);
-//         sem_post(&short_term_scheduler_semaphore);
-//         return;
-//     }
+void short_term_scheduler_virtual_round_robin() {
+    sem_wait(&short_term_scheduler_semaphore);
+    sem_wait(&m_ready_queue);
 
-//     sem_post(&m_ready_queue);
-//     sem_post(&short_term_scheduler_semaphore);
-// }
+    if(queue_size(queue_ready) == 0) {
+        sem_post(&m_ready_queue);
+        sem_post(&short_term_scheduler_semaphore);
+        return;
+    }
+
+    sem_post(&m_ready_queue);
+    sem_post(&short_term_scheduler_semaphore);
+}
 
 void send_process(t_pcb *process) {
 
