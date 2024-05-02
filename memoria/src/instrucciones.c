@@ -107,9 +107,13 @@ void leer_pseudo(int client_socket){
         ptr_inst->parametros[3] = NULL;
         ptr_inst->parametros[4] = NULL;
 
+		if(strcmp(token,"EXIT")!=0){
+
 		//token = strtok(NULL, " ");
 		token = strdup(strtok(NULL, " "));
 		int n = 0;
+		
+
 		while(token != NULL)
 		{
 			ptr_inst->parametros[n] = token;
@@ -117,6 +121,8 @@ void leer_pseudo(int client_socket){
 			n++;
 		}
 
+		}
+		
 		if(ptr_inst->parametros[0] != NULL){
 			ptr_inst->parametro1_lenght = strlen(ptr_inst->parametros[0])+1;
 		} else {
