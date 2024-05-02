@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
 
     printf("Prueba desde una Interfaz de Entrada/Salida\n");
     log_info(logger, "Logger working");
-    t_config *config = initialize_config(logger, "entradasalida.config");
+    t_config *config = initialize_config(logger, "../entradasalida.config");
 
 
     PORT_memoria = config_get_string_value(config, "PUERTO_MEMORIA");

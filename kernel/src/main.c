@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
     logger = initialize_logger("kernel.log", "kernel", true, LOG_LEVEL_INFO);
 
     // CONFIG
-    t_config *config = initialize_config(logger, "kernel.config");
+    t_config *config = initialize_config(logger, "../kernel.config");
 
     memory_PORT = config_get_string_value(config, "PUERTO_MEMORIA");
     cpu_dispatch_PORT = config_get_string_value(config, "PUERTO_CPU_DISPATCH");
