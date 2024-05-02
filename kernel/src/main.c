@@ -29,7 +29,8 @@ int main(int argc, char *argv[])
     logger = initialize_logger("kernel.log", "kernel", true, LOG_LEVEL_INFO);
 
     // CONFIG
-    t_config *config = initialize_config(logger, "../kernel.config");
+//    t_config *config = initialize_config(logger, "../kernel.config");
+    t_config *config = initialize_config(logger, "kernel.config");
 
     memory_PORT = config_get_string_value(config, "PUERTO_MEMORIA");
     cpu_dispatch_PORT = config_get_string_value(config, "PUERTO_CPU_DISPATCH");
@@ -201,20 +202,26 @@ void* manage_request_from_dispatch(void *args)
     {
         
         int operation_code = fetch_codop(server_socket);
-
+        //ACLARACION: Si yo hago fetchcodop y solo saco el codop, el resto del buffer que me mandaron
+        //sigue en el socket, entonces si cuando entro al case solo hago un imprimir y no leo el resto del buffer
+        //entonces cuando vuelva a entrar al bucle y lea fetchcodop de vuelta lo que va a hacer el leer el codop
+        //pero leyendo lo que falto deserializar del buffer y si tenia que quedar esperando no va a esperar
+        //porque el socket todavia tiene algo cargado
 
         switch (operation_code)
         {
    
         case INTERRUPCION_RTA_CON_PCB:
-            printf("Llego Un PCB    ");
+            //printf("Llego Un PCB");
+            log_info(logger,"LLEGO UN PCB");
+            fetch_pcb_actualizado(server_socket);
         break;
         case -1:
-            log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
+            //log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
             return;
 
         default:
-            log_error(logger, "Alguno error inesperado %s", server_name);
+            //log_error(logger, "Alguno error inesperado %s", server_name);
             return;
         }
     }
@@ -266,3 +273,4 @@ void create_process(char* path) {
 void end_process(){
 
 }
+

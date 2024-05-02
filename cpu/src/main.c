@@ -23,7 +23,10 @@ int main(int argc, char *argv[])
     logger = initialize_logger("cpu.log", "cpu", true, LOG_LEVEL_INFO);
 
     // CONFIG
-    t_config *config = initialize_config(logger, "../cpu.config");
+   
+   // t_config *config = initialize_config(logger, "../cpu.config");
+    t_config *config = initialize_config(logger, "cpu.config");
+   
     memory_PORT = config_get_string_value(config, "PUERTO_MEMORIA");
     dispatch_PORT = config_get_string_value(config, "PUERTO_ESCUCHA_DISPATCH");
     interrupt_PORT = config_get_string_value(config, "PUERTO_ESCUCHA_INTERRUPT");
@@ -275,7 +278,7 @@ int recibir_operacion(int client_fd)
 
 //FETCH DECODE, EXCEC y CHECK INTERRUPT
 void ciclo_de_instruccion(int socket_kernel){
-    t_pcb* PCBACTUAL  =  malloc(sizeof(t_pcb));
+    t_pcb *PCBACTUAL  =  malloc(sizeof(t_pcb));
     fetch_PCB(socket_kernel,PCBACTUAL);
     continuar_con_el_ciclo_instruccion = true;
     pid_ejecutando = PCBACTUAL->pid;
@@ -293,17 +296,17 @@ void ciclo_de_instruccion(int socket_kernel){
 			operacion_set(PCBACTUAL, instruccion_ACTUAL);
 		}
         if (strcmp(instruccion_ACTUAL->opcode, "SUM") == 0) {
-			operacion_sum(&PCBACTUAL, instruccion_ACTUAL);
+			operacion_sum(PCBACTUAL, instruccion_ACTUAL);
 
 		}
 		if (strcmp(instruccion_ACTUAL->opcode, "SUB") == 0) {
-			operacion_sub(&PCBACTUAL, instruccion_ACTUAL);
+			operacion_sub(PCBACTUAL, instruccion_ACTUAL);
 
 		}
 		if (strcmp(instruccion_ACTUAL->opcode, "JNZ") == 0) {
 
-			operacion_jnz(&PCBACTUAL, instruccion_ACTUAL);
-
+			operacion_jnz(PCBACTUAL, instruccion_ACTUAL); //PASAR EL PUNTERO DIRECTAMENTE, 
+                                        //No pasar &PCBACTUAL porque eso es la direccion del punter
 		}
         // if (strcmp(instruccion_ACTUAL->opcode, "IO_GEN_SLEEP") == 0) {
 
@@ -322,7 +325,7 @@ void ciclo_de_instruccion(int socket_kernel){
         if(hay_interrupcion_pendiente && (pid_a_desalojar == pid_ejecutando)) {
 		//  log_info(logger, "Atendiendo interrupcion a %s y devuelvo a kernel", pid_a_desalojar);
 		    continuar_con_el_ciclo_instruccion = false;
-		    devolver_a_kernel(PCBACTUAL, socket_kernel);
+		    devolver_a_kernel(PCBACTUAL, socket_kernel,"INTERRUPCION");
 		    hay_interrupcion_pendiente = false;
 	        pid_a_desalojar = 0;
 		}

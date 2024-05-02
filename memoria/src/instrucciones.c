@@ -116,10 +116,19 @@ void leer_pseudo(int client_socket){
 
 		while(token != NULL)
 		{
-			ptr_inst->parametros[n] = token;
-			token = strtok(NULL, " ");
-			n++;
-		}
+			ptr_inst->parametros[n] = token; 
+			
+			char *auxiliar;
+			auxiliar = strtok(NULL, " "); //AUXILIAR SE GUARDA EL VALOR DEL PARAMETRO
+										  //EN CASO DE QUE NO HAYA MAS Y SEA NULL 
+			if(auxiliar != NULL){		//HACE LA COMPROBACION Y si resulta que es null entonces
+			token = strdup(auxiliar);	//le pasamos el valor NULL a token asi sale del bucle
+			}else{						//y si no era null entonces le paso a token un strdup
+			token = auxiliar;		//para que se guarde el parametro en un espacio nuevo
+			}						//todo esto porque token al hacer el strtok lo hace sobre el espacio
+									//de cadena, entnoces al final cuando libero cadena si lo iguale
+			n++;	//token directamente con el strtok, cuando libere cadena pierdo lo que guarde en ptr_inst
+		}		//porque directamente le habia pasado la direccion de cadena. Por eso uso strdup
 
 		}
 		
@@ -150,6 +159,7 @@ void leer_pseudo(int client_socket){
 		}
 
 		list_add((instruccionREC->lista_de_instrucciones),ptr_inst);
+		t_instruccion_unitaria *seguro  = ptr_inst;
 		free(cadena);
 	}
 
