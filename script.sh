@@ -1,5 +1,15 @@
 #!/bin/bash
 
+# Compilar Utils
+echo "Compilando Utils"
+cd utils
+make
+if [ $? -ne 0 ]; then 
+	echo "Error al compilar Utils"
+	exit 1
+fi
+cd ..
+
 # Compilar el primer módulo
 echo "Compilando memoria..."
 cd memoria 
