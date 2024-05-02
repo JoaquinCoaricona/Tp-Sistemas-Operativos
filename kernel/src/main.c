@@ -245,7 +245,7 @@ void create_process(char* path) {
     t_pcb *PCB = initializePCB(PID); 
     PID += 1; 
     enterNew(PCB);
-    t_pcb *PCBPRUEBA;
+    t_pcb PCBPRUEBA;
     int sizePCB = sizeof(PCBPRUEBA);
 
     t_buffer *bufferPCB;
