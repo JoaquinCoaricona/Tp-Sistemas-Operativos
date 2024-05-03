@@ -134,7 +134,7 @@ void *fetch_PCB(int client_socket,t_pcb *PCBrec)
 
     memcpy(&tama,buffer2 + offset, sizeof(int)); //RECIBO EL TAMAÑO
     offset += sizeof(int);
-    
+    //comentario
 
     memcpy(&(PCBrec->pid),buffer2 + offset, sizeof(int)); //RECIBO EL PID
     offset += sizeof(int);
