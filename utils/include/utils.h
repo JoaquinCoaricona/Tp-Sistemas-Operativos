@@ -92,6 +92,15 @@ char* path;
 t_list* lista_de_instrucciones;
 }t_instrucciones;
 
+typedef struct
+{
+char *nombre;
+char *tipo;
+bool disponible;
+int socket_de_conexion;
+
+}t_interfaz_registrada;
+
 
 
 

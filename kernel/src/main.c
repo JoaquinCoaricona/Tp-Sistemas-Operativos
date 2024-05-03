@@ -8,6 +8,8 @@ int cpu_interrupt_socket;
 int PID; //Global
 t_log *logger;
 t_pcb *pcbEJECUTANDO;
+t_list *listaInterfaces;
+
 
 
 int main(int argc, char *argv[])
@@ -23,13 +25,14 @@ int main(int argc, char *argv[])
     t_buffer *buffer;
     t_packet *packet_handshake;
     PID = 0;
+    listaInterfaces = list_create();
 
 
     // LOGGER
     logger = initialize_logger("kernel.log", "kernel", true, LOG_LEVEL_INFO);
 
     // CONFIG
-//    t_config *config = initialize_config(logger, "../kernel.config");
+    //t_config *config = initialize_config(logger, "../kernel.config");
     t_config *config = initialize_config(logger, "kernel.config");
 
     memory_PORT = config_get_string_value(config, "PUERTO_MEMORIA");
@@ -132,43 +135,17 @@ void* manage_request_from_input_output(void *args)
     server_socket = arguments->fd;
     server_name = arguments->server_name;
    
-
     free(args);
-
+    int client_socket = wait_client(logger, server_name, server_socket);
+    
     while (1)
     {
-        int client_socket = wait_client(logger, server_name, server_socket);
         int operation_code = fetch_codop(client_socket);
 
         switch (operation_code)
         {
-        case HANDSHAKE_ENTRADA_SALIDA:
-        case HANDSHAKE_CPU:
-            log_info(logger, "handshake %d recibido %s",operation_code, server_name);
-            packet = fetch_packet(client_socket);
-            log_info(logger, "Packet received");
-
-            close_conection(client_socket);
-            client_socket = -1;
-            break;
-        case PCB_REC:
-            t_pcb *PCBRECB = malloc(sizeof(t_pcb));
-            log_info(logger, "PCB %d recibido %s",operation_code, server_name);
-            fetch_PCB(client_socket,PCBRECB);
-            log_info(logger, "PCB RECIBIDO PID = %d PC = %d Q = %d ESTADO = %d",PCBRECB->pid,PCBRECB->program_counter,PCBRECB->quantum,PCBRECB->state);
-            //aca arriba intente loguear lo recibido en PCBRECB
-            //aca lo que hacia era crear un puntero antes de llamar a fetch_pcb y despues igualaba ese puntero
-            //al resultado de la funcion. Eso devolvia solo la direccion pero no se podia acceder a los campos
-            //para solucionarlo habia que crear ese puntero y pasarlo como parametro directamente y que en la funcion
-            //escriban sobre ese puntero y despues ya no te devuelve nada porque le pasaste el puntero
-            close_conection(client_socket);
-            client_socket = -1;
-            break;
-        case CREAR_PROCESO:
-            
-            log_info(logger,"Se Envio Un Proceso a Crear");
-            close_conection(client_socket);
-            client_socket = -1;
+        case NUEVA_INTERFAZ:
+        recibir_interfaz(client_socket);
         break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
@@ -346,6 +323,46 @@ void fetch_pcb_actualizado(server_socket){
     free(buffer);   
     free(motivo);
 
+}
+
+void recibir_interfaz(client_socket){
+    t_interfaz_registrada *interfazNueva = malloc(sizeof(t_interfaz_registrada));
+
+    int total_size;
+    int offset = 0;
+   
+    void *buffer;
+   
+    int strlen_nombre;
+    buffer = fetch_buffer(&total_size, client_socket);
+
+    memcpy(&strlen_nombre,buffer + offset, sizeof(int)); //RECIBO EL TAMAÑO DEL NOMBRE
+    offset += sizeof(int);
+    
+    interfazNueva->nombre = malloc(strlen_nombre);
+    memcpy(&(interfazNueva->nombre),buffer + offset, strlen_nombre); //RECIBO EL NOMBRE
+    offset += strlen_nombre;
+
+    memcpy(&strlen_nombre,buffer + offset, sizeof(int)); //RECIBO EL TAMAÑO DEL TIPO INTERGAZ
+    offset += sizeof(int);
+    
+    interfazNueva->tipo = malloc(strlen_nombre);
+    memcpy(&(interfazNueva->tipo),buffer + offset, strlen_nombre); //RECIBO EL TIPO DE INTERGAZ
+    offset += strlen_nombre;
+
+    interfazNueva->disponible = true;
+    interfazNueva->socket_de_conexion = client_socket;
+
+    list_add(listaInterfaces,interfazNueva);
+
+    printf("NOMBRE DE LA INTERFAZ: %s\n",interfazNueva->nombre);
+    printf("TIPO DE INTERFAZ: %s\n",interfazNueva->tipo);
+
+    free(buffer);
+
+
+
+    
 }
 
  

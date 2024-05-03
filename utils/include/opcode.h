@@ -43,6 +43,8 @@ typedef enum
     PETICION_CPU,
     INTERRUPCION_RTA_FALLIDA,
     INTERRUPCION_RTA_CON_PCB,
+    NUEVA_INTERFAZ,
+    KERNEL_A_IO,
 
 
 } op_code;
