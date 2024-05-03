@@ -100,6 +100,7 @@ int initialize_server(t_log *logger, const char *name, char *ip, char *port)
     return server_socket;
 }
 
+
 int wait_client(t_log *logger, const char *name, int server_socket)
 {
     struct sockaddr_in client_addr;

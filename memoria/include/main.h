@@ -3,7 +3,7 @@
 
 //#include "../include/utils.h"
 #include "instrucciones.h"
-
+#include "memory_server.h"
 
 
 #endif /* MAIN_H_ */

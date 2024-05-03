@@ -6,7 +6,6 @@ int main(int argc, char *argv[])
 {
     char *PORT;
     char *IP;
-
     int MEM_SIZE;
     int PAGE_SIZE;
     t_packet *packet;

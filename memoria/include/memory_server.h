@@ -18,10 +18,7 @@
 #include <commons/log.h>
 #include <inttypes.h>
 #include <pthread.h>
-#include "protocol.h"
-#include "sockets.h"
-#include "opcode.h"
-#include "utils.h"
+#include "../include/utils.h"
 
 // STRUCTS
 

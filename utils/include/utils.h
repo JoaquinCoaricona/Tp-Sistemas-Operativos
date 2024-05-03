@@ -25,7 +25,6 @@
 #include "configs.h"
 #include "protocol.h"
 #include "opcode.h"
-#include "comunication.h"
 
 // STRUCTS
 //extern t_queue *queue_instrucciones;

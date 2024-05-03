@@ -41,8 +41,8 @@ int main(int argc, char *argv[])
     packet = create_packet(HANDSHAKE_CPU, buffer);
 
     add_to_packet(packet, buffer->stream, buffer->size);
-     packet = serialize_packet(packet, buffer->size);
-     send_packet(packet, client_fd_memoria);
+    packet = serialize_packet(packet, buffer->size);
+    send_packet(packet, client_fd_memoria);
 
     log_info(logger, "Handshake enviado");
 
@@ -76,7 +76,6 @@ void *manage_interrupt_request(void *args)
     t_process_conection_args *arguments = (t_process_conection_args *)args;
 
     // Pasa los arguments para poder crear el thread
-
     server_socket = arguments->fd;
     server_name = arguments->server_name;
 
@@ -280,11 +279,11 @@ int recibir_operacion(int client_fd)
 
 // el archivo que hay que ver es el de cpu.c en el resuelto
 
-// TODO: Cambiar por switch
 // FETCH DECODE, EXCEC y CHECK INTERRUPT
 void ciclo_de_instruccion(int socket_kernel)
 {
     t_pcb *PCBACTUAL = malloc(sizeof(t_pcb));
+
     fetch_PCB(socket_kernel, PCBACTUAL);
     continuar_con_el_ciclo_instruccion = true;
     pid_ejecutando = PCBACTUAL->pid;
@@ -293,7 +292,6 @@ void ciclo_de_instruccion(int socket_kernel)
     while (continuar_con_el_ciclo_instruccion)
     {
         // INICIO FASE FETCH
-
         instruccion_ACTUAL = pedirInstruccion(pid_ejecutando, PCBACTUAL->program_counter, client_fd_memoria);
         // log_info(logger, "Fetch Instrucción: PID: %d - FETCH - Program Counter: %d",contexto_actual->pid, contexto_actual->program_counter);
         PCBACTUAL->program_counter++;
