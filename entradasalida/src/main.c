@@ -12,11 +12,15 @@ int main(int argc, char *argv[])
     printf("PARAMETRO: %s\n",argv[1]); // NOMBRE DE LA INTERFAZ
     printf("PARAMETRO: %s\n",argv[2]); // CONFIG AL QUE LO CONECTO
     
-    //char *nombreInterfaz = argv[1];
-   // char *configRecibido = argv[2];
+    char *nombreInterfaz = argv[1];
+   char *configRecibido = argv[2];
 
-    char *nombreInterfaz = "nombre1";
-    char *configRecibido = "entradasalida.config";
+
+    // ESTO ES PARA TENER LOS NOMBRE YA PUESTOS ACA Y NO ESTAR PASANDOLOS AL LLAMAR AL EXE
+    //char *nombreInterfaz = "nombre1";
+    //char *configRecibido = "entradasalida.config";
+
+    
 
 
     char *PORT_memoria;

@@ -136,10 +136,14 @@ void* manage_request_from_input_output(void *args)
     server_name = arguments->server_name;
    
     free(args);
-    int client_socket = wait_client(logger, server_name, server_socket);
+    //EN ESTE CASO COMO LEVANTAR UNA INTERFAZ NUEVA IMPLICA QUE ESA INTERFAZ SE CONECTE
+    //Y HAGA TODO EL CONNECT CON EL SERVER DE VUELTA ENTONCES EL WAITCLIENT TIENE QUE ESTAR 
+    //DENTRO DEL WHILE PORQUE LE VA A LLEGAR UN CONNECT, NO UN SEND. PORQUE LA INTERFAZ SE LEVANTA
+    // DE CERO
     
     while (1)
     {
+        int client_socket = wait_client(logger, server_name, server_socket);
         int operation_code = fetch_codop(client_socket);
 
         switch (operation_code)
@@ -358,7 +362,8 @@ void recibir_interfaz(client_socket){
     interfazNueva->socket_de_conexion = client_socket;
 
     list_add(listaInterfaces,interfazNueva);
-
+    
+    printf("LLEGO UNA NUEVA INTERFAZ\n");
     printf("NOMBRE DE LA INTERFAZ: %s\n",interfazNueva->nombre);
     printf("TIPO DE INTERFAZ: %s\n",interfazNueva->tipo);
 
