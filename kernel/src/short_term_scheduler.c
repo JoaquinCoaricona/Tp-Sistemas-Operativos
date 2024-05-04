@@ -240,7 +240,6 @@ void send_process(t_pcb *process) {
 }
 
 void send_execution_context_to_CPU(t_pcb *process) {
-
 }
 
 t_pcb *initializePCB(int PID){

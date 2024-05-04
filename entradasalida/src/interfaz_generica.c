@@ -1,7 +1,7 @@
 #include "interfaz_generica.h"
 
 // Levantar interfaz generica
-void initialize_kernel_connection(kernel_socket)
+void initialize_kernel_connection(int kernel_socket)
 {
     char *PORT_kernel;
     char *IP_kernel;
