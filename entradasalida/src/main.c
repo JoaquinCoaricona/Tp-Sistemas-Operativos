@@ -75,8 +75,9 @@ int main(int argc, char *argv[])
     socket_kernel = create_conection(logger, IP_kernel, PORT_kernel);
     log_info(logger, "Conectado al servidor de Kernel %s:%s", IP_kernel, PORT_kernel);
     send_packet(packet, socket_kernel);
-
-      while (1)
+    
+    
+    while (1)
     {
         operation_code = fetch_codop(socket_kernel);
         switch (operation_code)

@@ -315,11 +315,11 @@ void ciclo_de_instruccion(int socket_kernel){
 			operacion_jnz(PCBACTUAL, instruccion_ACTUAL); //PASAR EL PUNTERO DIRECTAMENTE, 
                                         //No pasar &PCBACTUAL porque eso es la direccion del punter
 		}
-        // if (strcmp(instruccion_ACTUAL->opcode, "IO_GEN_SLEEP") == 0) {
-
-		// 	devolver_a_kernel(PCBACTUAL, SLEEP, socket_kernel);
-		// 	continuar_con_el_ciclo_instruccion = false;
-		// }    
+        if (strcmp(instruccion_ACTUAL->opcode, "IO_GEN_SLEEP") == 0){
+			//devolver_a_kernel(PCBACTUAL, SLEEP, socket_kernel); //esto estaba antes
+			operacion_sleep(PCBACTUAL,socket_kernel,instruccion_ACTUAL);
+            continuar_con_el_ciclo_instruccion = false;
+        }    
         if (strcmp(instruccion_ACTUAL->opcode, "EXIT") == 0) {
             
             continuar_con_el_ciclo_instruccion = false;
@@ -329,7 +329,11 @@ void ciclo_de_instruccion(int socket_kernel){
 		}   
 
         // //INICIO FASE CHECK INTERRUPT
-        if(hay_interrupcion_pendiente && (pid_a_desalojar == pid_ejecutando)) {
+        //el ultimo control del if, el de continuar con el ciclo
+        //lo puse por el caso en el que sleep haga continuar_ciclo = false y justo llegue una interrupcion
+        //porque ahi devolveria el kernel en sleep y aca devuelta y no estaria bien devolverlo dos veces
+        //ese daria true todo el tiempo pero la cosa son los otros parametros del if que controlan 
+        if(hay_interrupcion_pendiente && (pid_a_desalojar == pid_ejecutando && (continuar_con_el_ciclo_instruccion))) {
 		//  log_info(logger, "Atendiendo interrupcion a %s y devuelvo a kernel", pid_a_desalojar);
 		    continuar_con_el_ciclo_instruccion = false;
 		    devolver_a_kernel(PCBACTUAL, socket_kernel,"INTERRUPCION");

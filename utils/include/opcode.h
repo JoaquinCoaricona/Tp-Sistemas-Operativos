@@ -45,6 +45,7 @@ typedef enum
     INTERRUPCION_RTA_CON_PCB,
     NUEVA_INTERFAZ,
     KERNEL_A_IO,
+    SLEEP_IO,
 
 
 } op_code;

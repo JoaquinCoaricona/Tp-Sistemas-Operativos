@@ -145,3 +145,21 @@ void operacion_jnz(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 //IO_GEN_SLEEP (Interfaz, Unidades de trabajo): Esta instrucción solicita al Kernel que se
 //envíe a una interfaz de I/O a que realice un sleep por una cantidad de unidades de trabajo.
 
+void operacion_sleep(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
+	t_buffer *buffer_rta;
+    t_packet *packet_rta;
+    buffer_rta = create_buffer();
+    packet_rta = create_packet(SLEEP_IO,buffer_rta);
+
+	add_to_packet(packet_rta,instruccion->parametros[0], instruccion->parametro1_lenght); //CARGO EL NOMBRE DE LA INTERFAZ
+	
+	int valor = atoi(instruccion->parametros[1]);
+    add_to_packet(packet_rta,&valor,sizeof(int)); //CARGO EL NOMBRE
+
+	int tamanioPCB = sizeof(t_pcb);
+    add_to_packet(packet_rta, contexto, tamanioPCB); //CARGO EL PCB ACTUALIZADO
+	
+	send_packet(packet_rta, socket);		//ENVIO EL PAQUETE
+
+
+}
