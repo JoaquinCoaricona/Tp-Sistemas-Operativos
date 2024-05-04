@@ -198,7 +198,9 @@ void* manage_request_from_dispatch(void *args)
             fetch_pcb_actualizado(server_socket);
         break;
         case SLEEP_IO:
-            fetch_pcb_con_sleep((server_socket);
+           
+            fetch_pcb_con_sleep(server_socket,nombreInteraz,&tiempoDormir);
+           
         break;
         case -1:
             //log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
@@ -332,78 +334,6 @@ void fetch_pcb_actualizado(server_socket){
 
 }
 
-void fetch_pcb_actualizado_con_interfaz(server_socket){
-    int total_size;
-    int offset = 0;
-    t_pcb *PCBrec = malloc(sizeof(t_pcb));
-    void *buffer;
-    int length_motivo;
-    char *motivo;
-    int tama; //Solo para recibir el size que esta al principio del buffer
-    
-    buffer = fetch_buffer(&total_size, server_socket);
-   
-    memcpy(&length_motivo,buffer + offset, sizeof(int)); 
-    offset += sizeof(int);  
-
-    
-    
-    motivo = malloc(length_motivo);
-    memcpy(motivo,buffer + offset, length_motivo); //SI TENGO QUE COPIAR EL LENGTH, NO TENGO QUE PONER SIZEOF(LENGTH)
-    offset += length_motivo;        //tengo que poner directamente el length en el ultimo param de memcpy
-                                   // y lo mismo en el offset al sumarle, tengo que sumar lo que copie en memcpy
-    
-    offset += sizeof(int); //Salteo El tamaño del PCB
-
-    memcpy(&(PCBrec->pid),buffer + offset, sizeof(int)); //RECIBO EL PID
-    offset += sizeof(int);
-
-    memcpy(&(PCBrec->program_counter), buffer + offset, sizeof(int)); // RECIBO EL PROGRAM COUNTER
-    offset += sizeof(int);
-    
-    memcpy(&(PCBrec->quantum), buffer + offset, sizeof(int)); //RECIBO EL QUANTUM
-    offset += sizeof(int);
-
-    memcpy(&(PCBrec->state), buffer + offset, sizeof(t_process_state)); //RECIBO EL PROCESS STATE
-    offset += sizeof(t_process_state);
-
-    memcpy(&(PCBrec->registers.PC), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
-    offset += sizeof(uint32_t);
-    memcpy(&(PCBrec->registers.AX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
-    offset += sizeof(uint8_t);
-    memcpy(&(PCBrec->registers.BX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
-    offset += sizeof(uint8_t);
-    memcpy(&(PCBrec->registers.CX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
-    offset += sizeof(uint8_t);
-    memcpy(&(PCBrec->registers.DX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
-    offset += sizeof(uint8_t);
-    memcpy(&(PCBrec->registers.EAX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
-    offset += sizeof(uint32_t);
-    memcpy(&(PCBrec->registers.EBX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
-    offset += sizeof(uint32_t);
-    memcpy(&(PCBrec->registers.ECX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
-    offset += sizeof(uint32_t);
-    memcpy(&(PCBrec->registers.EDX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
-    offset += sizeof(uint32_t);
-    memcpy(&(PCBrec->registers.SI), buffer+ offset, sizeof(uint32_t)); //RECIBO CPUREG
-    offset += sizeof(uint32_t);
-    memcpy(&(PCBrec->registers.DI), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
-    offset += sizeof(uint32_t);
-
-   
-    log_info(logger, "Motivo Recibido : %s",motivo);
-    log_info(logger, "PID RECIBIDO : %i",PCBrec->pid);
-    log_info(logger, "PC RECIBIDO : %i",PCBrec->program_counter);
-    log_info(logger, "REGISTRO AX : %i",PCBrec->registers.AX);
-    log_info(logger, "REGISTRO BX : %i",PCBrec->registers.BX);
-
-
-
-
-    free(buffer);   
-    free(motivo);
-
-}
 
 void recibir_interfaz(client_socket){
     t_interfaz_registrada *interfazNueva = malloc(sizeof(t_interfaz_registrada));

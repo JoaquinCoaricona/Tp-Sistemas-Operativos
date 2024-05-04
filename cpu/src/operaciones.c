@@ -156,7 +156,7 @@ void operacion_sleep(t_pcb *contexto,int socket,t_instruccion_unitaria* instrucc
 	add_to_packet(packet_rta,instruccion->parametros[0], instruccion->parametro1_lenght); //CARGO EL NOMBRE DE LA INTERFAZ
 	
 	int valor = atoi(instruccion->parametros[1]);
-    add_to_packet(packet_rta,&valor,sizeof(int)); //CARGO EL NOMBRE
+    add_to_packet(packet_rta,&valor,sizeof(int)); //CARGO EL TIEMPO A DORMIR
 
 	int tamanioPCB = sizeof(t_pcb);
     add_to_packet(packet_rta, contexto, tamanioPCB); //CARGO EL PCB ACTUALIZADO
