@@ -77,7 +77,7 @@ void fetch_pcb_con_sleep(int server_socket){
     //Y SI LE INTERFAZ ESTA LIBRE SE CREA EL HILO PARA ENVIARLE EL SLEEP
 
     
-    interfazBUSCADA = nombreInteraz;
+    interfazBUSCADA = nomrebInterfaz;
     t_interfaz_registrada *interfaz = list_find(listaInterfaces,(void*)esLaInterfazBuscada);
 
     //armoProcesoPara
