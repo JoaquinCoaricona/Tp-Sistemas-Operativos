@@ -91,6 +91,12 @@ int pid;
 char* path;
 t_list* lista_de_instrucciones;
 }t_instrucciones;
+typedef struct
+{
+    t_pcb *pcb;         //esto es para esperar dentro de la cola de espera de una interfaz porque  
+    int tiempo;     //como no pude entrar al hilo directamente, en esta estructura
+                    //cuando llegue mi turno en la interaz tengo tambien el tiempo para que haga el sleep
+}t_procesoEsperando;
 
 typedef struct
 {
@@ -101,12 +107,6 @@ int socket_de_conexion;
 t_procesoEsperando *listaProcesosEsperando;  //a
 }t_interfaz_registrada;
 
-typedef struct{
-    t_pcb *pcb;         //esto es para esperar dentro de la cola de espera de una interfaz porque  
-    int tiempo;     //como no pude entrar al hilo directamente, en esta estructura
-                    //cuando llegue mi turno en la interaz tengo tambien el tiempo para que haga el sleep
-}
-t_procesoEsperando;
 
 
 
