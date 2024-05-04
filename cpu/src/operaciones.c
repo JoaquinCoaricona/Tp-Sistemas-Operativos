@@ -151,6 +151,8 @@ void operacion_sleep(t_pcb *contexto,int socket,t_instruccion_unitaria* instrucc
     buffer_rta = create_buffer();
     packet_rta = create_packet(SLEEP_IO,buffer_rta);
 
+	contexto->state = BLOCKED;
+
 	add_to_packet(packet_rta,instruccion->parametros[0], instruccion->parametro1_lenght); //CARGO EL NOMBRE DE LA INTERFAZ
 	
 	int valor = atoi(instruccion->parametros[1]);

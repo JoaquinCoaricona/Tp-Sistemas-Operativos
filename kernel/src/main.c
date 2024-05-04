@@ -197,6 +197,9 @@ void* manage_request_from_dispatch(void *args)
             log_info(logger,"LLEGO UN PCB");
             fetch_pcb_actualizado(server_socket);
         break;
+        case SLEEP_IO:
+            fetch_pcb_con_sleep((server_socket);
+        break;
         case -1:
             //log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
             return;
