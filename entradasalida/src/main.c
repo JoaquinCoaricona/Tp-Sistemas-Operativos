@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
     printf("PARAMETRO: %s\n",argv[1]); // NOMBRE DE LA INTERFAZ
     printf("PARAMETRO: %s\n",argv[2]); // CONFIG AL QUE LO CONECTO
     
-    char *nombreInterfaz = argv[1];
+   char *nombreInterfaz = argv[1];
    char *configRecibido = argv[2];
 
 

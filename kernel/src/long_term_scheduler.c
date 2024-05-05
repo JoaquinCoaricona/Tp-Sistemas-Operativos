@@ -21,6 +21,8 @@ char* scheduler_algorithm;
 
 //Asignar valores principales a colas y semaforos
 void initialize_queue_and_semaphore() {
+
+
     queue_new = queue_create();
     queue_ready = queue_create();
 		queue_block = queue_create(); //Cola de procesos bloqueados

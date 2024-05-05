@@ -1,8 +1,10 @@
 #include "recepcion.h"
 
+ sem_t procesosEsperandoIO;
 
 char *interfazBUSCADA;//HAGO ESTO PARA PODER USAR EL LIST_FIND PORQUE SOLO LE PODES PASAR UN PARAMETRO AL BOOL;
-void fetch_pcb_con_sleep(int server_socket){
+
+t_pcb *fetch_pcb_con_sleep(int server_socket,int *tiempoDormir,char *nomrebInterfaz){
     
     int total_size;
     int offset = 0;
@@ -10,8 +12,8 @@ void fetch_pcb_con_sleep(int server_socket){
     void *buffer;
     int length_nombre_inter;
     
-    char *nomrebInterfaz;
-    int tiempoDormir
+    //char *nomrebInterfaz LOS RECIBO COMO PARAMETRO PARA MODULARIZAR EN MAS FUNCIONES
+    //int tiempoDormir
     
     //tengo que crear un struct para la interfaz
     
@@ -25,7 +27,7 @@ void fetch_pcb_con_sleep(int server_socket){
     memcpy(nomrebInterfaz,buffer + offset,length_nombre_inter); //RECIBO EL NOMBRE DE LA INTERFAZ
     offset += length_nombre_inter; 
 
-    memcpy(&tiempoDormir,buffer + offset,sizeof(int)); //RECIBO EL TIEMPO A DORMIR
+    memcpy(tiempoDormir,buffer + offset,sizeof(int)); //RECIBO EL TIEMPO A DORMIR que como tengo un puntero, no pongo &
     offset += sizeof(int); 
   
     
@@ -76,24 +78,26 @@ void fetch_pcb_con_sleep(int server_socket){
     // A PARTIR DE ACA EL PCB RECIBIDO VA A ENTRAR EN LA COLA DE ESPERA DE LA INTERFAZ 
     //Y SI LE INTERFAZ ESTA LIBRE SE CREA EL HILO PARA ENVIARLE EL SLEEP
 
-    
-    interfazBUSCADA = nomrebInterfaz;
-    t_interfaz_registrada *interfaz = list_find(listaInterfaces,(void*)esLaInterfazBuscada);
-
-    //armoProcesoPara
-
-    if(interfaz->disponible == true){
-
-    }else{
-        list_add(interfaz->listaProcesosEsperando,PCBrec);
-    }
-    
-
-
-    free(buffer);   
-    free(interfazBUSCADA);   
-    
     return PCBrec;
+}
+
+t_interfaz_registrada *buscar_interfaz(char *nombreInterfaz){  
+    
+    interfazBUSCADA = nombreInterfaz;
+    t_interfaz_registrada *interfaz = list_find(listaInterfaces,(void*)esLaInterfazBuscada);
+    return interfaz;
+}
+    
+void cargarEnListaIO(t_pcb *receptorPCB,t_interfaz_registrada *interfaz,int tiempoDormir){
+    t_pcbYtiempo *agregarACola = malloc(sizeof(t_pcbYtiempo));
+    agregarACola->PCB = receptorPCB;
+    agregarACola->tiempoDormir = tiempoDormir;
+
+    pthread_mutex_lock(&(interfaz->mutexColaIO));
+    queue_push(interfaz->listaProcesosEsperando, agregarACola);
+    pthread_mutex_unlock(&(interfaz->mutexColaIO));
+
+    sem_post(&(interfaz->semaforoContadorIO)); //aca solo le hago el post porque sume un pcb a la lista
 
 }
 
@@ -102,5 +106,50 @@ bool esLaInterfazBuscada(t_interfaz_registrada *recibida){
         return true;
     }else{ 
         return false;
+    }
+}
+void crear_hilo_interfaz(t_interfaz_registrada *interfaz){
+    pthread_t hilo_manejo_io;
+    pthread_create(&hilo_manejo_io, NULL, (void* ) llamadas_io, interfaz);
+    pthread_detach(hilo_manejo_io);
+}
+
+void llamadas_io(t_interfaz_registrada *interfaz){
+
+    t_pcbYtiempo *pcbEnviado = NULL;
+    sem_t soloUnoEnvia;
+    sem_init(&(soloUnoEnvia), 0, 1); //ESTE SEMAFORO ES PARA QUE SOLO UNO HAGA EL ENVIO
+    while(1){
+        
+        t_buffer *bufferTiempoDormir;
+        t_packet *packetTiempoDormir;
+        
+        sem_wait(&(interfaz->semaforoContadorIO));//a este solo le hago signal cuando entra un Nuevo PCB, no al final de esto
+        sem_wait(&(soloUnoEnvia));
+        //aca el semaforo soloUnoEnvia lo que hace es bloquear que solo uno envie a IO, pero 
+        //el mutex de abajo es para que a la cola solo entre uno, ese es mas chico porque bloquea el acceso a la cola
+        //y si solamente uso soloUnoEnvia entonces me quedaria esperando el recv de la IO y no se podrian merter
+        //mas cosas a la cola y congelaria todo el kernel. Por eso uso dos, este que cube todo el envio y
+        //el mutex que una vez que saco lo que queria ya hace el unlock
+        
+        pthread_mutex_lock(&(interfaz->mutexColaIO));
+        pcbEnviado = queue_pop(interfaz->listaProcesosEsperando); //ENCAPSULO ENTRE DOS MUTEX SACAR DE LA COLA
+        pthread_mutex_unlock(&(interfaz->mutexColaIO));
+        
+        bufferTiempoDormir = create_buffer();
+        packetTiempoDormir = create_packet(TIEMPO_DORMIR, bufferTiempoDormir);
+        add_to_packet(packetTiempoDormir,&(pcbEnviado->tiempoDormir), sizeof(int));
+        send_packet(packetPCB,pcbEnviado->socket_de_conexion);     //armo el paquete para enviar a la IO 
+        printf("SE ENVIO TIEMPO A IO  \n ");
+          
+        int operation_code = fetch_codop(pcbEnviado->socket_de_conexion);
+        printf("IO TERMINO EL TIEMPO DE SLEEP  \n ")
+        
+        queue_push(queue_ready,pcbEnviado->PCB); //meto en ready el pcb aca hay que implementar semaforos y todo eso
+
+        
+        sem_post(&(soloUnoEnvia));
+       
+
     }
 }

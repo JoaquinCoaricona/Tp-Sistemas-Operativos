@@ -27,6 +27,7 @@ int main(int argc, char *argv[])
     PID = 0;
     listaInterfaces = list_create();
 
+    
 
     // LOGGER
     logger = initialize_logger("kernel.log", "kernel", true, LOG_LEVEL_INFO);
@@ -120,7 +121,7 @@ int main(int argc, char *argv[])
 
     levantar_consola(logger);
     return 0;
- }
+}
 
 void* manage_request_from_input_output(void *args)
 {
@@ -149,7 +150,9 @@ void* manage_request_from_input_output(void *args)
         switch (operation_code)
         {
         case NUEVA_INTERFAZ:
-        recibir_interfaz(client_socket);
+        t_interfaz_registrada *recibida = NULL;
+        recibida = recibir_interfaz(client_socket);
+        crear_hilo_interfaz(recibida); //ESTA EN RECEPCION.C CREO EL HILO 
         break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
@@ -198,9 +201,13 @@ void* manage_request_from_dispatch(void *args)
             fetch_pcb_actualizado(server_socket);
         break;
         case SLEEP_IO:
-           
-            fetch_pcb_con_sleep(server_socket,nombreInteraz,&tiempoDormir);
-           
+            t_pcb *receptorPCB = NULL;
+            t_interfaz_registrada *interfaz = NULL;
+            int tiempoDormir;
+            char *nombreInter = NULL;
+            receptorPCB = fetch_pcb_con_sleep(server_socket,&tiempoDormir,nombreInter);
+            interfaz = buscar_interfaz(nombreInter);
+            cargarEnListaIO(receptorPCB,interfaz,tiempoDormir);
         break;
         case -1:
             //log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
@@ -335,7 +342,7 @@ void fetch_pcb_actualizado(server_socket){
 }
 
 
-void recibir_interfaz(client_socket){
+t_interfaz_registrada *recibir_interfaz(client_socket){
     t_interfaz_registrada *interfazNueva = malloc(sizeof(t_interfaz_registrada));
 
     int total_size;
@@ -367,6 +374,10 @@ void recibir_interfaz(client_socket){
     interfazNueva->disponible = true;
     interfazNueva->socket_de_conexion = client_socket;
 
+    interfazNueva->listaProcesosEsperando = queue_create();
+    sem_init(&(interfazNueva->semaforoContadorIO), 0, 0); //   EL CONTADOR LO INICIO EN CERO PORQUE RECINE LLEGO LA INTERFAZ
+	pthread_mutex_init(&(interfazNueva->mutexColaIO), NULL); //EL MUTEX LO PONGO PARA CUANDO ACCEDAN A SU LISTA
+
     list_add(listaInterfaces,interfazNueva);
     
     printf("LLEGO UNA NUEVA INTERFAZ\n");
@@ -374,7 +385,7 @@ void recibir_interfaz(client_socket){
     printf("TIPO DE INTERFAZ: %s\n",interfazNueva->tipo);
 
     free(buffer);
-
+    return interfazNueva;
 
 
     
