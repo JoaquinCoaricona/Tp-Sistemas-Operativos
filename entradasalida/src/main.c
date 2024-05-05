@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
         switch (operation_code)
         {
         case TIEMPO_DORMIR:
-            tiempo = fetch_tiempoDormir(socket_kernel);
+            int tiempo = fetch_tiempoDormir(socket_kernel);
             usleep(tiempo);
             enviarAvisoAKernel(socket_kernel);
         break;
@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
 
 
 
-int fetch_tiempoDormir(socket_kernel){
+int fetch_tiempoDormir(int socket_kernel){
 
     int total_size;
     int offset = 0;
@@ -112,7 +112,7 @@ int fetch_tiempoDormir(socket_kernel){
     int tiempoSleep;
    
     void *buffer2;
-    buffer2 = fetch_buffer(&total_size, client_socket);
+    buffer2 = fetch_buffer(&total_size, socket_kernel);
 
     offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
     
@@ -123,4 +123,15 @@ int fetch_tiempoDormir(socket_kernel){
     return tiempoSleep;
 
 }
-enviarAvisoAKernel(socket_kernel)
+void enviarAvisoAKernel(int socket_kernel){
+    t_buffer *bufferRespuesta;
+    t_packet *packetRespuesta;
+
+    int hola = 1; //ENVIO ALGO PARA NO ENVIAR EL BUFFER VACIO  AVERIGUAR SI SE PUEDE ENVIAR VACIO
+    bufferRespuesta = create_buffer();
+    packetRespuesta = create_packet(CONFIRMACION_SLEEP_COMPLETO, bufferRespuesta);
+    add_to_packet(packetRespuesta,&hola, sizeof(int));
+    send_packet(packetRespuesta,socket_kernel);   
+
+    //destroy(packetRespuesta); hay que incluir esta funcion destroy
+}

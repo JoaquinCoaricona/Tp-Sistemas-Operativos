@@ -46,6 +46,7 @@ typedef enum
     NUEVA_INTERFAZ,
     SLEEP_IO,
     TIEMPO_DORMIR,
+    CONFIRMACION_SLEEP_COMPLETO,
 
 
 } op_code;
