@@ -137,7 +137,12 @@ void llamadas_io(t_interfaz_registrada *interfaz){
         send_packet(packetTiempoDormir,interfaz->socket_de_conexion);     //armo el paquete para enviar a la IO 
         printf("SE ENVIO TIEMPO A IO  \n ");
           
-        int operation_code = fetch_codop(interfaz->socket_de_conexion);
+        int operation_code = fetch_codop(interfaz->socket_de_conexion); //aca se queda bloqueante esperando la respuesta
+    
+        int total_size;
+        void *buffer2 = fetch_buffer(&total_size,interfaz->socket_de_conexion); // recibo porque puse un numero en el buffer
+        free(buffer2);                                      //para no enviarlo vacio
+        
         printf("IO TERMINO EL TIEMPO DE SLEEP  \n ");
         
         queue_push(queue_ready,pcbEnviado->PCB); //meto en ready el pcb aca hay que implementar semaforos y todo eso
