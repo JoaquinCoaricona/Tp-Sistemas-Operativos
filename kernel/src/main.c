@@ -205,7 +205,12 @@ void* manage_request_from_dispatch(void *args)
             t_interfaz_registrada *interfaz = NULL;
             int tiempoDormir;
             char *nombreInter = NULL;
-            receptorPCB = fetch_pcb_con_sleep(server_socket,&tiempoDormir,nombreInter);
+            receptorPCB = fetch_pcb_con_sleep(server_socket,&tiempoDormir,&nombreInter);
+            //ACA HABIA UN ERROR CON EL PUNTERO NOMBREINTERFAZ PORQUE
+//LE ESTABA PASANDO EL PUNTERO PERO LA COPIA, OSEA QUE NO CAMBIABA EL DE ACA Y QUEDABA EN NULL
+//Y DESPUES EN EL FIND NO PODIA COMPAARAR CON NULL. TODO POR INTENTAR SEPARAR EN FUNCIONES
+//DEL OTRO LADO RECIBO COMO PUNTERO A PUNTERO ** Y AL HACERLE EL MEMCPY 
+//DESREFERENCIO CON EL * 
             interfaz = buscar_interfaz(nombreInter);
             cargarEnListaIO(receptorPCB,interfaz,tiempoDormir);
         break;

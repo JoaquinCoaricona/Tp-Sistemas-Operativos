@@ -88,7 +88,8 @@ int main(int argc, char *argv[])
             usleep(tiempo); //falta hacer el calculo bien
             log_info(logger, "TERMINE UN SLEEP DE %i",tiempo);
             enviarAvisoAKernel(socket_kernel);
-
+            //aca antes pasaba que me decia algun error inesperado, no se porque
+            //lo debugee y empezo a funcionar, pero pasaba que se iba por el default
         break;
 
         case -1:

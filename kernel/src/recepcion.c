@@ -4,7 +4,7 @@
 
 char *interfazBUSCADA;//HAGO ESTO PARA PODER USAR EL LIST_FIND PORQUE SOLO LE PODES PASAR UN PARAMETRO AL BOOL;
 
-t_pcb *fetch_pcb_con_sleep(int server_socket,int *tiempoDormir,char *nomrebInterfaz){
+t_pcb *fetch_pcb_con_sleep(int server_socket,int *tiempoDormir,char **nomrebInterfaz){
     
     int total_size;
     int offset = 0;
@@ -23,8 +23,8 @@ t_pcb *fetch_pcb_con_sleep(int server_socket,int *tiempoDormir,char *nomrebInter
     memcpy(&length_nombre_inter,buffer + offset, sizeof(int));  //RECIBO EL LENGTH DEL NOMBRE  DE LA INTERFAZ
     offset += sizeof(int); 
 
-    nomrebInterfaz = malloc(length_nombre_inter);
-    memcpy(nomrebInterfaz,buffer + offset,length_nombre_inter); //RECIBO EL NOMBRE DE LA INTERFAZ
+    *nomrebInterfaz = malloc(length_nombre_inter);
+    memcpy(*nomrebInterfaz,buffer + offset,length_nombre_inter); //RECIBO EL NOMBRE DE LA INTERFAZ
     offset += length_nombre_inter; 
 
     offset += sizeof(int);  //me salteo el tamaño del tiempo
@@ -85,9 +85,11 @@ t_pcb *fetch_pcb_con_sleep(int server_socket,int *tiempoDormir,char *nomrebInter
 t_interfaz_registrada *buscar_interfaz(char *nombreInterfaz){  
     
     interfazBUSCADA = nombreInterfaz;
-    log_info(logger, "VALOR INTERFAZ: %s",interfazBUSCADA);
+    log_info(logger, "NOMBRE INTERFAZ BUSCADA: %s",interfazBUSCADA);
     
     t_interfaz_registrada *interfaz = list_find(listaInterfaces,(void*)esLaInterfazBuscada);
+    log_info(logger, "NOMBRE INTERFAZ OBTENIDA: %s",interfaz->nombre);
+    
     return interfaz;
 }
     
@@ -138,15 +140,20 @@ void llamadas_io(t_interfaz_registrada *interfaz){
         packetTiempoDormir = create_packet(TIEMPO_DORMIR, bufferTiempoDormir);
         add_to_packet(packetTiempoDormir,&(pcbEnviado->tiempoDormir), sizeof(int));
         send_packet(packetTiempoDormir,interfaz->socket_de_conexion);     //armo el paquete para enviar a la IO 
-        printf("SE ENVIO TIEMPO A IO  \n ");
-          
+        log_info(logger, "SE ENVIO SLEEP DE %i A LA INTERFAZ: %s\n",pcbEnviado->tiempoDormir,interfaz->nombre); 
         int operation_code = fetch_codop(interfaz->socket_de_conexion); //aca se queda bloqueante esperando la respuesta
     
         int total_size;
         void *buffer2 = fetch_buffer(&total_size,interfaz->socket_de_conexion); // recibo porque puse un numero en el buffer
-        free(buffer2);                                      //para no enviarlo vacio
+        free(buffer2);  
+                            //para no enviarlo vacio
         
-        printf("IO TERMINO EL TIEMPO DE SLEEP  \n ");
+        if(operation_code == CONFIRMACION_SLEEP_COMPLETO){
+        log_info(logger, "%s CONFIRMA CODIGO FIN SLEEP\n",interfaz->nombre); 
+
+        }                                    
+        log_info(logger, "LA INTERFAZ: %s TERMINO SLEEP DE : %i\n",interfaz->nombre,pcbEnviado->tiempoDormir); 
+
         
         queue_push(queue_ready,pcbEnviado->PCB); //meto en ready el pcb aca hay que implementar semaforos y todo eso
 
