@@ -108,11 +108,6 @@ bool esLaInterfazBuscada(t_interfaz_registrada *recibida){
         return false;
     }
 }
-void crear_hilo_interfaz(t_interfaz_registrada *interfaz){
-    pthread_t hilo_manejo_io;
-    pthread_create(&hilo_manejo_io, NULL, (void* ) llamadas_io, interfaz);
-    pthread_detach(hilo_manejo_io);
-}
 
 void llamadas_io(t_interfaz_registrada *interfaz){
 
@@ -139,11 +134,11 @@ void llamadas_io(t_interfaz_registrada *interfaz){
         bufferTiempoDormir = create_buffer();
         packetTiempoDormir = create_packet(TIEMPO_DORMIR, bufferTiempoDormir);
         add_to_packet(packetTiempoDormir,&(pcbEnviado->tiempoDormir), sizeof(int));
-        send_packet(packetPCB,pcbEnviado->socket_de_conexion);     //armo el paquete para enviar a la IO 
+        send_packet(packetTiempoDormir,interfaz->socket_de_conexion);     //armo el paquete para enviar a la IO 
         printf("SE ENVIO TIEMPO A IO  \n ");
           
-        int operation_code = fetch_codop(pcbEnviado->socket_de_conexion);
-        printf("IO TERMINO EL TIEMPO DE SLEEP  \n ")
+        int operation_code = fetch_codop(interfaz->socket_de_conexion);
+        printf("IO TERMINO EL TIEMPO DE SLEEP  \n ");
         
         queue_push(queue_ready,pcbEnviado->PCB); //meto en ready el pcb aca hay que implementar semaforos y todo eso
 
@@ -152,4 +147,10 @@ void llamadas_io(t_interfaz_registrada *interfaz){
        
 
     }
+}
+
+void crear_hilo_interfaz(t_interfaz_registrada *interfaz){
+    pthread_t hilo_manejo_io;
+    pthread_create(&hilo_manejo_io, NULL, (void* ) llamadas_io, interfaz);
+    pthread_detach(hilo_manejo_io);
 }

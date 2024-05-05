@@ -1,24 +1,24 @@
 #include "short_term_scheduler.h"
 int id_counter = 1;
 
-//FIFO
-void short_term_scheduler_fifo() {
-    sem_wait(&short_term_scheduler_semaphore);
-    sem_wait(&m_ready_queue);
+// //FIFO
+// void short_term_scheduler_fifo() {
+//     sem_wait(&short_term_scheduler_semaphore);
+//     sem_wait(&m_ready_queue);
 
-    if(queue_size(queue_ready) == 0) {
-        sem_post(&m_ready_queue);
-        sem_post(&short_term_scheduler_semaphore);
-        return;
-    }
+//     if(queue_size(queue_ready) == 0) {
+//         sem_post(&m_ready_queue);
+//         sem_post(&short_term_scheduler_semaphore);
+//         return;
+//     }
 
-    t_pcb *process = queue_pop(queue_ready);
-    //TODO: Enviar lista de procesos a cpu
+//     t_pcb *process = queue_pop(queue_ready);
+//     //TODO: Enviar lista de procesos a cpu
 
-    send_process(process);
-    sem_post(&m_ready_queue);
-    sem_post(&short_term_scheduler_semaphore);
-}
+//     send_process(process);
+//     sem_post(&m_ready_queue);
+//     sem_post(&short_term_scheduler_semaphore);
+// }
 
 // //RR
 // void short_term_scheduler_round_robin() {
@@ -50,14 +50,14 @@ void short_term_scheduler_fifo() {
 //     sem_post(&short_term_scheduler_semaphore);
 // }
 
-void send_process(t_pcb *process) {
-    sem_wait(&m_execute_process);
-    if(process -> state != "EXEC") {
-        string_append(&(process->state), "EXEC");
-    }
-    send_execution_context_to_CPU(process);
-    sem_post(&m_execute_process);
-}
+// void send_process(t_pcb *process) {
+//     sem_wait(&m_execute_process);
+//     if(process -> state != "EXEC") {
+//         string_append(&(process->state), "EXEC");
+//     }
+//     send_execution_context_to_CPU(process);
+//     sem_post(&m_execute_process);
+// }
 
 void send_execution_context_to_CPU(t_pcb *process) {
 

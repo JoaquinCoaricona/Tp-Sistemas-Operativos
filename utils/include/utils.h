@@ -25,6 +25,7 @@
 #include "configs.h"
 #include "protocol.h"
 #include "opcode.h"
+#include <semaphore.h>
 #include "comunication.h"
 
 // STRUCTS

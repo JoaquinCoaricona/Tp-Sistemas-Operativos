@@ -3,14 +3,14 @@
 #include "../include/utils.h"
 #include "recepcion.h"
 
-extern t_list* listaInterfaces;
 
+extern t_queue* queue_ready;
 
 
 void* manage_request_from_input_output(void *args);
 void* manage_request_from_dispatch(void *args);
 void create_process(char* path);
 void end_process();
-t_interfaz_registrada *recibir_interfaz(client_socket);
+t_interfaz_registrada *recibir_interfaz(int client_socket);
 
 #endif /* MAIN_H_ */
