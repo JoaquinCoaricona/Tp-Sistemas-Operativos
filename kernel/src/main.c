@@ -210,11 +210,11 @@ void* manage_request_from_dispatch(void *args)
             cargarEnListaIO(receptorPCB,interfaz,tiempoDormir);
         break;
         case -1:
-            //log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
+            log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
             return;
 
         default:
-            //log_error(logger, "Alguno error inesperado %s", server_name);
+            log_error(logger, "Alguno error inesperado %s", server_name);
             return;
         }
     }

@@ -27,6 +27,7 @@ t_pcb *fetch_pcb_con_sleep(int server_socket,int *tiempoDormir,char *nomrebInter
     memcpy(nomrebInterfaz,buffer + offset,length_nombre_inter); //RECIBO EL NOMBRE DE LA INTERFAZ
     offset += length_nombre_inter; 
 
+    offset += sizeof(int);  //me salteo el tamaño del tiempo
     memcpy(tiempoDormir,buffer + offset,sizeof(int)); //RECIBO EL TIEMPO A DORMIR que como tengo un puntero, no pongo &
     offset += sizeof(int); 
   
@@ -84,6 +85,8 @@ t_pcb *fetch_pcb_con_sleep(int server_socket,int *tiempoDormir,char *nomrebInter
 t_interfaz_registrada *buscar_interfaz(char *nombreInterfaz){  
     
     interfazBUSCADA = nombreInterfaz;
+    log_info(logger, "VALOR INTERFAZ: %s",interfazBUSCADA);
+    
     t_interfaz_registrada *interfaz = list_find(listaInterfaces,(void*)esLaInterfazBuscada);
     return interfaz;
 }
