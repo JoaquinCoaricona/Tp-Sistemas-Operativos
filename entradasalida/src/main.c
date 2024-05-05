@@ -2,6 +2,7 @@
 
 int socket_kernel;
 int socket_memoria ;
+t_log *logger;
 
 int main(int argc, char *argv[])
 {   
@@ -34,7 +35,6 @@ int main(int argc, char *argv[])
 
 
 
-    t_log *logger;
     logger = initialize_logger("entradasalida.log", "entradasalida", true, LOG_LEVEL_INFO);
 
     printf("Prueba desde una Interfaz de Entrada/Salida\n");
@@ -84,8 +84,11 @@ int main(int argc, char *argv[])
         {
         case TIEMPO_DORMIR:
             int tiempo = fetch_tiempoDormir(socket_kernel);
-            usleep(tiempo);
+            log_info(logger, "RECIBI UN SLEEP DE %i",tiempo);
+            usleep(tiempo); //falta hacer el calculo bien
+            log_info(logger, "TERMINE UN SLEEP DE %i",tiempo);
             enviarAvisoAKernel(socket_kernel);
+
         break;
 
         case -1:
