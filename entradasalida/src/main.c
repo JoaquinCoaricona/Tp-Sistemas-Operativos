@@ -82,9 +82,10 @@ int main(int argc, char *argv[])
         operation_code = fetch_codop(socket_kernel);
         switch (operation_code)
         {
-        case KERNEL_A_IO:
-            //sleepTime = fetch_packet(kernel_socket);
-            //usleep(tiempo);
+        case TIEMPO_DORMIR:
+            tiempo = fetch_tiempoDormir(socket_kernel);
+            usleep(tiempo);
+            enviarAvisoAKernel(socket_kernel);
         break;
 
         case -1:
@@ -100,10 +101,26 @@ int main(int argc, char *argv[])
         }
     }
 }
-    //}
 
 
 
+int fetch_tiempoDormir(socket_kernel){
 
- 
+    int total_size;
+    int offset = 0;
 
+    int tiempoSleep;
+   
+    void *buffer2;
+    buffer2 = fetch_buffer(&total_size, client_socket);
+
+    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
+    
+    memcpy(&tiempoSleep,buffer2 + offset, sizeof(int)); //RECIBO EL TAMAÑO
+    
+
+    free(buffer2);
+    return tiempoSleep;
+
+}
+enviarAvisoAKernel(socket_kernel)
