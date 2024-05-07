@@ -3,7 +3,8 @@
 #include "../include/utils.h"
 #include "recepcion.h"
 
-
+extern t_log *logger;
+extern int gradoMultiprogramacion;
 extern t_queue* queue_ready;
 
 

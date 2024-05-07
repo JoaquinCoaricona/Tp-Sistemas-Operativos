@@ -11,7 +11,7 @@ extern t_queue* queue_exit;
 extern t_queue* queue_block;
 extern char* scheduler_algorithm;
 
-void enterNew(t_pcb *pcb);
+void agregarANew(t_pcb *pcb);
 
 void initialize_queue_and_semaphore();
 void create_process(char* path);

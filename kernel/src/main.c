@@ -9,6 +9,7 @@ int PID; //Global
 t_log *logger;
 t_pcb *pcbEJECUTANDO;
 t_list *listaInterfaces;
+int gradoMultiprogramacion;
 
 
 
@@ -43,7 +44,8 @@ int main(int argc, char *argv[])
     cpu_IP = config_get_string_value(config, "IP_CPU");
     memory_IP = config_get_string_value(config, "IP_MEMORIA"); //! Averiguar se deberia estar
     kernel_IP = config_get_string_value(config, "IP_MEMORIA");// hay que ver si se tiene que cambiar a futuro pero en el archivo de configuración no hay una ip de kernel
-   
+    gradoMultiprogramacion = atoi(config_get_string_value(config, "GRADO_MULTIPROGRAMACION"));
+    
     //PRUEBAAAA
     initialize_queue_and_semaphore();
 
@@ -248,7 +250,7 @@ void create_process(char* path) {
     
     //CREACION DE UN NUEVO PROCESO
     t_pcb *PCB = initializePCB(PID); 
-    enterNew(PCB);
+    agregarANew(PCB);
     t_pcb PCBPRUEBA;
     int sizePCB = sizeof(PCBPRUEBA);
 
@@ -260,6 +262,9 @@ void create_process(char* path) {
                 //lleguen con el mismo pid, sino llegaba uno con uno y el otro con +1
                 
     sleep(3);
+
+
+    
     
     //ENVIAR PCB esto en realidad se deberia hacer cuando le toque ejecturse
     bufferPCB = create_buffer();
