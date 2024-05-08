@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
     memory_IP = config_get_string_value(config, "IP_MEMORIA"); //! Averiguar se deberia estar
     kernel_IP = config_get_string_value(config, "IP_MEMORIA");// hay que ver si se tiene que cambiar a futuro pero en el archivo de configuración no hay una ip de kernel
     gradoMultiprogramacion = atoi(config_get_string_value(config, "GRADO_MULTIPROGRAMACION"));
-    
+
     //PRUEBAAAA
     initialize_queue_and_semaphore();
 
@@ -251,26 +251,26 @@ void create_process(char* path) {
     //CREACION DE UN NUEVO PROCESO
     t_pcb *PCB = initializePCB(PID); 
     agregarANew(PCB);
-    t_pcb PCBPRUEBA;
-    int sizePCB = sizeof(PCBPRUEBA);
+    // t_pcb PCBPRUEBA;
+    // int sizePCB = sizeof(PCBPRUEBA);
 
-    t_buffer *bufferPCB;
+    // t_buffer *bufferPCB;
  
-    t_packet *packetPCB;
+    // t_packet *packetPCB;
     enviar_path_a_memoria(path);
     PID += 1;  // CAMBIO DE ORDEN, primer creo el pcb y envio a memoria y despues sumo el pid. PARA QUE a cpu y memoria
                 //lleguen con el mismo pid, sino llegaba uno con uno y el otro con +1
                 
     sleep(3);
 
-
+    sem_wait(&sem_hay_pcb_esperando_ready);
     
     
-    //ENVIAR PCB esto en realidad se deberia hacer cuando le toque ejecturse
-    bufferPCB = create_buffer();
-    packetPCB = create_packet(PCB_REC, bufferPCB);
-    add_to_packet(packetPCB, PCB, sizePCB);
-    send_packet(packetPCB, cpu_dispatch_socket);
+    // //ENVIAR PCB esto en realidad se deberia hacer cuando le toque ejecturse
+    // bufferPCB = create_buffer();
+    // packetPCB = create_packet(PCB_REC, bufferPCB);
+    // add_to_packet(packetPCB, PCB, sizePCB);
+    // send_packet(packetPCB, cpu_dispatch_socket);
 }
 
 void end_process(){

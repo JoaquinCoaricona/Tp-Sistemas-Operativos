@@ -18,6 +18,7 @@ void create_process(char* path);
 void end_process();
 void long_term_scheduler();
 
+
 extern sem_t m_execute_process;
 extern sem_t short_term_scheduler_semaphore;
 extern sem_t m_ready_queue;

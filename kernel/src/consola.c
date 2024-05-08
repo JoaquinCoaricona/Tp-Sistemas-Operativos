@@ -68,3 +68,4 @@ void levantar_consola(t_log *logger) {
 		free(linea);
 	}
 }
+

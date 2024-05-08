@@ -1,26 +1,25 @@
 #include "short_term_scheduler.h"
 int id_counter = 1;
 
-// //FIFO
-// void short_term_scheduler_fifo() {
-//     sem_wait(&short_term_scheduler_semaphore);
-//     sem_wait(&m_ready_queue);
+//FIFO
+void planificador_corto_plazo_FIFO() {      
+    
+    sem_wait(&short_term_scheduler_semaphore);//esto es para despertar al planificador de corto plazo
+    //aca falta el semaforo de corto plazo para el detener planificacion
+     
+    pthread_mutex_lock(&mutex_state_ready;
+    t_pcb *proceso = queue_pop(queue_ready); //semaforo mutex para entrar a la lista de READY
+    pthread_mutex_unlock(&mutex_state_ready;
 
-//     if(queue_size(queue_ready) == 0) {
-//         sem_post(&m_ready_queue);
-//         sem_post(&short_term_scheduler_semaphore);
-//         return;
-//     }
+    proceso->state = EXEC;
+    log_info(logger, "Cambio De Estado Proceso %d a %s\n", proceso->pid,proceso->state);
+    
+    enviar_proceso_cpu(proceso);
+ 
+ }
 
-//     t_pcb *process = queue_pop(queue_ready);
-//     //TODO: Enviar lista de procesos a cpu
 
-//     send_process(process);
-//     sem_post(&m_ready_queue);
-//     sem_post(&short_term_scheduler_semaphore);
-// }
-
-// //RR
+// //Round Robin
 // void short_term_scheduler_round_robin() {
 //     sem_wait(&short_term_scheduler_semaphore);
 //     sem_wait(&m_ready_queue);
@@ -59,9 +58,22 @@ int id_counter = 1;
 //     sem_post(&m_execute_process);
 // }
 
-void send_execution_context_to_CPU(t_pcb *process) {
+void enviar_proceso_cpu(t_pcb *proceso) {
+
+
+    t_pcb PCBPRUEBA;
+    int sizePCB = sizeof(PCBPRUEBA);
+
+    t_buffer *bufferPCB;
+    t_packet *packetPCB;
+    
+    bufferPCB = create_buffer();
+    packetPCB = create_packet(PCB_REC, bufferPCB);
+    add_to_packet(packetPCB,proceso, sizePCB);
+    send_packet(packetPCB, cpu_dispatch_socket);
 
 }
+
 
 t_pcb *initializePCB(int PID){
         t_pcb *pcb = malloc(sizeof(t_pcb));

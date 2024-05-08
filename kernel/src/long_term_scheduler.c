@@ -34,6 +34,8 @@ void initialize_queue_and_semaphore() {
     sem_init(&sem_multiprogramacion,0,gradoMultiprogramacion);//aca hay que poner en el segundo cero el grado de multipprogramacion
     sem_init(&m_ready_queue, 0, 1);
     pthread_mutex_init(&mutex_state_new, NULL);
+    pthread_mutex_init(&mutex_state_ready, NULL);
+
 
 }
 
@@ -51,7 +53,7 @@ void agregarANew(t_pcb *pcb) //t_log *logger
 	pthread_mutex_unlock(&mutex_state_new);
 
 	log_info(logger, "Se agrega el proceso: %d a new \n", pcb->pid);
-	//sem_post(&sem_hay_pcb_esperando_ready); SEMAFORO CONTADOR
+	sem_post(&sem_hay_pcb_esperando_ready); //SEMAFORO CONTADOR
 }
 
 //saca uno de NEW y lo devuelve, que seria el que iria a READY
@@ -77,7 +79,8 @@ void Aready()
 {
 	while (1)
 	{
-    	sem_wait(&sem_hay_pcb_esperando_ready); //controla que haya pcbs en ready
+ 
+		sem_wait(&sem_hay_pcb_esperando_ready); //controla que haya pcbs esperando entrar ready
     	sem_wait(&sem_multiprogramacion);//controla que se cumpla con los hilos de multiprogramacion, se va restando hasta
         //que llegue a 0 y ahi se bloquea y el signal lo haces cuando un proceso finaliza 
 
@@ -89,5 +92,6 @@ void Aready()
     	log_info(logger, "Se elimino el proceso %d de New y se agrego a Ready", pcb->id);
 
     	sem_post(&sem_ready); //esto indicaria que hay uno mas en ready pero hay que hacer la declaracion del semaforo
+	
 	}
 }

@@ -7,6 +7,8 @@ extern t_log *logger;
 extern int gradoMultiprogramacion;
 extern t_queue* queue_ready;
 
+extern int cpu_dispatch_socket;
+
 
 void* manage_request_from_input_output(void *args);
 void* manage_request_from_dispatch(void *args);

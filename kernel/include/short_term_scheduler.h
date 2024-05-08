@@ -12,7 +12,7 @@ extern int id_counter;
 //Iniciar PCB
 t_pcb *initializePCB();
 //FIFO
-void short_term_scheduler_fifo();
+void planificador_corto_plazo_FIFO();
 
 //RR
 void short_term_scheduler_round_robin();
