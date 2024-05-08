@@ -383,12 +383,12 @@ void recibir_interrupcion(int socket_kernel) {
 
 	if(!continuar_con_el_ciclo_instruccion){//si no hay nadie ejecutando
 		hay_interrupcion_pendiente = false;
-        pid_a_desalojar = 0;
+        pid_a_desalojar = -1;
 		responder_a_kernel("NO hay nadie", socket_kernel);
         
     }else if(pid_ejecutando && pid_a_desalojar != pid_ejecutando ){//si esta ejecutando otro proceso del que hay que desalojar
 		hay_interrupcion_pendiente = false;
-		pid_a_desalojar = 0;
+		pid_a_desalojar = -1;
 		responder_a_kernel("El proceso ya fue desalojado, esta ejecutando otro proceso", socket_kernel);
 	}
 

@@ -63,12 +63,28 @@ void manejoHiloQuantum(void *pcb){
     usleep(1000 * quantumGlobal)
 
     if(procesoEjectuandoActualmente == proceso->pid){
-        enviarInterrupcion();
+        char *motivo = "Fin de Quantum";
+        enviarInterrupcion(motivo,pcb->pid);
     }
     
     
     free(pcb);
    
+}
+
+void enviarInterrupcion(char *motivo, int pid){
+   
+
+    t_buffer *bufferINTERRUPCION;
+    t_packet *packetINTERRUPCION;
+    
+    bufferINTERRUPCION = create_buffer();
+    packetINTERRUPCION = create_packet(INTERRUPCION, bufferINTERRUPCION);
+    add_to_packet(packetINTERRUPCION,motivo,(strlen(motivo)+1));
+    add_to_packet(packetINTERRUPCION,pid,sizeof(int));
+
+    send_packet(packetINTERRUPCION, cpu_interrupt_socket);
+
 }
 
 // //VRR
