@@ -7,9 +7,9 @@ void planificador_corto_plazo_FIFO() {
     sem_wait(&short_term_scheduler_semaphore);//esto es para despertar al planificador de corto plazo
     //aca falta el semaforo de corto plazo para el detener planificacion
      
-    pthread_mutex_lock(&mutex_state_ready;
+    pthread_mutex_lock(&mutex_state_ready);
     t_pcb *proceso = queue_pop(queue_ready); //semaforo mutex para entrar a la lista de READY
-    pthread_mutex_unlock(&mutex_state_ready;
+    pthread_mutex_unlock(&mutex_state_ready);
 
     proceso->state = EXEC;
     log_info(logger, "Cambio De Estado Proceso %d a %s\n", proceso->pid,proceso->state);
@@ -19,15 +19,31 @@ void planificador_corto_plazo_FIFO() {
  }
 
 
-////Round Robin
+void manejoHiloQuantum(void *pcb){
+
+    t_quantum *proceso = (t_quantum *)pcb;
+    
+    usleep(1000 * quantumGlobal);
+
+    if(procesoEjectuandoActualmente == proceso->pid){
+        char *motivo = "Fin de Quantum";
+        enviarInterrupcion(motivo,proceso->pid);
+    }
+    
+    free(pcb);
+    pthread_cancel(pthread_self());
+   
+}
+
+//Round Robin
     void short_term_scheduler_round_robin() {
     
     sem_wait(&short_term_scheduler_semaphore);//esto es para despertar al planificador de corto plazo
     //aca falta el semaforo de corto plazo para el detener planificacion
     
-    pthread_mutex_lock(&mutex_state_ready;
+    pthread_mutex_lock(&mutex_state_ready);
     t_pcb *proceso = queue_pop(queue_ready); //semaforo mutex para entrar a la lista de READY
-    pthread_mutex_unlock(&mutex_state_ready;
+    pthread_mutex_unlock(&mutex_state_ready);
 
     proceso->state = EXEC;
     log_info(logger, "Cambio De Estado Proceso %d a %s\n", proceso->pid,proceso->state);
@@ -45,32 +61,9 @@ void planificador_corto_plazo_FIFO() {
     pthread_detach(hiloQuantum);
 
 
-
-
-
-    enviarInterrupcionQuantum();
-    
-
-
-
 }
 
 
-void manejoHiloQuantum(void *pcb){
-
-    t_quantum *proceso = (t_quantum *)pcb;
-    proceso->pid = pcb->pid;
-    usleep(1000 * quantumGlobal)
-
-    if(procesoEjectuandoActualmente == proceso->pid){
-        char *motivo = "Fin de Quantum";
-        enviarInterrupcion(motivo,pcb->pid);
-    }
-    
-    
-    free(pcb);
-   
-}
 
 void enviarInterrupcion(char *motivo, int pid){
    
@@ -84,7 +77,7 @@ void enviarInterrupcion(char *motivo, int pid){
     add_to_packet(packetINTERRUPCION,pid,sizeof(int));
 
     send_packet(packetINTERRUPCION, cpu_interrupt_socket);
-
+    destroy_packet(packetINTERRUPCION);
 }
 
 // //VRR

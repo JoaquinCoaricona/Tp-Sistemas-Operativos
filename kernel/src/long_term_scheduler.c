@@ -89,7 +89,7 @@ void Aready()
     	t_pcb *pcb = obtenerSiguienteAready();
 		pcb->state = READY;
     	addEstadoReady(pcb);
-    	log_info(logger, "Se elimino el proceso %d de New y se agrego a Ready", pcb->id);
+    	log_info(logger, "Se elimino el proceso %d de New y se agrego a Ready", pcb->pid);
 
     	sem_post(&sem_ready); //esto indicaria que hay uno mas en ready pero hay que hacer la declaracion del semaforo
 	

@@ -3,7 +3,7 @@
 
 #include "../include/utils.h"
 #include "../include/long_term_scheduler.h"
-#include "../include/short_term_scheduler.h"
+
 #include <sys/types.h>
 #include <unistd.h>
 
