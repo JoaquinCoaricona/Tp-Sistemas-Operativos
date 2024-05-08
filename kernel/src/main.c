@@ -10,7 +10,7 @@ t_log *logger;
 t_pcb *pcbEJECUTANDO;
 t_list *listaInterfaces;
 int gradoMultiprogramacion;
-
+int quantumGlobal;
 
 
 int main(int argc, char *argv[])
@@ -27,7 +27,6 @@ int main(int argc, char *argv[])
     t_packet *packet_handshake;
     PID = 0;
     listaInterfaces = list_create();
-
     
 
     // LOGGER
@@ -45,17 +44,11 @@ int main(int argc, char *argv[])
     memory_IP = config_get_string_value(config, "IP_MEMORIA"); //! Averiguar se deberia estar
     kernel_IP = config_get_string_value(config, "IP_MEMORIA");// hay que ver si se tiene que cambiar a futuro pero en el archivo de configuración no hay una ip de kernel
     gradoMultiprogramacion = atoi(config_get_string_value(config, "GRADO_MULTIPROGRAMACION"));
+    quantumGlobal = atoi(config_get_string_value(config, "QUANTUM"));
 
     //PRUEBAAAA
     initialize_queue_and_semaphore();
 
-    //Iniciar Proceso
-    //create_process("src/programa1.txt");
-    //create_process("src/programa2.txt");
-
-
-    
-    
     // Conect to server
     memory_socket = create_conection(logger, memory_IP, memory_PORT);
     log_info(logger, "Conectado al servidor de memoria %s:%s", memory_IP, memory_PORT);
@@ -64,20 +57,7 @@ int main(int argc, char *argv[])
     buffer = create_buffer();
     packet_handshake = create_packet(HANDSHAKE_KERNEL,buffer);
 
-    //printf("TAMAÑO %i",sizeof(*PCB));
-
-
-
-    // int tamanioPCB = sizeof(PRUEBA);
-    // ENVIAR PCB
-    // bufferPCB = create_buffer();
-    // packetPCB = create_packet(PCB_REC, bufferPCB);
-    // add_to_packet(packetPCB, PCB, tamanioPCB);
-
-   
-    
-
-    add_to_packet(packet_handshake, buffer->stream, buffer->size);
+     add_to_packet(packet_handshake, buffer->stream, buffer->size);
     //packet = serialize_packet(packet, buffer->size);
     //send_packet(packet_handshake, memory_socket);
 

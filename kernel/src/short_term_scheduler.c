@@ -19,20 +19,29 @@ void planificador_corto_plazo_FIFO() {
  }
 
 
-// //Round Robin
-// void short_term_scheduler_round_robin() {
-//     sem_wait(&short_term_scheduler_semaphore);
-//     sem_wait(&m_ready_queue);
+////Round Robin
+    void short_term_scheduler_round_robin() {
+    
+    sem_wait(&short_term_scheduler_semaphore);//esto es para despertar al planificador de corto plazo
+    //aca falta el semaforo de corto plazo para el detener planificacion
+    
+    pthread_mutex_lock(&mutex_state_ready;
+    t_pcb *proceso = queue_pop(queue_ready); //semaforo mutex para entrar a la lista de READY
+    pthread_mutex_unlock(&mutex_state_ready;
 
-//     if(queue_size(queue_ready) == 0) {
-//         sem_post(&m_ready_queue);
-//         sem_post(&short_term_scheduler_semaphore);
-//         return;
-//     }
+    proceso->state = EXEC;
+    log_info(logger, "Cambio De Estado Proceso %d a %s\n", proceso->pid,proceso->state);
 
-//     sem_post(&m_ready_queue);
-//     sem_post(&short_term_scheduler_semaphore);
-// }
+    enviar_proceso_cpu(proceso); //envio el proceso
+
+    usleep(quantumGlobal*1000) //hago el sleep para el quantum
+
+    enviarInterrupcionQuantum();
+
+
+
+
+}
 
 // //VRR
 // void short_term_scheduler_virtual_round_robin() {
