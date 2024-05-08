@@ -11,7 +11,7 @@ t_pcb *pcbEJECUTANDO;
 t_list *listaInterfaces;
 int gradoMultiprogramacion;
 int quantumGlobal;
-
+int procesoEjectuandoActualmente;
 
 int main(int argc, char *argv[])
 {

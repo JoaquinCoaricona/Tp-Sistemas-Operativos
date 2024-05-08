@@ -36,6 +36,12 @@ typedef struct
     char *server_name;
 } t_process_conection_args;
 
+typedef struct{
+    int pid;
+    int quantum;
+    
+} t_quantum;
+
 // Function declarations
 
 /**

@@ -15,7 +15,7 @@ void planificador_corto_plazo_FIFO() {
     log_info(logger, "Cambio De Estado Proceso %d a %s\n", proceso->pid,proceso->state);
     
     enviar_proceso_cpu(proceso);
- 
+
  }
 
 
@@ -32,15 +32,43 @@ void planificador_corto_plazo_FIFO() {
     proceso->state = EXEC;
     log_info(logger, "Cambio De Estado Proceso %d a %s\n", proceso->pid,proceso->state);
 
+    procesoEjectuandoActualmente = proceso->pid;
     enviar_proceso_cpu(proceso); //envio el proceso
+        
+    pthread_t hiloQuantum;
+    t_quantum *quatnumHilo = malloc(sizeof(t_quantum));
+    quatnumHilo->pid = proceso->pid;
+    
+    //Aca no es necesario pasarle un quantum porque hay un quantum Global
 
-    usleep(quantumGlobal*1000) //hago el sleep para el quantum
+    pthread_create(&hiloQuantum,NULL,manejoHiloQuantum,quatnumHilo);
+    pthread_detach(hiloQuantum);
+
+
+
+
 
     enviarInterrupcionQuantum();
+    
 
 
 
+}
 
+
+void manejoHiloQuantum(void *pcb){
+
+    t_quantum *proceso = (t_quantum *)pcb;
+    proceso->pid = pcb->pid;
+    usleep(1000 * quantumGlobal)
+
+    if(procesoEjectuandoActualmente == proceso->pid){
+        enviarInterrupcion();
+    }
+    
+    
+    free(pcb);
+   
 }
 
 // //VRR
