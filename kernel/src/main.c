@@ -1,6 +1,5 @@
 #include "main.h"
-#include "short_term_scheduler.h"
-#include "long_term_scheduler.h"
+
 
 int memory_socket;
 int cpu_dispatch_socket;
@@ -12,7 +11,7 @@ t_list *listaInterfaces;
 int gradoMultiprogramacion;
 int quantumGlobal;
 int procesoEjectuandoActualmente;
-
+char *algoritmo_planificacion;
 int main(int argc, char *argv[])
 {
 
@@ -27,7 +26,15 @@ int main(int argc, char *argv[])
     t_packet *packet_handshake;
     PID = 0;
     listaInterfaces = list_create();
-    
+    procesoEjectuandoActualmente = -2;
+    //Aca le pongo -2 porque es un numero que se usa en el LongTermScheduler para
+    //identificar que es la primera vez y necesita el Post el semaforo de corto plazo
+    //Despues los proximos posts los va a recibir cuando reciben un pcb en dispatch
+    //Pero si ponia -1 aca, en dispatch cuando queda sin ejecutar proceso le pongo -1
+    //y entraria por el if del largo plazo y tendria dos post. Entonces le pongo
+    //-2 solo para el primer acceso y despues es -1 cuando no hay proceso ejecutando
+    //y todos los posts los recibe de dispatch y cuanndo se queda sin 
+    //procesos en ready se traba ahi pero ya tiene el post del semaforo corto plazo
 
     // LOGGER
     logger = initialize_logger("kernel.log", "kernel", true, LOG_LEVEL_INFO);
@@ -45,6 +52,7 @@ int main(int argc, char *argv[])
     kernel_IP = config_get_string_value(config, "IP_MEMORIA");// hay que ver si se tiene que cambiar a futuro pero en el archivo de configuración no hay una ip de kernel
     gradoMultiprogramacion = atoi(config_get_string_value(config, "GRADO_MULTIPROGRAMACION"));
     quantumGlobal = atoi(config_get_string_value(config, "QUANTUM"));
+    algoritmo_planificacion = config_get_string_value(config, "ALGORITMO_PLANIFICACION");
 
     //PRUEBAAAA
     initialize_queue_and_semaphore();
@@ -57,7 +65,7 @@ int main(int argc, char *argv[])
     buffer = create_buffer();
     packet_handshake = create_packet(HANDSHAKE_KERNEL,buffer);
 
-     add_to_packet(packet_handshake, buffer->stream, buffer->size);
+    add_to_packet(packet_handshake, buffer->stream, buffer->size);
     //packet = serialize_packet(packet, buffer->size);
     //send_packet(packet_handshake, memory_socket);
 
@@ -81,6 +89,7 @@ int main(int argc, char *argv[])
     int server_fd = initialize_server(logger, "kernel_server", kernel_IP, kernel_PORT);
     log_info(logger, "Server initialized");
 
+    //HILO IO
     pthread_t thread_memory_peticions;
     t_process_conection_args *process_conection_arguments= malloc(sizeof(t_process_conection_args));
     process_conection_arguments->server_name = "kernel_server";
@@ -98,6 +107,18 @@ int main(int argc, char *argv[])
 
     pthread_create(&thread_dispatch,NULL,manage_request_from_dispatch,process_conection_arguments_dispatch);
     pthread_detach(thread_dispatch);
+
+    //HILO PLANIFICADOR LARGO PLAZO
+    
+    pthread_t planificadorLargoPlazo;
+    pthread_create(&planificadorLargoPlazo,NULL,Aready,NULL);
+    pthread_detach(planificadorLargoPlazo);
+
+    //HILO PLANIFICADOR CORTO PLAZO
+    
+    pthread_t planificadorDeCortoPlazo;
+    pthread_create(&planificadorDeCortoPlazo,NULL,planificadorCortoPlazo,NULL);
+    pthread_detach(planificadorDeCortoPlazo);
 
 
 
@@ -178,11 +199,14 @@ void* manage_request_from_dispatch(void *args)
         {
    
         case INTERRUPCION_RTA_CON_PCB:
+            procesoEjectuandoActualmente = -1;
             //printf("Llego Un PCB");
             log_info(logger,"LLEGO UN PCB");
             fetch_pcb_actualizado(server_socket);
+            sem_post(&short_term_scheduler_semaphore);
         break;
         case SLEEP_IO:
+            procesoEjectuandoActualmente = -1;
             t_pcb *receptorPCB = NULL;
             t_interfaz_registrada *interfaz = NULL;
             int tiempoDormir;
@@ -195,6 +219,7 @@ void* manage_request_from_dispatch(void *args)
 //DESREFERENCIO CON EL * 
             interfaz = buscar_interfaz(nombreInter);
             cargarEnListaIO(receptorPCB,interfaz,tiempoDormir);
+            sem_post(&short_term_scheduler_semaphore);
         break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
@@ -243,8 +268,7 @@ void create_process(char* path) {
                 
     sleep(3);
 
-    sem_wait(&sem_hay_pcb_esperando_ready);
-    
+    //EL sem_post(&sem_hay_pcb_esperando_ready);lo hago en agregarAnew    
     
     // //ENVIAR PCB esto en realidad se deberia hacer cuando le toque ejecturse
     // bufferPCB = create_buffer();
@@ -322,6 +346,7 @@ void fetch_pcb_actualizado(server_socket){
     log_info(logger, "PC RECIBIDO : %i",PCBrec->program_counter);
     log_info(logger, "REGISTRO AX : %i",PCBrec->registers.AX);
     log_info(logger, "REGISTRO BX : %i",PCBrec->registers.BX);
+
 
 
 

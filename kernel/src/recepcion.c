@@ -155,7 +155,7 @@ void llamadas_io(t_interfaz_registrada *interfaz){
         log_info(logger, "LA INTERFAZ: %s TERMINO SLEEP DE : %i\n",interfaz->nombre,pcbEnviado->tiempoDormir); 
 
         
-        queue_push(queue_ready,pcbEnviado->PCB); //meto en ready el pcb aca hay que implementar semaforos y todo eso
+        addEstadoReady(pcbEnviado->PCB);//meto en ready el pcb 
 
         
         sem_post(&(soloUnoEnvia));

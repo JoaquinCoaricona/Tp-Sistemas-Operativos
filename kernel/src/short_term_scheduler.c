@@ -1,9 +1,29 @@
 #include "short_term_scheduler.h"
 int id_counter = 1;
 
+
+//Planificador de Corto Plazo General
+void *planificadorCortoPlazo(void *arg){
+
+	while(1){
+		if(string_equals_ignore_case(algoritmo_planificacion, "FIFO")){
+			planificador_corto_plazo_FIFO();
+		}else if(string_equals_ignore_case(algoritmo_planificacion, "RR")){
+			planificador_corto_plazo_RoundRobin();
+		}else {
+			//planificar_corto_plazo_round_robbin();
+            printf("ERROR");
+		}
+	}
+
+	return NULL;
+}
+
+
 //FIFO
 void planificador_corto_plazo_FIFO() {      
     
+    sem_wait(&sem_ready); 
     sem_wait(&short_term_scheduler_semaphore);//esto es para despertar al planificador de corto plazo
     //aca falta el semaforo de corto plazo para el detener planificacion
      
@@ -12,10 +32,12 @@ void planificador_corto_plazo_FIFO() {
     pthread_mutex_unlock(&mutex_state_ready);
 
     proceso->state = EXEC;
-    log_info(logger, "Cambio De Estado Proceso %d a %s\n", proceso->pid,proceso->state);
+    log_info(logger, "Cambio De Estado Proceso %d a %d\n", proceso->pid,proceso->state);
     
+    procesoEjectuandoActualmente = proceso ->pid;
+    pcbEJECUTANDO = proceso;
     enviar_proceso_cpu(proceso);
-
+    
  }
 
 
@@ -36,7 +58,7 @@ void manejoHiloQuantum(void *pcb){
 }
 
 //Round Robin
-    void short_term_scheduler_round_robin() {
+void planificador_corto_plazo_RoundRobin() {
     
     sem_wait(&short_term_scheduler_semaphore);//esto es para despertar al planificador de corto plazo
     //aca falta el semaforo de corto plazo para el detener planificacion
@@ -49,6 +71,7 @@ void manejoHiloQuantum(void *pcb){
     log_info(logger, "Cambio De Estado Proceso %d a %s\n", proceso->pid,proceso->state);
 
     procesoEjectuandoActualmente = proceso->pid;
+    pcbEJECUTANDO = proceso; // aca guardo en el puntero global el PCB que se va enviar
     enviar_proceso_cpu(proceso); //envio el proceso
         
     pthread_t hiloQuantum;
@@ -104,7 +127,7 @@ void enviarInterrupcion(char *motivo, int pid){
 //     sem_post(&m_execute_process);
 // }
 
-void enviar_proceso_cpu(t_pcb *proceso) {
+void enviar_proceso_cpu(t_pcb *proceso){
 
 
     t_pcb PCBPRUEBA;

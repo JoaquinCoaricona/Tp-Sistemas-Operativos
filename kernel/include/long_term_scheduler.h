@@ -26,6 +26,7 @@ void initialize_queue_and_semaphore();
 void create_process(char* path);
 void end_process();
 void long_term_scheduler();
+void *Aready(void *arg);
 
 
 extern sem_t m_execute_process;

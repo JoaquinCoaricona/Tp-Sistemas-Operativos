@@ -75,11 +75,11 @@ void addEstadoReady(t_pcb *pcb){
 	log_info(logger, "Se agrega el proceso: %d a ready \n", pcb->pid);
 }
 
-void Aready()
+void *Aready(void *arg)
 {
 	while (1)
 	{
- 
+		
 		sem_wait(&sem_hay_pcb_esperando_ready); //controla que haya pcbs esperando entrar ready
     	sem_wait(&sem_multiprogramacion);//controla que se cumpla con los hilos de multiprogramacion, se va restando hasta
         //que llegue a 0 y ahi se bloquea y el signal lo haces cuando un proceso finaliza 
@@ -92,6 +92,12 @@ void Aready()
     	log_info(logger, "Se elimino el proceso %d de New y se agrego a Ready", pcb->pid);
 
     	sem_post(&sem_ready); //esto indicaria que hay uno mas en ready pero hay que hacer la declaracion del semaforo
-	
+		
+		if(procesoEjectuandoActualmente == -2){//si no hay nadie ejecutando
+			log_info(logger, "Primer Llamado a Corto Plazo Desde Largo");
+			sem_post(&short_term_scheduler_semaphore);
+		}
+		
+		
 	}
 }
