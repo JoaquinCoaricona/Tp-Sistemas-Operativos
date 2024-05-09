@@ -251,7 +251,7 @@ void devolverInstruccion(int client_socket){
 
 
 	//Demora En devolver Instruccion:
-	//usleep(1000000); //de prueba 1 segundo
+	usleep(1000000); //de prueba 1 segundo
 	send_packet(paquete_instruccion,client_socket);
 	
 	free(buffer);

@@ -304,52 +304,61 @@ void fetch_pcb_actualizado(server_socket){
                                    // y lo mismo en el offset al sumarle, tengo que sumar lo que copie en memcpy
     
     offset += sizeof(int); //Salteo El tamaño del PCB
+    // aca uso el puntero global que apunta al pcb actual: pcbEJECUTANDO
+    //y actualizo ese pcb y despues lo pongo en NUll
 
-    memcpy(&(PCBrec->pid),buffer + offset, sizeof(int)); //RECIBO EL PID
+    memcpy(&(pcbEJECUTANDO->pid),buffer + offset, sizeof(int)); //RECIBO EL PID
     offset += sizeof(int);
 
-    memcpy(&(PCBrec->program_counter), buffer + offset, sizeof(int)); // RECIBO EL PROGRAM COUNTER
+    memcpy(&(pcbEJECUTANDO->program_counter), buffer + offset, sizeof(int)); // RECIBO EL PROGRAM COUNTER
     offset += sizeof(int);
     
-    memcpy(&(PCBrec->quantum), buffer + offset, sizeof(int)); //RECIBO EL QUANTUM
+    memcpy(&(pcbEJECUTANDO->quantum), buffer + offset, sizeof(int)); //RECIBO EL QUANTUM
     offset += sizeof(int);
 
-    memcpy(&(PCBrec->state), buffer + offset, sizeof(t_process_state)); //RECIBO EL PROCESS STATE
+    memcpy(&(pcbEJECUTANDO->state), buffer + offset, sizeof(t_process_state)); //RECIBO EL PROCESS STATE
     offset += sizeof(t_process_state);
 
-    memcpy(&(PCBrec->registers.PC), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    memcpy(&(pcbEJECUTANDO->registers.PC), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
     offset += sizeof(uint32_t);
-    memcpy(&(PCBrec->registers.AX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
+    memcpy(&(pcbEJECUTANDO->registers.AX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
     offset += sizeof(uint8_t);
-    memcpy(&(PCBrec->registers.BX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
+    memcpy(&(pcbEJECUTANDO->registers.BX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
     offset += sizeof(uint8_t);
-    memcpy(&(PCBrec->registers.CX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
+    memcpy(&(pcbEJECUTANDO->registers.CX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
     offset += sizeof(uint8_t);
-    memcpy(&(PCBrec->registers.DX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
+    memcpy(&(pcbEJECUTANDO->registers.DX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
     offset += sizeof(uint8_t);
-    memcpy(&(PCBrec->registers.EAX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    memcpy(&(pcbEJECUTANDO->registers.EAX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
     offset += sizeof(uint32_t);
-    memcpy(&(PCBrec->registers.EBX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    memcpy(&(pcbEJECUTANDO->registers.EBX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
     offset += sizeof(uint32_t);
-    memcpy(&(PCBrec->registers.ECX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    memcpy(&(pcbEJECUTANDO->registers.ECX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
     offset += sizeof(uint32_t);
-    memcpy(&(PCBrec->registers.EDX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    memcpy(&(pcbEJECUTANDO->registers.EDX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
     offset += sizeof(uint32_t);
-    memcpy(&(PCBrec->registers.SI), buffer+ offset, sizeof(uint32_t)); //RECIBO CPUREG
+    memcpy(&(pcbEJECUTANDO->registers.SI), buffer+ offset, sizeof(uint32_t)); //RECIBO CPUREG
     offset += sizeof(uint32_t);
-    memcpy(&(PCBrec->registers.DI), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    memcpy(&(pcbEJECUTANDO->registers.DI), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
     offset += sizeof(uint32_t);
 
+
+    
    
     log_info(logger, "Motivo Recibido : %s",motivo);
-    log_info(logger, "PID RECIBIDO : %i",PCBrec->pid);
-    log_info(logger, "PC RECIBIDO : %i",PCBrec->program_counter);
-    log_info(logger, "REGISTRO AX : %i",PCBrec->registers.AX);
-    log_info(logger, "REGISTRO BX : %i",PCBrec->registers.BX);
+    log_info(logger, "PID RECIBIDO : %i",pcbEJECUTANDO->pid);
+    log_info(logger, "PC RECIBIDO : %i",pcbEJECUTANDO->program_counter);
+    log_info(logger, "ESTADO PROCESO: %i",pcbEJECUTANDO->state);
+    log_info(logger, "REGISTRO AX : %i",pcbEJECUTANDO->registers.AX);
+    log_info(logger, "REGISTRO BX : %i",pcbEJECUTANDO->registers.BX);
 
 
+    //aca le cambio el estado a exit
+    pcbEJECUTANDO->state = EXIT;
 
+    addEstadoExit(pcbEJECUTANDO);
 
+    pcbEJECUTANDO=NULL; 
 
     free(buffer);   
     free(motivo);

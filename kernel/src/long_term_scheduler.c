@@ -7,6 +7,7 @@ sem_t sem_ready;
 sem_t m_ready_queue;
 sem_t sem_hay_pcb_esperando_ready; //esto es para contar los PCB de ready
 sem_t sem_multiprogramacion; //hay que inicializarlo en 0
+pthread_mutex_t mutex_state_exit;
 pthread_mutex_t mutex_state_new;
 pthread_mutex_t mutex_state_ready;
 
@@ -35,6 +36,7 @@ void initialize_queue_and_semaphore() {
     sem_init(&m_ready_queue, 0, 1);
     pthread_mutex_init(&mutex_state_new, NULL);
     pthread_mutex_init(&mutex_state_ready, NULL);
+    pthread_mutex_init(&mutex_state_exit, NULL);
 
 
 }
@@ -75,6 +77,8 @@ void addEstadoReady(t_pcb *pcb){
 	log_info(logger, "Se agrega el proceso: %d a ready \n", pcb->pid);
 }
 
+
+
 void *Aready(void *arg)
 {
 	while (1)
@@ -100,4 +104,13 @@ void *Aready(void *arg)
 		
 		
 	}
+}
+
+
+void addEstadoExit(t_pcb *pcb){
+    pthread_mutex_lock(&mutex_state_exit);
+	queue_push(queue_exit,pcb);
+	pthread_mutex_unlock(&mutex_state_exit);
+
+	log_info(logger, "Se agrega el proceso: %d a Exit \n", pcb->pid);
 }
