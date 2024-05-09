@@ -2,6 +2,7 @@
 #include "main.h"
 
 
+
 void levantar_consola(t_log *logger) {
 
 
@@ -49,10 +50,10 @@ void levantar_consola(t_log *logger) {
 			//finalizar_proceso(parametro);  //incluye el pid
 
 		} else if (strcmp(comando, "DETENER_PLANIFICACION") == 0) {
-			//detener_planificacion();
+			detener_planificacion();
 
 		} else if (strcmp(comando, "INICIAR_PLANIFICACION") == 0) {
-			//iniciar_planificacion();
+			iniciar_planificacion();
 
 		} else if (strcmp(comando, "MULTIPROGRAMACION") == 0) {
 			//hay que hacer un atoi

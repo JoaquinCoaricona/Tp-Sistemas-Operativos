@@ -8,7 +8,14 @@ t_pcb *fetch_pcb_con_sleep(int server_socket,int *tiempoDormir,char **nomrebInte
     
     int total_size;
     int offset = 0;
-    t_pcb *PCBrec = malloc(sizeof(t_pcb));
+    t_pcb *PCBrec = pcbEJECUTANDO;
+    pcbEJECUTANDO = NULL;
+
+    //t_pcb *PCBrec = malloc(sizeof(t_pcb)); //aca esto es lo que estaba antes y funciona
+
+    //aca habria que hacer que pcbRec sea igual a pcbEjectuando asi actualiza el pcb enviado, osea
+    //el actual y despues le hace push a la cola de la IO y desppues de haber 
+    //actualizado el valor de PCBrec por pcbejectuando, agarro a pcb ejecutando y le pongo NULL
     void *buffer;
     int length_nombre_inter;
     

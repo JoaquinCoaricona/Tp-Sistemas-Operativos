@@ -12,6 +12,7 @@ int gradoMultiprogramacion;
 int quantumGlobal;
 int procesoEjectuandoActualmente;
 char *algoritmo_planificacion;
+bool planificacion_detenida;
 int main(int argc, char *argv[])
 {
 
@@ -25,6 +26,7 @@ int main(int argc, char *argv[])
     t_buffer *buffer;
     t_packet *packet_handshake;
     PID = 0;
+    planificacion_detenida = false;
     listaInterfaces = list_create();
     procesoEjectuandoActualmente = -2;
     //Aca le pongo -2 porque es un numero que se usa en el LongTermScheduler para
@@ -56,6 +58,7 @@ int main(int argc, char *argv[])
 
     //PRUEBAAAA
     initialize_queue_and_semaphore();
+
 
     // Conect to server
     memory_socket = create_conection(logger, memory_IP, memory_PORT);
@@ -199,14 +202,20 @@ void* manage_request_from_dispatch(void *args)
         {
    
         case INTERRUPCION_RTA_CON_PCB:
+            pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
+            pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
             //printf("Llego Un PCB");
             log_info(logger,"LLEGO UN PCB");
             fetch_pcb_actualizado(server_socket);
             sem_post(&short_term_scheduler_semaphore);
+            sem_post(&sem_multiprogramacion);
+
         break;
         case SLEEP_IO:
+            pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
+            pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
             t_pcb *receptorPCB = NULL;
             t_interfaz_registrada *interfaz = NULL;
             int tiempoDormir;
@@ -220,6 +229,7 @@ void* manage_request_from_dispatch(void *args)
             interfaz = buscar_interfaz(nombreInter);
             cargarEnListaIO(receptorPCB,interfaz,tiempoDormir);
             sem_post(&short_term_scheduler_semaphore);
+            sem_post(&sem_multiprogramacion);
         break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
@@ -248,6 +258,9 @@ void enviar_path_a_memoria(char *path){
     add_to_packet(packetMemoria,path,(strlen(path)+1));
     send_packet(packetMemoria, memory_socket);
 
+    
+
+
 }
 
 void create_process(char* path) {
@@ -255,7 +268,6 @@ void create_process(char* path) {
     
     //CREACION DE UN NUEVO PROCESO
     t_pcb *PCB = initializePCB(PID); 
-    agregarANew(PCB);
     // t_pcb PCBPRUEBA;
     // int sizePCB = sizeof(PCBPRUEBA);
 
@@ -263,10 +275,28 @@ void create_process(char* path) {
  
     // t_packet *packetPCB;
     enviar_path_a_memoria(path);
+
+    //primero envio el path a memoria, espero que me confirme que termino de leer
+    //y despues cargo el pcb en New y despues le sumo uno al global de Pid     
+    int pidTeminadaLectura;
+    int operation_code = fetch_codop(memory_socket); //aca se queda bloqueante esperando la respuesta
+    int total_size;
+    int offset = 0;
+    void *buffer2 = fetch_buffer(&total_size,memory_socket); // recibo porque puse un numero en el buffer
+    
+    offset += sizeof(int); //salteo el tamano de int
+    memcpy(&pidTeminadaLectura,buffer2 + offset, sizeof(int)); //RECIBO EL pid
+
+
+    if(operation_code == MEMORIA_TERMINO_LECTURA){
+        log_info(logger,"Pid %d Lectura Terminada",pidTeminadaLectura);
+    }
+    free(buffer2); 
+
+    
+    agregarANew(PCB);
     PID += 1;  // CAMBIO DE ORDEN, primer creo el pcb y envio a memoria y despues sumo el pid. PARA QUE a cpu y memoria
                 //lleguen con el mismo pid, sino llegaba uno con uno y el otro con +1
-                
-    sleep(3);
 
     //EL sem_post(&sem_hay_pcb_esperando_ready);lo hago en agregarAnew    
     
@@ -285,7 +315,7 @@ void end_process(){
 void fetch_pcb_actualizado(server_socket){
     int total_size;
     int offset = 0;
-    t_pcb *PCBrec = malloc(sizeof(t_pcb));
+    t_pcb *PCBrec = pcbEJECUTANDO;
     void *buffer;
     int length_motivo;
     char *motivo;
@@ -358,6 +388,10 @@ void fetch_pcb_actualizado(server_socket){
 
     addEstadoExit(pcbEJECUTANDO);
 
+    log_info(logger, "Finaliza el Proceso  %i, por SUCCESS",pcbEJECUTANDO->pid);
+    //log_info(logger, "estado proceso %i",pcbEJECUTANDO->state);
+        
+
     pcbEJECUTANDO=NULL; 
 
     free(buffer);   
@@ -415,4 +449,26 @@ t_interfaz_registrada *recibir_interfaz(client_socket){
     
 }
 
- 
+ void detener_planificacion() {
+	//Se detiene la planificacion de largo y corto plazo (el proceso en EXEC continua hasta salir) (si se encuentrand detenidos ignorar)
+	if(planificacion_detenida == true){
+		log_info(logger, "La planificacion ya se encuentra detenida");
+	}else{
+		pthread_mutex_lock(&m_planificador_largo_plazo);
+		pthread_mutex_lock(&m_planificador_corto_plazo);
+		planificacion_detenida = true;
+		log_info(logger, "Pausa planificación: “PAUSA DE PLANIFICACIÓN“");
+	}
+}
+
+void iniciar_planificacion() {
+	//Reanudar los planificadores (si no se encuentran detenidos ignorar)
+	if(planificacion_detenida == false){
+		log_info(logger, "La planificacion ya se encuentra activa");
+	}else{
+		pthread_mutex_unlock(&m_planificador_largo_plazo);
+		pthread_mutex_unlock(&m_planificador_corto_plazo);
+		planificacion_detenida = false;
+		log_info(logger, "Inicio de planificación: “INICIO DE PLANIFICACIÓN“");
+	}
+}

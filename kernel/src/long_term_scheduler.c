@@ -11,6 +11,11 @@ pthread_mutex_t mutex_state_exit;
 pthread_mutex_t mutex_state_new;
 pthread_mutex_t mutex_state_ready;
 
+pthread_mutex_t m_planificador_corto_plazo;
+pthread_mutex_t m_planificador_largo_plazo;
+pthread_mutex_t m_procesoEjectuandoActualmente;
+
+
 //Estado EXEC y BLOCKED no usan queue
 t_queue* queue_new;
 t_queue* queue_ready;
@@ -37,7 +42,9 @@ void initialize_queue_and_semaphore() {
     pthread_mutex_init(&mutex_state_new, NULL);
     pthread_mutex_init(&mutex_state_ready, NULL);
     pthread_mutex_init(&mutex_state_exit, NULL);
-
+    pthread_mutex_init(&m_planificador_corto_plazo, NULL);
+	pthread_mutex_init(&m_planificador_largo_plazo, NULL);
+	pthread_mutex_init(&m_procesoEjectuandoActualmente, NULL);
 
 }
 
@@ -87,21 +94,31 @@ void *Aready(void *arg)
 		sem_wait(&sem_hay_pcb_esperando_ready); //controla que haya pcbs esperando entrar ready
     	sem_wait(&sem_multiprogramacion);//controla que se cumpla con los hilos de multiprogramacion, se va restando hasta
         //que llegue a 0 y ahi se bloquea y el signal lo haces cuando un proceso finaliza 
+		pthread_mutex_lock(&m_planificador_largo_plazo);
+    	
 
-     	log_info(logger, "Grado de multiprogramación permite agregar proceso a ready\n");
+		log_info(logger, "Grado de multiprogramación permite agregar proceso a ready\n");
 		
     	t_pcb *pcb = obtenerSiguienteAready();
 		pcb->state = READY;
     	addEstadoReady(pcb);
     	log_info(logger, "Se elimino el proceso %d de New y se agrego a Ready", pcb->pid);
 
-    	sem_post(&sem_ready); //esto indicaria que hay uno mas en ready pero hay que hacer la declaracion del semaforo
+    	sem_post(&sem_ready); 
 		
+		pthread_mutex_lock(&m_procesoEjectuandoActualmente);
 		if(procesoEjectuandoActualmente == -2){//si no hay nadie ejecutando
-			log_info(logger, "Primer Llamado a Corto Plazo Desde Largo");
+			procesoEjectuandoActualmente = -1;
+			pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
+
+			log_info(logger, "Unico Llamado a Corto Plazo Desde Largo");
 			sem_post(&short_term_scheduler_semaphore);
+		}else{
+			pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
 		}
 		
+		pthread_mutex_unlock(&m_planificador_largo_plazo);
+
 		
 	}
 }

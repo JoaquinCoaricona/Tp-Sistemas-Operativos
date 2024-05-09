@@ -25,7 +25,7 @@ void planificador_corto_plazo_FIFO() {
     
     sem_wait(&sem_ready); 
     sem_wait(&short_term_scheduler_semaphore);//esto es para despertar al planificador de corto plazo
-    //aca falta el semaforo de corto plazo para el detener planificacion
+    pthread_mutex_lock(&m_planificador_corto_plazo);
      
     pthread_mutex_lock(&mutex_state_ready);
     t_pcb *proceso = queue_pop(queue_ready); //semaforo mutex para entrar a la lista de READY
@@ -34,10 +34,16 @@ void planificador_corto_plazo_FIFO() {
     proceso->state = EXEC;
     log_info(logger, "Cambio De Estado Proceso %d a %d\n", proceso->pid,proceso->state);
     
+    pthread_mutex_lock(&m_procesoEjectuandoActualmente);
     procesoEjectuandoActualmente = proceso ->pid;
+    int hoa = procesoEjectuandoActualmente;
+    pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
+    
     pcbEJECUTANDO = proceso;
     enviar_proceso_cpu(proceso);
     
+    pthread_mutex_unlock(&m_planificador_corto_plazo);
+
  }
 
 
@@ -60,8 +66,9 @@ void manejoHiloQuantum(void *pcb){
 //Round Robin
 void planificador_corto_plazo_RoundRobin() {
     
+    sem_wait(&sem_ready);
     sem_wait(&short_term_scheduler_semaphore);//esto es para despertar al planificador de corto plazo
-    //aca falta el semaforo de corto plazo para el detener planificacion
+    pthread_mutex_lock(&m_planificador_corto_plazo);
     
     pthread_mutex_lock(&mutex_state_ready);
     t_pcb *proceso = queue_pop(queue_ready); //semaforo mutex para entrar a la lista de READY
@@ -70,7 +77,9 @@ void planificador_corto_plazo_RoundRobin() {
     proceso->state = EXEC;
     log_info(logger, "Cambio De Estado Proceso %d a %s\n", proceso->pid,proceso->state);
 
+    pthread_mutex_lock(&m_procesoEjectuandoActualmente);
     procesoEjectuandoActualmente = proceso->pid;
+    pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
     pcbEJECUTANDO = proceso; // aca guardo en el puntero global el PCB que se va enviar
     enviar_proceso_cpu(proceso); //envio el proceso
         
@@ -83,7 +92,7 @@ void planificador_corto_plazo_RoundRobin() {
     pthread_create(&hiloQuantum,NULL,manejoHiloQuantum,quatnumHilo);
     pthread_detach(hiloQuantum);
 
-
+    pthread_mutex_unlock(&m_planificador_corto_plazo);
 }
 
 

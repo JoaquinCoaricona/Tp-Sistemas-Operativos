@@ -47,6 +47,7 @@ typedef enum
     SLEEP_IO,
     TIEMPO_DORMIR,
     CONFIRMACION_SLEEP_COMPLETO,
+    MEMORIA_TERMINO_LECTURA,
 
 
 } op_code;

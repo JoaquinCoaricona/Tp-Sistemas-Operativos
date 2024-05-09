@@ -6,6 +6,7 @@
 #include "../include/utils.h"
 #include "recepcion.h"
 
+
 extern t_queue* queue_new;
 //extern t_queue* queue_ready; //LO LLEVO A RECEPCION.h para probar INTERFACES
 extern t_queue* queue_exit;
@@ -18,6 +19,8 @@ extern int cpu_dispatch_socket;
 extern int cpu_interrupt_socket;
 extern int quantumGlobal;
 extern int procesoEjectuandoActualmente;
+
+extern t_pcb *pcbEJECUTANDO;
 
 
 void agregarANew(t_pcb *pcb);
@@ -39,4 +42,11 @@ extern sem_t sem_ready;
 extern pthread_mutex_t mutex_state_exit;
 extern pthread_mutex_t mutex_state_new;
 extern pthread_mutex_t mutex_state_ready;
+
+extern pthread_mutex_t m_planificador_corto_plazo;
+extern pthread_mutex_t m_planificador_largo_plazo;
+extern pthread_mutex_t m_procesoEjectuandoActualmente;
+
+
+
 #endif // LONG_TERM_SCHEDULER_H_

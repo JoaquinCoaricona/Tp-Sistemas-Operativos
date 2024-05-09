@@ -179,6 +179,16 @@ void leer_pseudo(int client_socket){
 
 	//enviar_mensaje("OK", cliente_fd, INICIAR_PROCESO);
 
+    //ENVIO CONFIRMACION LECTURA A KERNEL
+	t_buffer *bufferRespuesta;
+    t_packet *packetRespuesta;
+	//devuelvo el pid Del archivo que lei su path
+    
+    bufferRespuesta = create_buffer();
+    packetRespuesta = create_packet(MEMORIA_TERMINO_LECTURA, bufferRespuesta);
+    add_to_packet(packetRespuesta,&(instruccionREC->pid), sizeof(int));
+    send_packet(packetRespuesta,client_socket);   
+
 	free(path);
 	fclose(archivo);
 }

@@ -6,7 +6,8 @@
 
 
 
-
+void iniciar_planificacion();
+void detener_planificacion();
 
 
 void* manage_request_from_input_output(void *args);

@@ -9,7 +9,7 @@
 
 extern int id_counter;
 extern char* algoritmo_planificacion;
-extern t_pcb *pcbEJECUTANDO;
+
 
 //Iniciar PCB
 t_pcb *initializePCB();
