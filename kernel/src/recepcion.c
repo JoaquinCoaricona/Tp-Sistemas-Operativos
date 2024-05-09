@@ -163,6 +163,7 @@ void llamadas_io(t_interfaz_registrada *interfaz){
 
         
         addEstadoReady(pcbEnviado->PCB);//meto en ready el pcb 
+        sem_post(&sem_ready); 
 
         
         sem_post(&(soloUnoEnvia));
