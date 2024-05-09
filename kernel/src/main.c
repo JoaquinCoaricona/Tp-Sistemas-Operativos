@@ -212,6 +212,15 @@ void* manage_request_from_dispatch(void *args)
             sem_post(&sem_multiprogramacion);
 
         break;
+        case INTERRUPCION_FIN_QUANTUM:
+            pthread_mutex_lock(&m_procesoEjectuandoActualmente);
+            procesoEjectuandoActualmente = -1;
+            pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
+            log_info(logger,"LLEGO UN PCB POR FIN DE QUANTUM");
+            fetch_pcb_actualizado_fin_quantum(server_socket);
+            sem_post(&short_term_scheduler_semaphore);
+            sem_post(&sem_multiprogramacion);
+        break;
         case SLEEP_IO:
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
@@ -398,6 +407,95 @@ void fetch_pcb_actualizado(server_socket){
     free(motivo);
 
 }
+
+//esta es la misma funcion fetch pcb actualizado pero esta no lo va a guardar en exit
+//le va hacer un push a ready al final
+//podria tener una funcion que sea fetch pcb que te reciba el pcb y lo devuelva
+// 
+void fetch_pcb_actualizado_fin_quantum(server_socket){
+    int total_size;
+    int offset = 0;
+    t_pcb *PCBrec = pcbEJECUTANDO;
+    void *buffer;
+    int length_motivo;
+    char *motivo;
+   
+    buffer = fetch_buffer(&total_size, server_socket);
+   
+    memcpy(&length_motivo,buffer + offset, sizeof(int)); 
+    offset += sizeof(int);  
+
+    motivo = malloc(length_motivo);
+    memcpy(motivo,buffer + offset, length_motivo); //SI TENGO QUE COPIAR EL LENGTH, NO TENGO QUE PONER SIZEOF(LENGTH)
+    offset += length_motivo;        //tengo que poner directamente el length en el ultimo param de memcpy
+                                   // y lo mismo en el offset al sumarle, tengo que sumar lo que copie en memcpy
+    
+    offset += sizeof(int); //Salteo El tamaño del PCB
+    // aca uso el puntero global que apunta al pcb actual: pcbEJECUTANDO
+    //y actualizo ese pcb y despues lo pongo en NUll
+
+    memcpy(&(pcbEJECUTANDO->pid),buffer + offset, sizeof(int)); //RECIBO EL PID
+    offset += sizeof(int);
+
+    memcpy(&(pcbEJECUTANDO->program_counter), buffer + offset, sizeof(int)); // RECIBO EL PROGRAM COUNTER
+    offset += sizeof(int);
+    
+    memcpy(&(pcbEJECUTANDO->quantum), buffer + offset, sizeof(int)); //RECIBO EL QUANTUM
+    offset += sizeof(int);
+
+    memcpy(&(pcbEJECUTANDO->state), buffer + offset, sizeof(t_process_state)); //RECIBO EL PROCESS STATE
+    offset += sizeof(t_process_state);
+
+    memcpy(&(pcbEJECUTANDO->registers.PC), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(pcbEJECUTANDO->registers.AX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
+    offset += sizeof(uint8_t);
+    memcpy(&(pcbEJECUTANDO->registers.BX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
+    offset += sizeof(uint8_t);
+    memcpy(&(pcbEJECUTANDO->registers.CX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
+    offset += sizeof(uint8_t);
+    memcpy(&(pcbEJECUTANDO->registers.DX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
+    offset += sizeof(uint8_t);
+    memcpy(&(pcbEJECUTANDO->registers.EAX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(pcbEJECUTANDO->registers.EBX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(pcbEJECUTANDO->registers.ECX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(pcbEJECUTANDO->registers.EDX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(pcbEJECUTANDO->registers.SI), buffer+ offset, sizeof(uint32_t)); //RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(pcbEJECUTANDO->registers.DI), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    offset += sizeof(uint32_t);
+
+
+    
+   
+    log_info(logger, "Motivo Recibido : %s",motivo);
+    log_info(logger, "PID RECIBIDO : %i",pcbEJECUTANDO->pid);
+    log_info(logger, "PC RECIBIDO : %i",pcbEJECUTANDO->program_counter);
+    log_info(logger, "ESTADO PROCESO: %i",pcbEJECUTANDO->state);
+    log_info(logger, "REGISTRO AX : %i",pcbEJECUTANDO->registers.AX);
+    log_info(logger, "REGISTRO BX : %i",pcbEJECUTANDO->registers.BX);
+
+
+    //aca le cambio el estado a exit
+    pcbEJECUTANDO->state = READY;
+    
+    addEstadoReady(pcbEJECUTANDO);//meto en ready el pcb 
+    sem_post(&sem_ready); 
+
+    //el puntero pcb global lo dejo en null
+    //este no es el PID ejecutando, es el puntero al pcb que se envio 
+    pcbEJECUTANDO=NULL; 
+
+    free(buffer);   
+    free(motivo);
+
+}
+
+
 
 
 t_interfaz_registrada *recibir_interfaz(client_socket){

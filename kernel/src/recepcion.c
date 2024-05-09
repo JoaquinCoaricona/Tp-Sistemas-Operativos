@@ -16,6 +16,14 @@ t_pcb *fetch_pcb_con_sleep(int server_socket,int *tiempoDormir,char **nomrebInte
     //aca habria que hacer que pcbRec sea igual a pcbEjectuando asi actualiza el pcb enviado, osea
     //el actual y despues le hace push a la cola de la IO y desppues de haber 
     //actualizado el valor de PCBrec por pcbejectuando, agarro a pcb ejecutando y le pongo NULL
+
+    /*en realidad es lo que hice. PCB ejecutando es la variable global entonces se la asigno a PCBrec
+    porque todos los memcpy que estan abajo ya estaban con eso. Despues agarro pcbEjecutando
+    y lo apunto a NULL porque ya no se esta ejecutando a nadie en CPU, entonces agarro a PCB rec
+    que es el pcb del proceso que acaba de llegar y le hago todos los memcpy para ir actualizandolo
+    despues hago todos los logs y devuelvo PCBrec y pcbEjecutando quedo en null
+    
+    */
     void *buffer;
     int length_nombre_inter;
     

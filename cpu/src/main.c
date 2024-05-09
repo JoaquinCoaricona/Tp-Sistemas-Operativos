@@ -87,10 +87,11 @@ void* manage_interrupt_request(void *args)
    
 
     free(args);
-
+    //aca el wait cliente espera un connect y eso se hace solo una vez, lo dejo afuera
+    // el fetchcodop espera un send asi que ese lo dejo adentro
+    int client_socket = wait_client(logger, server_name, server_socket);
     while (1)
     {
-        int client_socket = wait_client(logger, server_name, server_socket);
         int operation_code = fetch_codop(client_socket);
 
         switch (operation_code)
@@ -336,7 +337,7 @@ void ciclo_de_instruccion(int socket_kernel){
         if(hay_interrupcion_pendiente && (pid_a_desalojar == pid_ejecutando && (continuar_con_el_ciclo_instruccion))) {
 		//  log_info(logger, "Atendiendo interrupcion a %s y devuelvo a kernel", pid_a_desalojar);
 		    continuar_con_el_ciclo_instruccion = false;
-		    devolver_a_kernel(PCBACTUAL, socket_kernel,"INTERRUPCION");
+		    devolver_a_kernel_fin_quantum(PCBACTUAL, socket_kernel,"Fin de Quantum");
 		    hay_interrupcion_pendiente = false;
 	        pid_a_desalojar = 0;
 		}
@@ -391,6 +392,11 @@ void recibir_interrupcion(int socket_kernel) {
 		pid_a_desalojar = -1;
 		responder_a_kernel("El proceso ya fue desalojado, esta ejecutando otro proceso", socket_kernel);
 	}
+    //esto de arriba es casi imposible que se use porque si el proceso
+    // que se esta ejecutando al final del quantum es distinto al que se estaba
+    //ejecutnado al inicio entonces no se enviar la interrupcion
+
+
 
     //TENGO QUE IMPRIMIR EL MOTIVO DE LA INTERRUPCION QUE LLEGO DESDE KERNEL
 	free(motivo);
@@ -409,6 +415,7 @@ void responder_a_kernel(char *mensaje ,int socket){
     add_to_packet(packet_rta, mensaje, length_rta);
     
     send_packet(packet_rta, socket);
+    destroy_packet(packet_rta);
 }
 void devolver_a_kernel(t_pcb *contexto_actual, int socket_kernel,char *motivo){
 
@@ -424,6 +431,27 @@ void devolver_a_kernel(t_pcb *contexto_actual, int socket_kernel,char *motivo){
     add_to_packet(packet_rta, contexto_actual, tamanioPCB); //CARGO EL PCB ACTUALIZADO
     
     send_packet(packet_rta, socket_kernel);
+    destroy_packet(packet_rta);
 
 }
+
+void devolver_a_kernel_fin_quantum(t_pcb *contexto_actual, int socket_kernel,char *motivo){
+    
+    t_buffer *buffer_rta;
+    t_packet *packet_rta;
+    buffer_rta = create_buffer();
+    packet_rta = create_packet(INTERRUPCION_FIN_QUANTUM,buffer_rta);
+
+    int length_motivo = strlen(motivo) + 1;
+    add_to_packet(packet_rta, motivo, length_motivo); //DEVUELVO EL MOTIVO DE INTERRUPCION
+
+    int tamanioPCB = sizeof(t_pcb);
+    add_to_packet(packet_rta, contexto_actual, tamanioPCB); //CARGO EL PCB ACTUALIZADO
+    
+    send_packet(packet_rta, socket_kernel);
+    destroy_packet(packet_rta);
+
+}
+
+
 

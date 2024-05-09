@@ -56,6 +56,8 @@ void manejoHiloQuantum(void *pcb){
     if(procesoEjectuandoActualmente == proceso->pid){
         char *motivo = "Fin de Quantum";
         enviarInterrupcion(motivo,proceso->pid);
+    }else{
+    log_info(logger, "El Proceso %i termino antes del Quantum",proceso->pid);
     }
     
     free(pcb);
@@ -75,7 +77,7 @@ void planificador_corto_plazo_RoundRobin() {
     pthread_mutex_unlock(&mutex_state_ready);
 
     proceso->state = EXEC;
-    log_info(logger, "Cambio De Estado Proceso %d a %s\n", proceso->pid,proceso->state);
+    log_info(logger, "Cambio De Estado Proceso %d a %i\n", proceso->pid,proceso->state);
 
     pthread_mutex_lock(&m_procesoEjectuandoActualmente);
     procesoEjectuandoActualmente = proceso->pid;
@@ -86,7 +88,8 @@ void planificador_corto_plazo_RoundRobin() {
     pthread_t hiloQuantum;
     t_quantum *quatnumHilo = malloc(sizeof(t_quantum));
     quatnumHilo->pid = proceso->pid;
-    
+    //solo le paso el pid, no le paso el puntero al pcb
+    //el puntero al pcb esta en pcbEJECUTANDO
     //Aca no es necesario pasarle un quantum porque hay un quantum Global
 
     pthread_create(&hiloQuantum,NULL,manejoHiloQuantum,quatnumHilo);
