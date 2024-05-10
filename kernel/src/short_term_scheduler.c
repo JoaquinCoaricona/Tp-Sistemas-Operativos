@@ -51,14 +51,20 @@ void manejoHiloQuantum(void *pcb){
 
     t_quantum *proceso = (t_quantum *)pcb;
     
-    usleep(1000 * quantumGlobal);
+    usleep(1000000 * quantumGlobal);
 
+    pthread_mutex_lock(&m_procesoEjectuandoActualmente);
     if(procesoEjectuandoActualmente == proceso->pid){
+        log_info(logger,"Envio Interupcion %i",procesoEjectuandoActualmente);
+        pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
         char *motivo = "Fin de Quantum";
         enviarInterrupcion(motivo,proceso->pid);
     }else{
-    log_info(logger, "El Proceso %i termino antes del Quantum",proceso->pid);
+        log_info(logger, "El Proceso %i termino antes del Quantum",proceso->pid);
+        pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
+
     }
+    //EL UNLOCK TIENE QUE ESTAR EN LOS DOS CASOS, PORQUE SINO QUEDA BLOQUEADO
     
     free(pcb);
     pthread_cancel(pthread_self());
@@ -109,7 +115,8 @@ void enviarInterrupcion(char *motivo, int pid){
     bufferINTERRUPCION = create_buffer();
     packetINTERRUPCION = create_packet(INTERRUPCION, bufferINTERRUPCION);
     add_to_packet(packetINTERRUPCION,motivo,(strlen(motivo)+1));
-    add_to_packet(packetINTERRUPCION,pid,sizeof(int));
+    add_to_packet(packetINTERRUPCION,&pid,sizeof(int));
+    //si tengo una variable, le tengo que pasar la direccion a addpacket
 
     send_packet(packetINTERRUPCION, cpu_interrupt_socket);
     destroy_packet(packetINTERRUPCION);

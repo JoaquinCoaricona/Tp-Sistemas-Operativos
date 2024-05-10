@@ -8,6 +8,7 @@ bool continuar_con_el_ciclo_instruccion;
 bool hay_interrupcion_pendiente = false;
 int pid_ejecutando;
 int pid_a_desalojar;
+pthread_mutex_t mutex_interrupcion;
 
 int main(int argc, char *argv[])
 {
@@ -47,6 +48,8 @@ int main(int argc, char *argv[])
     
 
     log_info(logger, "Handshake enviado");
+
+    pthread_mutex_init(&mutex_interrupcion, NULL);
 
     server_dispatch_fd = initialize_server(logger, "cpu_dispatch_server", memory_IP, dispatch_PORT); //ACA CPU Y MEMORIA  
     log_info(logger, "Server dispatch initialized");   //TIENEN LA MISMA IP PERO NO SON LA MISMA EN PC DISTINTIAS, TENER CUIDADO
@@ -101,8 +104,8 @@ void* manage_interrupt_request(void *args)
             packet = fetch_packet(client_socket);
             log_info(logger, "Packet received");
 
-            close_conection(client_socket);
-            client_socket = -1;
+            // close_conection(client_socket);
+            // client_socket = -1;  ESTAD DOS COSAS NO ESTABAN COMENTADAS
             break;
         case INTERRUPCION:
             recibir_interrupcion(client_socket);
@@ -324,8 +327,12 @@ void ciclo_de_instruccion(int socket_kernel){
         if (strcmp(instruccion_ACTUAL->opcode, "EXIT") == 0) {
             
             continuar_con_el_ciclo_instruccion = false;
-            pid_ejecutando = 0;
+            pid_ejecutando = -1;
 			devolver_a_kernel(PCBACTUAL,socket_kernel,"INSTRUCCION EXIT");
+            
+            pthread_mutex_lock(&mutex_interrupcion);
+            hay_interrupcion_pendiente = false;
+            pthread_mutex_unlock(&mutex_interrupcion);
 
 		}   
 
@@ -334,13 +341,20 @@ void ciclo_de_instruccion(int socket_kernel){
         //lo puse por el caso en el que sleep haga continuar_ciclo = false y justo llegue una interrupcion
         //porque ahi devolveria el kernel en sleep y aca devuelta y no estaria bien devolverlo dos veces
         //ese daria true todo el tiempo pero la cosa son los otros parametros del if que controlan 
-        if(hay_interrupcion_pendiente && (pid_a_desalojar == pid_ejecutando && (continuar_con_el_ciclo_instruccion))) {
+        
+        pthread_mutex_lock(&mutex_interrupcion);
+        if(hay_interrupcion_pendiente && (pid_a_desalojar == pid_ejecutando) && (continuar_con_el_ciclo_instruccion)) {
 		//  log_info(logger, "Atendiendo interrupcion a %s y devuelvo a kernel", pid_a_desalojar);
-		    continuar_con_el_ciclo_instruccion = false;
-		    devolver_a_kernel_fin_quantum(PCBACTUAL, socket_kernel,"Fin de Quantum");
 		    hay_interrupcion_pendiente = false;
-	        pid_a_desalojar = 0;
-		}
+            pthread_mutex_unlock(&mutex_interrupcion);//LO DESBLOQUEO ACA
+            //PORQUE SI ENTRO ACA ENTONCES YA LO VA DEVOLVER POR FIN DE QUANTUM
+            continuar_con_el_ciclo_instruccion = false;
+		    devolver_a_kernel_fin_quantum(PCBACTUAL, socket_kernel,"Fin de Quantum");
+	        pid_a_desalojar = -1;
+		}else{
+            pthread_mutex_unlock(&mutex_interrupcion);
+
+        }
 
     }
 
@@ -379,22 +393,36 @@ void recibir_interrupcion(int socket_kernel) {
 
     free(buffer);
 
+    pthread_mutex_lock(&mutex_interrupcion);
     hay_interrupcion_pendiente = true;
+    pthread_mutex_unlock(&mutex_interrupcion);
 
 
+
+    log_info(logger,"RECIBI INTERRUPCION");
 	if(!continuar_con_el_ciclo_instruccion){//si no hay nadie ejecutando
-		hay_interrupcion_pendiente = false;
+        pthread_mutex_lock(&mutex_interrupcion);
+	    hay_interrupcion_pendiente = false;
+        pthread_mutex_unlock(&mutex_interrupcion);
+        
         pid_a_desalojar = -1;
 		responder_a_kernel("NO hay nadie", socket_kernel);
         
-    }else if(pid_ejecutando && pid_a_desalojar != pid_ejecutando ){//si esta ejecutando otro proceso del que hay que desalojar
-		hay_interrupcion_pendiente = false;
+    }else if(pid_ejecutando && (pid_a_desalojar != pid_ejecutando) ){//si esta ejecutando otro proceso del que hay que desalojar
+        
+        pthread_mutex_lock(&mutex_interrupcion);
+        hay_interrupcion_pendiente = false;
+        pthread_mutex_unlock(&mutex_interrupcion);
+
+        log_info(logger,"El Proceso  %i ya fue desalojado, no coincide con %i",pid_a_desalojar,pid_ejecutando);
+		//responder_a_kernel("El proceso ya fue desalojado, esta ejecutando otro proceso", socket_kernel);
 		pid_a_desalojar = -1;
-		responder_a_kernel("El proceso ya fue desalojado, esta ejecutando otro proceso", socket_kernel);
-	}
+    }
     //esto de arriba es casi imposible que se use porque si el proceso
     // que se esta ejecutando al final del quantum es distinto al que se estaba
     //ejecutnado al inicio entonces no se enviar la interrupcion
+
+    //al final se envia igual parece
 
 
 

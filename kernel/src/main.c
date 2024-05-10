@@ -219,7 +219,10 @@ void* manage_request_from_dispatch(void *args)
             log_info(logger,"LLEGO UN PCB POR FIN DE QUANTUM");
             fetch_pcb_actualizado_fin_quantum(server_socket);
             sem_post(&short_term_scheduler_semaphore);
-            sem_post(&sem_multiprogramacion);
+            //sem_post(&sem_multiprogramacion);
+            //el de multiprogramacion aca no, porque es fin de quantum, el proceso
+            //no terminno, volvio a ready, solo cuando llega a exit podemos hacer
+            //un post al grado de multiprogramacion
         break;
         case SLEEP_IO:
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
