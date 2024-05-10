@@ -13,6 +13,7 @@ static void process_conection(void *args)
     char *server_name;
     t_log *logger;
     t_packet *packet;
+    //ACA HAY QUE ARREGLAR LO DE T_LIST COMO EN CPU, AHI FUNCIONO
 
     t_process_conection_args *arguments = (t_process_conection_args *)args;
 
