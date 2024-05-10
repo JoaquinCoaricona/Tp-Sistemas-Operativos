@@ -200,7 +200,7 @@ void* manage_request_from_dispatch(void *args)
 
         switch (operation_code)
         {
-   
+                //este caso es la salida Por instruccion EXIT
         case INTERRUPCION_RTA_CON_PCB:
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
@@ -241,7 +241,9 @@ void* manage_request_from_dispatch(void *args)
             interfaz = buscar_interfaz(nombreInter);
             cargarEnListaIO(receptorPCB,interfaz,tiempoDormir);
             sem_post(&short_term_scheduler_semaphore);
-            sem_post(&sem_multiprogramacion);
+            //sem_post(&sem_multiprogramacion);
+            //aca el grado de multiprogramacion no cambia, porque los procesos en block tambien entratran dentro del
+            //grado de multiprogramacion, solo cuando sale por exit se aumenta el grado de multiprogramacion
         break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
