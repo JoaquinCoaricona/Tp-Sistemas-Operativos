@@ -75,6 +75,7 @@ int main(int argc, char *argv[])
     socket_kernel = create_conection(logger, IP_kernel, PORT_kernel);
     log_info(logger, "Conectado al servidor de Kernel %s:%s", IP_kernel, PORT_kernel);
     send_packet(packet, socket_kernel);
+    destroy_packet(packet);
     
     
     while (1)
@@ -136,6 +137,7 @@ void enviarAvisoAKernel(int socket_kernel){
     packetRespuesta = create_packet(CONFIRMACION_SLEEP_COMPLETO, bufferRespuesta);
     add_to_packet(packetRespuesta,&hola, sizeof(int));
     send_packet(packetRespuesta,socket_kernel);   
+    destroy_packet(packetRespuesta);
 
     //destroy(packetRespuesta); hay que incluir esta funcion destroy
 }

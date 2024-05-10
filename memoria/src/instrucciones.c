@@ -188,6 +188,7 @@ void leer_pseudo(int client_socket){
     packetRespuesta = create_packet(MEMORIA_TERMINO_LECTURA, bufferRespuesta);
     add_to_packet(packetRespuesta,&(instruccionREC->pid), sizeof(int));
     send_packet(packetRespuesta,client_socket);   
+	destroy_packet(packetRespuesta);
 
 	free(path);
 	fclose(archivo);
@@ -225,6 +226,8 @@ void devolverInstruccion(int client_socket){
     offset += sizeof(int);//para saltearme el length de int
 	memcpy(&pc,buffer + offset, sizeof(int)); //RECIBO EL pc
 	
+	free(buffer);
+	//este free de arriba es para borrar lo recibido, despues abajo uso de devuelta la vairbale
 	// FIN RECEPCION PID Y PC	
 
 	//printf(" \n PID RECIBIDO = %i \n",pid);
@@ -248,9 +251,14 @@ void devolverInstruccion(int client_socket){
 
 	//Ahora vamos a enviar la instruccion a CPU
 
-	buffer = create_buffer();
+	//aca esto antes usaba el mismo buffer de arriba osea el void*, no se como funcionaba
+	//porque directamente decia buffer =create_buffer() lo separe porque valgrind marco como error
+	//que no liberabamos el de arriba, arriba al hacer fetch buffer recibimos el puntero 
+	//y lo deserializamos pero aca al cambiarle el valor al puntero perdermos lo de arriba
+	//y como se ejecutaba muchas veces lo de devoler instruccion perdiamos mucha memoria
+	t_buffer *buffer_res = create_buffer();
 	
-    t_packet *paquete_instruccion = create_packet(MEMORIA_ENVIA_INSTRUCCION, buffer);
+    t_packet *paquete_instruccion = create_packet(MEMORIA_ENVIA_INSTRUCCION, buffer_res);
 
     add_to_packet(paquete_instruccion,instruccionPC->opcode,instruccionPC->opcode_lenght);
 	add_to_packet(paquete_instruccion,instruccionPC->parametros[0],instruccionPC->parametro1_lenght);
@@ -263,8 +271,8 @@ void devolverInstruccion(int client_socket){
 	//Demora En devolver Instruccion:
 	usleep(1000000); //de prueba 1 segundo
 	send_packet(paquete_instruccion,client_socket);
+	destroy_packet(paquete_instruccion);
 	
-	free(buffer);
 
 }
 

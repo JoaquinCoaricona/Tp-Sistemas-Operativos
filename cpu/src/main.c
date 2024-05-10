@@ -32,7 +32,6 @@ int main(int argc, char *argv[])
     dispatch_PORT = config_get_string_value(config, "PUERTO_ESCUCHA_DISPATCH");
     interrupt_PORT = config_get_string_value(config, "PUERTO_ESCUCHA_INTERRUPT");
     memory_IP = config_get_string_value(config, "IP_MEMORIA");
-
     // Conect to server
     client_fd_memoria = create_conection(logger, memory_IP, memory_PORT);
     log_info(logger, "Conectado al servidor de memoria %s:%s", memory_IP, memory_PORT);
@@ -46,7 +45,7 @@ int main(int argc, char *argv[])
     //packet = serialize_packet(packet, buffer->size);
     //send_packet(packet, client_fd);
     
-
+    destroy_packet(packet);
     log_info(logger, "Handshake enviado");
 
     pthread_mutex_init(&mutex_interrupcion, NULL);
@@ -66,7 +65,8 @@ int main(int argc, char *argv[])
     pthread_create(&thread_memory_peticions,NULL,manage_interrupt_request,process_conection_arguments);
     pthread_detach(thread_memory_peticions);
     
-
+    config_destroy(config);
+    //Este config destroy deberia estar en todos los modulos, pero no lo pide en todos
     //ciclo_de_instruccion();
     //pedirInstruccion(5,2,client_fd_memoria);
 
@@ -79,7 +79,7 @@ void* manage_interrupt_request(void *args)
 {
     int server_socket;
     char *server_name;
-    t_packet *packet;
+    t_list *packet; //le cambie a t_list para que coincida y en el case hice list_destroy
 
     t_process_conection_args *arguments = (t_process_conection_args *)args;
 
@@ -100,10 +100,17 @@ void* manage_interrupt_request(void *args)
         switch (operation_code)
         {
         case HANDSHAKE_KERNEL:
+            //aca tener cuidado con el packet, porque el fetch_packet
+            //devuelve un t_list y lo guardamos en un t_packet
+            //tener cuidado ahi. Pasa en este y en el hilo de dispatch en los case
             log_info(logger, "handshake %d recibido %s",operation_code, server_name);
             packet = fetch_packet(client_socket);
             log_info(logger, "Packet received");
-
+            list_destroy(packet);
+            //ahora que cambie de t_packet a t_list hago el destroy que corresponde
+            //funcciona pero ahi antes no habia ningun destroy
+            //este destroy habria que hacerlo pero da error
+            //destroy_packet(packet);//agrego esto por valgrind
             // close_conection(client_socket);
             // client_socket = -1;  ESTAD DOS COSAS NO ESTABAN COMENTADAS
             break;
@@ -129,7 +136,7 @@ void* manage_interrupt_request(void *args)
 //DISPATCH
 void manage_dispatch_request()
 {
-    t_packet *packet;
+    t_list *packet;
     int client_socket = wait_client(logger, "cpu_dispatch_server", server_dispatch_fd);
     //ACA ANTES ESTE CLIENT CONNECT ESTABA DENTRO DEL WHILE, ENTONCES TENIA UN WAIT CLIENTE
     //QUE SIEMPRE QUE EJECUTABA EL WHILE ESPERABA QUE LE MANDE UN CONNECT, PERO DEL OTRO LADO SOLO
@@ -148,7 +155,9 @@ void manage_dispatch_request()
             log_info(logger, "handshake %d recibido %s",operation_code, "cpu_dispatch_server");
             packet = fetch_packet(client_socket);
             log_info(logger, "Packet received");
-
+            list_destroy(packet);
+            //este destroy habria que hacerlo pero da error
+            //destroy_packet(packet);//agrego esto por valgrind
             //close_conection(client_socket);
             //client_socket = -1;
             break;
@@ -188,7 +197,7 @@ t_instruccion_unitaria *pedirInstruccion(int pid, int pc,int client_fd){
     add_to_packet(packetInstruccion,&pid, sizeof(int));
     add_to_packet(packetInstruccion,&pc,sizeof(int));
     send_packet(packetInstruccion, client_fd); //client es el socket de memoria
-
+    destroy_packet(packetInstruccion);
     op_code opcode = recibir_operacion(client_fd); 
 
     if (opcode != MEMORIA_ENVIA_INSTRUCCION) {
@@ -355,12 +364,17 @@ void ciclo_de_instruccion(int socket_kernel){
             pthread_mutex_unlock(&mutex_interrupcion);
 
         }
-
+        destroy_instuccion_actual(instruccion_ACTUAL);
+        //free(instruccion_ACTUAL);
+        //agrego esto porque en valgrind lo marca como memory leak
+        //antes estaba el free solamente, pero hay que hacer free a todos los campos
+        //de adentro
     }
 
 	pid_ejecutando = 0;
 	//contexto_ejecucion_destroy(PCBACTUAL);
     free(PCBACTUAL); //aca hay que crear una funcion destroy
+
 
 }
 
@@ -479,6 +493,32 @@ void devolver_a_kernel_fin_quantum(t_pcb *contexto_actual, int socket_kernel,cha
     send_packet(packet_rta, socket_kernel);
     destroy_packet(packet_rta);
 
+}
+
+
+//para borrar instrucciones con los campos de adentro
+void destroy_instuccion_actual(t_instruccion_unitaria *instruccion){
+    
+    free(instruccion->opcode);
+    if(instruccion->parametro1_lenght != 0){
+
+        free(instruccion->parametros[0]);
+
+          if(instruccion->parametro2_lenght != 0){
+            free(instruccion->parametros[1]);
+            if(instruccion->parametro3_lenght != 0){
+                	free(instruccion->parametros[2]);
+                    if(instruccion->parametro4_lenght != 0){
+                	    free(instruccion->parametros[3]);
+                        if(instruccion->parametro5_lenght != 0){
+                	        free(instruccion->parametros[4]);
+                            }
+                    }
+                }
+            } 
+        }
+    
+    free(instruccion);
 }
 
 

@@ -175,7 +175,7 @@ void llamadas_io(t_interfaz_registrada *interfaz){
 
         
         sem_post(&(soloUnoEnvia));
-       
+        destroy_packet(packetTiempoDormir);
 
     }
 }

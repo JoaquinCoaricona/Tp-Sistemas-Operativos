@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
     cpu_interrupt_socket = create_conection(logger, cpu_IP, cpu_interrupt_PORT);
     log_info(logger, "Conectado al servidor de cpu %s:%s", cpu_IP, cpu_interrupt_PORT);
 
-    //send_packet(packet_handshake, cpu_dispatch_socket);
+    send_packet(packet_handshake, cpu_dispatch_socket);//este send estaba comentado pero funciona
     send_packet(packet_handshake, cpu_interrupt_socket);
 
     //create_process("prueba1");
@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
     pthread_create(&planificadorDeCortoPlazo,NULL,planificadorCortoPlazo,NULL);
     pthread_detach(planificadorDeCortoPlazo);
 
-
+    destroy_packet(packet_handshake);
 
     levantar_consola(logger);
     return 0;
@@ -272,7 +272,7 @@ void enviar_path_a_memoria(char *path){
     add_to_packet(packetMemoria,path,(strlen(path)+1));
     send_packet(packetMemoria, memory_socket);
 
-    
+    destroy_packet(packetMemoria);
 
 
 }

@@ -159,6 +159,7 @@ void enviar_proceso_cpu(t_pcb *proceso){
     packetPCB = create_packet(PCB_REC, bufferPCB);
     add_to_packet(packetPCB,proceso, sizePCB);
     send_packet(packetPCB, cpu_dispatch_socket);
+    destroy_packet(packetPCB);
 
 }
 

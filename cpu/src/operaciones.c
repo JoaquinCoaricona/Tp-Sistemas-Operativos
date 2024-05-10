@@ -162,6 +162,6 @@ void operacion_sleep(t_pcb *contexto,int socket,t_instruccion_unitaria* instrucc
     add_to_packet(packet_rta, contexto, tamanioPCB); //CARGO EL PCB ACTUALIZADO
 	
 	send_packet(packet_rta, socket);		//ENVIO EL PAQUETE
-
+	destroy_packet(packet_rta);
 
 }

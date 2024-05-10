@@ -8,6 +8,9 @@
 
 void* manage_interrupt_request(void *args);
 void manage_dispatch_request();
+//aca deberia estar declarado esto, pero dice que no reconoce t_instruccion_unitaria
+//por eso lo comento
+//void destroy_instuccion_actual(t_instruccion_unitaria *instruccion);
 //void pedirInstruccion(int pid, int pc,int client_fd);
 
 
