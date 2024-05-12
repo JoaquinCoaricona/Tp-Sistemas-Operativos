@@ -32,7 +32,7 @@ void planificador_corto_plazo_FIFO() {
     pthread_mutex_unlock(&mutex_state_ready);
 
     proceso->state = EXEC;
-    log_info(logger, "Cambio De Estado Proceso %d a %d\n", proceso->pid,proceso->state);
+    log_info(logger, "Cambio De Estado Proceso %d a %d\n", proceso->pid,getProcessState(proceso->state));
     
     pthread_mutex_lock(&m_procesoEjectuandoActualmente);
     procesoEjectuandoActualmente = proceso ->pid;
@@ -55,7 +55,7 @@ void manejoHiloQuantum(void *pcb){
 
     pthread_mutex_lock(&m_procesoEjectuandoActualmente);
     if(procesoEjectuandoActualmente == proceso->pid){
-        log_info(logger,"Envio Interupcion %i",procesoEjectuandoActualmente);
+        log_info(logger,"Envio Interrupcion %i",procesoEjectuandoActualmente);
         pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
         char *motivo = "Fin de Quantum";
         enviarInterrupcion(motivo,proceso->pid);
@@ -83,7 +83,7 @@ void planificador_corto_plazo_RoundRobin() {
     pthread_mutex_unlock(&mutex_state_ready);
 
     proceso->state = EXEC;
-    log_info(logger, "Cambio De Estado Proceso %d a %i\n", proceso->pid,proceso->state);
+    log_info(logger, "Cambio De Estado Proceso %d a %i\n", proceso->pid,getProcessState(proceso->state));
 
     pthread_mutex_lock(&m_procesoEjectuandoActualmente);
     procesoEjectuandoActualmente = proceso->pid;

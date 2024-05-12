@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
 
     // CONFIG
    
-   // t_config *config = initialize_config(logger, "../cpu.config");
+    //t_config *config = initialize_config(logger, "../cpu.config");
     t_config *config = initialize_config(logger, "cpu.config");
    
     memory_PORT = config_get_string_value(config, "PUERTO_MEMORIA");
