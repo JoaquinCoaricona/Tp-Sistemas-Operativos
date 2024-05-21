@@ -47,7 +47,7 @@ void levantar_consola(t_log *logger) {
 			//enviar_path_a_memoria(parametro);
 		} else if (strcmp(comando, "FINALIZAR_PROCESO") == 0) {
 			//hay que hacer un atoi
-			//finalizar_proceso(parametro);  //incluye el pid
+			finalizar_proceso(parametro);  //incluye el pid
 
 		} else if (strcmp(comando, "DETENER_PLANIFICACION") == 0) {
 			detener_planificacion();
