@@ -573,7 +573,7 @@ void finalizar_proceso(char *parametro)
 		if (pcb_n == NULL) {
 			return false;
 		}
-		return pcb_n->PID == pidAeliminar;
+		return pcb_n->pid == pidAeliminar;
 	}
 
     // ACLARACION IMPORTANTE: T_QUEUE ES UNA ESTRUCTURA QUE DENTRO TIENE UN T_LIST QUE SE LLAMA
@@ -582,7 +582,7 @@ void finalizar_proceso(char *parametro)
 
     // Me fijo si el proceso que esta corriendo en CPU es el que tengo que eliminar
     pthread_mutex_lock(&m_procesoEjectuandoActualmente);
-    if (procesoEjectuandoActualmente->pid == pidAeliminar)
+    if (procesoEjectuandoActualmente == pidAeliminar)
     {
         // En caso que sea el que esta ejecutando en CPU mando el pid a eliminar
         pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
@@ -613,7 +613,7 @@ void finalizar_proceso(char *parametro)
         if(punteroAEliminar != NULL){
             //Lo Borro De NEW
             list_remove_element(queue_new->elements,punteroAEliminar);
-            log_info(logger,"PID: %i encontrado en cola NEW");
+            log_info(logger,"PID: %i encontrado en cola NEW",pidAeliminar);
             //Lo Agrego A
             addEstadoExit(punteroAEliminar);
             encontrado = true;
