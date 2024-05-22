@@ -402,7 +402,7 @@ void fetch_pcb_actualizado(server_socket)
 // le va hacer un push a ready al final
 // podria tener una funcion que sea fetch pcb que te reciba el pcb y lo devuelva
 //
-void fetch_pcb_actualizado_fin_quantum(server_socket)
+void fetch_pcb_actualizado_fin_quantum(int server_socket)
 {
     int total_size;
     int offset = 0;
@@ -559,7 +559,7 @@ void iniciar_planificacion()
         log_info(logger, "Inicio de planificación: “INICIO DE PLANIFICACIÓN“");
     }
 }
-void finalizar_proceso(parametro)
+void finalizar_proceso(char *parametro)
 {
 
     int pidAeliminar = atoi(parametro);
@@ -608,11 +608,46 @@ void finalizar_proceso(parametro)
         //Busco en NEW
         pthread_mutex_lock(&mutex_state_new);
         punteroAEliminar = list_find(queue_new->elements,encontrar_por_pid);
+        //aca voy a eliminar el PCB de la lista pero solo lo saco de la lista, no
+        //le hago el destroy porqeu le tengo que hacer push en la cola de EXIT
         if(punteroAEliminar != NULL){
+            //Lo Borro De NEW
             list_remove_element(queue_new->elements,punteroAEliminar);
-            
+            log_info(logger,"PID: %i encontrado en cola NEW");
+            //Lo Agrego A
+            addEstadoExit(punteroAEliminar);
+            encontrado = true;
         }
         pthread_mutex_unlock(&mutex_state_new);
+            
+            //en caso que no este en new voy a buscar en READY
+            if(!encontrado){
+                
+                pthread_mutex_lock(&mutex_state_ready);
+                
+                punteroAEliminar = list_find(queue_ready->elements,encontrar_por_pid);
+
+                if(punteroAEliminar != NULL){
+                //Lo Borro De READY
+                list_remove_element(queue_ready->elements,punteroAEliminar);
+                log_info(logger,"PID: %i encontrado en cola READY",pidAeliminar);
+                //Lo Agrego A
+                addEstadoExit(punteroAEliminar);
+                encontrado = true;
+
+                }
+
+                pthread_mutex_unlock(&mutex_state_ready);
+                //hago esto de multiprogramacion porque elimine un proceso de READY
+                //y tengo que dejar entrar otro, no lo hago en NEW porque no tiene que haber uno ahi
+                sem_post(&sem_multiprogramacion);
+            }
+
+            if(!encontrado){
+                log_info(logger,"No se encontro el PID %i",pidAeliminar);
+            }
     }
+
+
 }
 
