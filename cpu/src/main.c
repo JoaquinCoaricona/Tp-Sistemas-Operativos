@@ -361,6 +361,7 @@ void ciclo_de_instruccion(int socket_kernel){
 		    hay_interrupcion_pendiente = false;
             pthread_mutex_unlock(&mutex_interrupcion);//LO DESBLOQUEO ACA
             //PORQUE SI ENTRO ACA ENTONCES YA LO VA DEVOLVER POR FIN DE QUANTUM
+            //ahora tambien lo puede devolver porque pidieron eliminar el proceso
             continuar_con_el_ciclo_instruccion = false;
 
             if(tipoInterrupcion == 0){
@@ -368,7 +369,7 @@ void ciclo_de_instruccion(int socket_kernel){
                 devolver_a_kernel_fin_quantum(PCBACTUAL, socket_kernel,"Fin de Quantum");
                 
             }else if(tipoInterrupcion == 1){
-                devolver_a_kernel_Eliminacion(PCBACTUAL,socket_kernel,"Eliminar Proceso");
+                devolver_a_kernel_Eliminacion(PCBACTUAL,socket_kernel,"Proceso Eliminado Por Consola");
             }else{
                 log_info(logger,"Error en el Tipo de Interrupcion");
             }

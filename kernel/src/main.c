@@ -219,6 +219,16 @@ void *manage_request_from_dispatch(void *args)
             // no terminno, volvio a ready, solo cuando llega a exit podemos hacer
             // un post al grado de multiprogramacion
             break;
+        case INTERRUPCION_ELIMINAR_PROCESO:
+            pthread_mutex_lock(&m_procesoEjectuandoActualmente);
+            procesoEjectuandoActualmente = -1;
+            pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
+            log_info(logger, "LLEGO UN PCB PARA ELIMINARSE");
+            fetch_pcb_actualizado_A_eliminar(server_socket);
+            sem_post(&short_term_scheduler_semaphore);
+            sem_post(&sem_multiprogramacion);
+            //ACA SI MULTIPROGRAMACION PORQUE ELIMINAMOS A UN PROCESO
+        break;
         case SLEEP_IO:
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
@@ -467,11 +477,14 @@ void fetch_pcb_actualizado_fin_quantum(int server_socket)
     log_info(logger, "REGISTRO AX : %i", pcbEJECUTANDO->registers.AX);
     log_info(logger, "REGISTRO BX : %i", pcbEJECUTANDO->registers.BX);
 
-    // aca le cambio el estado a exit
+    // aca le cambio el estado a REady porque fue desalojado por fin de quantum
     pcbEJECUTANDO->state = READY;
 
     addEstadoReady(pcbEJECUTANDO); // meto en ready el pcb
-    sem_post(&sem_ready);
+    sem_post(&sem_ready); //esto es para avisar que hay procesos en ready
+    //porque el planificador de corto plazo tiene un semaforo para saber que por lo menos hay
+    //algun proceso en ready, sino no sabe si hay y podrian pedirle que envie algo y no haya procesos
+    //para enviar, por eso esto es un contador de cuantos procesos hay en ready
 
     // el puntero pcb global lo dejo en null
     // este no es el PID ejecutando, es el puntero al pcb que se envio
@@ -480,6 +493,88 @@ void fetch_pcb_actualizado_fin_quantum(int server_socket)
     free(buffer);
     free(motivo);
 }
+
+void fetch_pcb_actualizado_A_eliminar(int server_socket){
+    
+    int total_size;
+    int offset = 0;
+    t_pcb *PCBrec = pcbEJECUTANDO;
+    void *buffer;
+    int length_motivo;
+    char *motivo;
+
+    buffer = fetch_buffer(&total_size, server_socket);
+
+    memcpy(&length_motivo, buffer + offset, sizeof(int));
+    offset += sizeof(int);
+
+    motivo = malloc(length_motivo);
+    memcpy(motivo, buffer + offset, length_motivo); // SI TENGO QUE COPIAR EL LENGTH, NO TENGO QUE PONER SIZEOF(LENGTH)
+    offset += length_motivo;                        // tengo que poner directamente el length en el ultimo param de memcpy
+                             //  y lo mismo en el offset al sumarle, tengo que sumar lo que copie en memcpy
+
+    offset += sizeof(int); // Salteo El tamaño del PCB
+    // aca uso el puntero global que apunta al pcb actual: pcbEJECUTANDO
+    // y actualizo ese pcb y despues lo pongo en NUll
+
+    memcpy(&(pcbEJECUTANDO->pid), buffer + offset, sizeof(int)); // RECIBO EL PID
+    offset += sizeof(int);
+
+    memcpy(&(pcbEJECUTANDO->program_counter), buffer + offset, sizeof(int)); // RECIBO EL PROGRAM COUNTER
+    offset += sizeof(int);
+
+    memcpy(&(pcbEJECUTANDO->quantum), buffer + offset, sizeof(int)); // RECIBO EL QUANTUM
+    offset += sizeof(int);
+
+    memcpy(&(pcbEJECUTANDO->state), buffer + offset, sizeof(t_process_state)); // RECIBO EL PROCESS STATE
+    offset += sizeof(t_process_state);
+
+    memcpy(&(pcbEJECUTANDO->registers.PC), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(pcbEJECUTANDO->registers.AX), buffer + offset, sizeof(uint8_t)); // RECIBO CPUREG
+    offset += sizeof(uint8_t);
+    memcpy(&(pcbEJECUTANDO->registers.BX), buffer + offset, sizeof(uint8_t)); // RECIBO CPUREG
+    offset += sizeof(uint8_t);
+    memcpy(&(pcbEJECUTANDO->registers.CX), buffer + offset, sizeof(uint8_t)); // RECIBO CPUREG
+    offset += sizeof(uint8_t);
+    memcpy(&(pcbEJECUTANDO->registers.DX), buffer + offset, sizeof(uint8_t)); // RECIBO CPUREG
+    offset += sizeof(uint8_t);
+    memcpy(&(pcbEJECUTANDO->registers.EAX), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(pcbEJECUTANDO->registers.EBX), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(pcbEJECUTANDO->registers.ECX), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(pcbEJECUTANDO->registers.EDX), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(pcbEJECUTANDO->registers.SI), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(pcbEJECUTANDO->registers.DI), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
+    offset += sizeof(uint32_t);
+
+    log_info(logger, "Motivo Recibido : %s", motivo);
+    log_info(logger, "PID RECIBIDO : %i", pcbEJECUTANDO->pid);
+    log_info(logger, "PC RECIBIDO : %i", pcbEJECUTANDO->program_counter);
+    log_info(logger, "ESTADO PROCESO: %i", pcbEJECUTANDO->state);
+    log_info(logger, "REGISTRO AX : %i", pcbEJECUTANDO->registers.AX);
+    log_info(logger, "REGISTRO BX : %i", pcbEJECUTANDO->registers.BX);
+
+    // aca le cambio el estado a exit
+    pcbEJECUTANDO->state = EXIT;
+
+    addEstadoExit(pcbEJECUTANDO); // meto en ready el pcb
+    
+    log_info(logger, "Finaliza el Proceso  %i, por SUCCESS", pcbEJECUTANDO->pid);
+
+    // el puntero pcb global lo dejo en null
+    // este no es el PID ejecutando, es el puntero al pcb que se envio
+    pcbEJECUTANDO = NULL;
+
+
+    free(buffer);
+    free(motivo);
+}
+
 
 t_interfaz_registrada *recibir_interfaz(client_socket)
 {
@@ -562,6 +657,9 @@ void iniciar_planificacion()
 void finalizar_proceso(char *parametro)
 {
 
+    //detener_planificacion(); //detengo la planificacion para evitar que haya movimientos
+    //mientras busco el proceso a eliminar
+
     int pidAeliminar = atoi(parametro);
     bool encontrado = false;
     t_pcb *punteroAEliminar = NULL;
@@ -592,7 +690,9 @@ void finalizar_proceso(char *parametro)
 
         bufferEnvio = create_buffer();
         eliminarProceso = create_packet(FINALIZAR_PROCESO, bufferEnvio);
-        add_to_packet(eliminarProceso, pidAeliminar, sizeof(int));
+        add_to_packet(eliminarProceso, &pidAeliminar, sizeof(int));
+        //ACORDARSE QUE EL SEGUNDO PARAMETRO DEL ADDTOPACKET ES UN PUNTERO
+        //ASI QUE LE PASO LA DIRECCION
         send_packet(eliminarProceso, cpu_interrupt_socket);
         destroy_packet(eliminarProceso);
     
@@ -641,6 +741,9 @@ void finalizar_proceso(char *parametro)
                 //hago esto de multiprogramacion porque elimine un proceso de READY
                 //y tengo que dejar entrar otro, no lo hago en NEW porque no tiene que haber uno ahi
                 sem_post(&sem_multiprogramacion);
+                sem_wait(&sem_ready); //tambien le hago wait a esto porque
+                //es un contador de cuantos hay en ready y acabo de sacar uno
+                
             }
 
             if(!encontrado){
@@ -648,6 +751,6 @@ void finalizar_proceso(char *parametro)
             }
     }
 
-
+    //iniciar_planificacion();
 }
 
