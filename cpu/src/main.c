@@ -6,6 +6,7 @@ int server_dispatch_fd;
 int client_fd_memoria;
 bool continuar_con_el_ciclo_instruccion;
 bool hay_interrupcion_pendiente = false;
+int tipoInterrupcion;
 int pid_ejecutando;
 int pid_a_desalojar;
 pthread_mutex_t mutex_interrupcion;
@@ -120,6 +121,9 @@ void* manage_interrupt_request(void *args)
         // case MEMORIA_ENVIA_INSTRUCCION:
         //     fetch_instruccion_recibida_de_memoria(client_socket);
         // break;
+        case FINALIZAR_PROCESO:
+            recibir_eliminar_proceso(client_socket);
+        break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
             return;
@@ -358,8 +362,18 @@ void ciclo_de_instruccion(int socket_kernel){
             pthread_mutex_unlock(&mutex_interrupcion);//LO DESBLOQUEO ACA
             //PORQUE SI ENTRO ACA ENTONCES YA LO VA DEVOLVER POR FIN DE QUANTUM
             continuar_con_el_ciclo_instruccion = false;
-		    devolver_a_kernel_fin_quantum(PCBACTUAL, socket_kernel,"Fin de Quantum");
-	        pid_a_desalojar = -1;
+
+            if(tipoInterrupcion == 0){
+		    
+                devolver_a_kernel_fin_quantum(PCBACTUAL, socket_kernel,"Fin de Quantum");
+                
+            }else if(tipoInterrupcion == 1){
+                devolver_a_kernel_Eliminacion(PCBACTUAL,socket_kernel,"Eliminar Proceso");
+            }else{
+                log_info(logger,"Error en el Tipo de Interrupcion");
+            }
+            tipoInterrupcion = -1; //este valor es para que no devuelva nada
+            pid_a_desalojar = -1;
 		}else{
             pthread_mutex_unlock(&mutex_interrupcion);
 
@@ -411,9 +425,13 @@ void recibir_interrupcion(int socket_kernel) {
     hay_interrupcion_pendiente = true;
     pthread_mutex_unlock(&mutex_interrupcion);
 
+    //LA INTERRUPCION POR FIN DE QUANTUM VA A SER UN 0 
+    //ESTO PARA CUANDO HACEMOS EL CHQUEO DE INTERRUPCION, SABER COMO DEVOLVER A KERNEL
+    tipoInterrupcion = 0;
 
 
-    log_info(logger,"RECIBI INTERRUPCION");
+
+    log_info(logger,"RECIBI INTERRUPCION QUANTUM");
 	if(!continuar_con_el_ciclo_instruccion){//si no hay nadie ejecutando
         pthread_mutex_lock(&mutex_interrupcion);
 	    hay_interrupcion_pendiente = false;
@@ -445,6 +463,58 @@ void recibir_interrupcion(int socket_kernel) {
 
 }
 
+void recibir_eliminar_proceso(int socket_kernel) {
+    
+    //Esta funcion hace lo mismo que la de arriba solo que carga un 1 en el tipo de interrupcion
+    int total_size;
+    int offset = 0;
+    void *buffer;
+   
+
+   
+    buffer = fetch_buffer(&total_size, socket_kernel);
+    
+    offset += sizeof(int); //SALTEO EL TAMAÑO DEL INT PID 
+    memcpy(&pid_a_desalojar,buffer + offset, sizeof(int)); //RECIBO EL PID
+
+    free(buffer);
+
+    pthread_mutex_lock(&mutex_interrupcion);
+    hay_interrupcion_pendiente = true;
+    pthread_mutex_unlock(&mutex_interrupcion);
+
+    //LA INTERRUPCION POR ELIMINAR PROCESO VA A SER UN 1 
+    //ESTO PARA CUANDO HACEMOS EL CHQUEO DE INTERRUPCION, SABER COMO DEVOLVER A KERNEL
+    tipoInterrupcion = 1;
+
+
+
+    log_info(logger,"RECIBI INTERRUPCION PARA ELIMINAR A UN PROCESO");
+
+	if(!continuar_con_el_ciclo_instruccion){//si no hay nadie ejecutando
+        pthread_mutex_lock(&mutex_interrupcion);
+	    hay_interrupcion_pendiente = false;
+        pthread_mutex_unlock(&mutex_interrupcion);
+        
+        pid_a_desalojar = -1;
+		responder_a_kernel("NO hay nadie", socket_kernel);
+        
+    }else if(pid_ejecutando && (pid_a_desalojar != pid_ejecutando) ){//si esta ejecutando otro proceso del que hay que desalojar
+        
+        pthread_mutex_lock(&mutex_interrupcion);
+        hay_interrupcion_pendiente = false;
+        pthread_mutex_unlock(&mutex_interrupcion);
+
+        log_info(logger,"El Proceso  %i ya fue desalojado, no coincide con %i",pid_a_desalojar,pid_ejecutando);
+		//responder_a_kernel("El proceso ya fue desalojado, esta ejecutando otro proceso", socket_kernel);
+		pid_a_desalojar = -1;
+    }
+    //esto de arriba es casi imposible que se use porque si el proceso
+    // que se esta ejecutando al final del quantum es distinto al que se estaba
+    //ejecutnado al inicio entonces no se enviar la interrupcion
+
+    //al final se envia igual parece
+}
 void responder_a_kernel(char *mensaje ,int socket){
 
     t_buffer *buffer_rta;
@@ -459,6 +529,7 @@ void responder_a_kernel(char *mensaje ,int socket){
     send_packet(packet_rta, socket);
     destroy_packet(packet_rta);
 }
+//Esto es para devolver Por EXIT
 void devolver_a_kernel(t_pcb *contexto_actual, int socket_kernel,char *motivo){
 
     t_buffer *buffer_rta;
@@ -483,6 +554,24 @@ void devolver_a_kernel_fin_quantum(t_pcb *contexto_actual, int socket_kernel,cha
     t_packet *packet_rta;
     buffer_rta = create_buffer();
     packet_rta = create_packet(INTERRUPCION_FIN_QUANTUM,buffer_rta);
+
+    int length_motivo = strlen(motivo) + 1;
+    add_to_packet(packet_rta, motivo, length_motivo); //DEVUELVO EL MOTIVO DE INTERRUPCION
+
+    int tamanioPCB = sizeof(t_pcb);
+    add_to_packet(packet_rta, contexto_actual, tamanioPCB); //CARGO EL PCB ACTUALIZADO
+    
+    send_packet(packet_rta, socket_kernel);
+    destroy_packet(packet_rta);
+
+}
+
+void devolver_a_kernel_Eliminacion(t_pcb *contexto_actual, int socket_kernel,char *motivo){
+    
+    t_buffer *buffer_rta;
+    t_packet *packet_rta;
+    buffer_rta = create_buffer();
+    packet_rta = create_packet(INTERRUPCION_ELIMINAR_PROCESO,buffer_rta);
 
     int length_motivo = strlen(motivo) + 1;
     add_to_packet(packet_rta, motivo, length_motivo); //DEVUELVO EL MOTIVO DE INTERRUPCION
