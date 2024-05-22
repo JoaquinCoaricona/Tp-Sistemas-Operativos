@@ -717,6 +717,7 @@ void finalizar_proceso(char *parametro)
             //Lo Agrego A
             addEstadoExit(punteroAEliminar);
             encontrado = true;
+            sem_wait(&sem_hay_pcb_esperando_ready); 
         }
         pthread_mutex_unlock(&mutex_state_new);
             

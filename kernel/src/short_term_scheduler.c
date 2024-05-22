@@ -23,10 +23,27 @@ void *planificadorCortoPlazo(void *arg){
 //FIFO
 void planificador_corto_plazo_FIFO() {      
     
-    sem_wait(&sem_ready); 
     sem_wait(&short_term_scheduler_semaphore);//esto es para despertar al planificador de corto plazo
+    sem_wait(&sem_ready); 
+    /*aca lo pongo en este orden porque antes estaba al reves, entonces lo que pasaba es que
+    como la funcion planificador de corto plazo es un while(1) entonces apenas se enviaba el proceso
+    desde esta funcion FIFO, volvia a ejecutarse la de planificador de corto plazo que 
+    esta arriba de la de fifo y como es un while 1 directamente hacia el wait a el sem
+    ready y entonces se quedaba esperando al signal de shorttercmscheduler pero si por
+    ejemplo eliminaas un proceso lo que pasa es que se le hace un wait al sem ready
+    que es un contador de cuantos hya en ready: en el caso que tenas dos procesos unno este ejecutando 
+    y el otro en ready y entonces vos eliminabas el que estaba en ready, al volver el otro
+    despertaba aal planiicador de cort plazo par que envie otro, y cuando vos eliminstas
+    hiciste el wait del semaforocontador semready pero como el sem ready  ya habia sido
+    pasado por lo que explique al principio solamente con el signal al depsrttar
+    planifiacodr corto plazo ya pedias que manden otro a ejecutara pero no habia mas en ready
+    por eso lo di vuelta, ahora primero espera desportar y despues controla que haya en ready
+    para que el semaforo de ready cuando le toque decidir este actualizado y no pase lo del ejemplo
+    que puse, que por mas que le haga el wait a sem ready no servia porque ya habia sido superado
+    y estaban esperando solo el signal a despetar planificador de corto plazo. Esto
+    sse usa en FIFO RR y VRR
+    */
     pthread_mutex_lock(&m_planificador_corto_plazo);
-     
     pthread_mutex_lock(&mutex_state_ready);
     t_pcb *proceso = queue_pop(queue_ready); //semaforo mutex para entrar a la lista de READY
     pthread_mutex_unlock(&mutex_state_ready);
@@ -74,8 +91,9 @@ void manejoHiloQuantum(void *pcb){
 //Round Robin
 void planificador_corto_plazo_RoundRobin() {
     
-    sem_wait(&sem_ready);
     sem_wait(&short_term_scheduler_semaphore);//esto es para despertar al planificador de corto plazo
+    sem_wait(&sem_ready); //aclaraion esto estaba dado vuelta antes, aclaracion hecha en fifo
+    
     pthread_mutex_lock(&m_planificador_corto_plazo);
     
     pthread_mutex_lock(&mutex_state_ready);

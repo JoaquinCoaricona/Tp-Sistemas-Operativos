@@ -90,10 +90,14 @@ void *Aready(void *arg)
 {
 	while (1)
 	{
-		
-		sem_wait(&sem_hay_pcb_esperando_ready); //controla que haya pcbs esperando entrar ready
-    	sem_wait(&sem_multiprogramacion);//controla que se cumpla con los hilos de multiprogramacion, se va restando hasta
+		//aca puede ser que haya problemas cuando haga lo de grado de multipgraoamcion
+		//quizas haciendo un semaforoDespertar Planificador Corto PLlazo funciona
+		sem_wait(&sem_multiprogramacion);//controla que se cumpla con los hilos de multiprogramacion, se va restando hasta
         //que llegue a 0 y ahi se bloquea y el signal lo haces cuando un proceso finaliza 
+		
+		//lo doy vuelta porque pasa lo mismo que pasaba con FIFO y VRR y porque los di vuelta ahi  
+		sem_wait(&sem_hay_pcb_esperando_ready); //controla que haya pcbs esperando entrar ready
+    	
 		pthread_mutex_lock(&m_planificador_largo_plazo);
     	
 
