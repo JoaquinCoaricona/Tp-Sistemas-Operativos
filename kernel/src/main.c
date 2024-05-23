@@ -8,6 +8,7 @@ t_log *logger;
 t_pcb *pcbEJECUTANDO;
 t_list *listaInterfaces;
 int gradoMultiprogramacion;
+int salteoPostAlSemaforo;
 int quantumGlobal;
 int procesoEjectuandoActualmente;
 char *algoritmo_planificacion;
@@ -25,6 +26,7 @@ int main(int argc, char *argv[])
     t_buffer *buffer;
     t_packet *packet_handshake;
     PID = 0;
+    salteoPostAlSemaforo = 0;
     planificacion_detenida = false;
     listaInterfaces = list_create();
     procesoEjectuandoActualmente = -2;
@@ -204,9 +206,9 @@ void *manage_request_from_dispatch(void *args)
             log_info(logger, "LLEGO UN PCB");
             fetch_pcb_actualizado(server_socket);
             sem_post(&short_term_scheduler_semaphore);
-            sem_post(&sem_multiprogramacion);
-
-            break;
+            controlGradoMultiprogramacion();
+            //sem_post(&sem_multiprogramacion);
+        break;
         case INTERRUPCION_FIN_QUANTUM:
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
@@ -226,7 +228,8 @@ void *manage_request_from_dispatch(void *args)
             log_info(logger, "LLEGO UN PCB PARA ELIMINARSE");
             fetch_pcb_actualizado_A_eliminar(server_socket);
             sem_post(&short_term_scheduler_semaphore);
-            sem_post(&sem_multiprogramacion);
+            controlGradoMultiprogramacion();
+            //sem_post(&sem_multiprogramacion);
             //ACA SI MULTIPROGRAMACION PORQUE ELIMINAMOS A UN PROCESO
         break;
         case SLEEP_IO:
@@ -766,17 +769,43 @@ void multiprogramacion(char *parametro){
         for(int i = 0; i < (nuevoValor-gradoMultiprogramacion);i++){
             sem_post(&sem_multiprogramacion);
         }
+        gradoMultiprogramacion = nuevoValor; //ACA CAMBIO REALMENTE EL GRADO DE MULTIPROGRAMACION
     }else{
-        //habia un caso particular con esto, habian dicho que no habia que hacerlo de 
-        //esta forma con waits directamente porque se podria llegar a trabar o hacer un deadlock
-        //dijeron que habia que hacer que los proximos n procesos no hagan el post
-        //pero de esta forma esta funcionando asi que lo dejo por ahora. Pero averiguar eso
+        
         log_info(logger,"Valor Actual: %i Valor Ingresado: %i",gradoMultiprogramacion,nuevoValor);
         log_info(logger,"Reduzco el grado de Multiprogramacion en %i lugares",gradoMultiprogramacion-nuevoValor);
-        for(int i = 0;i < (gradoMultiprogramacion-nuevoValor);i++){
-            sem_wait(&sem_multiprogramacion);
-        }
+        salteoPostAlSemaforo = gradoMultiprogramacion-nuevoValor;
+        gradoMultiprogramacion = nuevoValor; //ACA CAMBIO REALMENTE EL GRADO DE MULTIPROGRAMACION
+        
+       //NO HAGO LOS WAITS PORQUE CADA VEZ QUE AUMENTO EL GRADO DE MULTIPROGRAMACION ME FIJO QUE 
+       //EL VALOR DEL SEMAFORO SEA MENOR AL GRADO DE MULTIPROGRAMACION
+       //IMPORTANTE: CUANDO ELIMINAMOS UN PROCESO QUE ESTA EN LA COLA DE READY
+       //AHI HAY UN SEMPOST AL GRADO DE MULTIPROGRAMACION Y AHI NO HACEMOS EL CHQUEOE
+       //PORQUE SERIA UN CASO MUY RARO BORRAR Y JUSTO BAJAR EL GRADO DE MULTIRPOGRAMACION
+       //PERO ACLARACION QUE PODRIA PASAR ALGO AHI IGUAL ES SOLO AGREGARLO
     }
 
+}
+
+
+//lo que se hace aca es que cuando tenemos que bajar el grado de multiprogamacion se le pone un valor a 
+//la variable salteoPostAlsemaforo, ese valor es la cantidad de post que hay que evitar hacer 
+//para que cambie el grado de multirpogramacion. Por ejemplo si tengo el grado en 3, y entran 3 procesos
+// y tengo 4 esperando entrar a ready y en ese momento bajo el grao de multiprogramacion a 1, entonces
+// cuando los 3 procesos lleguen a exit van a pasar por esta funcion, como el valor salteoPostAlSemaforo va 
+// a ser 2 entonces van a entrar por el if y va  van a evitar hacer el post, y asi hsta que se haga 
+// 0 el valor y va  a dar false el if y entonces va ir al else y ya va volver a hacer el post SIEMPRE
+// de entrada esta varibale vale 0 porque tienen que hacer el post, solo toma un valor distinto
+// de 0 cuando piden un grado de multiprogramacion menor al actual.
+
+void controlGradoMultiprogramacion(){
+
+    if(salteoPostAlSemaforo){
+        log_info(logger,"Salteo un Post al Semaforo Grado Multiprogramacion");
+        salteoPostAlSemaforo--;
+        //PROBABLEMENTE ACA NECESITE UN MUTEX PARA EL SALTEOPOSTALSEMAFORO
+    }else{
+        sem_post(&sem_multiprogramacion);
+    }
 }
 
