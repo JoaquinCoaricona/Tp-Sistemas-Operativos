@@ -57,7 +57,7 @@ void levantar_consola(t_log *logger) {
 
 		} else if (strcmp(comando, "MULTIPROGRAMACION") == 0) {
 			//hay que hacer un atoi
-			//multiprogramacion(parametro) //Incluye parametro VALOR multiprogramacion
+			multiprogramacion(parametro); //Incluye parametro VALOR multiprogramacion
 			
 		} else if(strcmp(comando, "PROCESO_ESTADO") == 0){
 			//proceso_estado();

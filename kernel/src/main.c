@@ -755,3 +755,24 @@ void finalizar_proceso(char *parametro)
     //iniciar_planificacion();
 }
 
+void multiprogramacion(char *parametro){
+    int nuevoValor = atoi(parametro);
+
+    if(gradoMultiprogramacion == nuevoValor){
+        log_info(logger,"El valor ingresado es igual al actual");
+    }else if(nuevoValor > gradoMultiprogramacion){
+        log_info(logger,"Valor Actual: %i Valor Ingresado: %i",gradoMultiprogramacion,nuevoValor);
+        log_info(logger,"Expando el grado de Multiprogramacion en %i lugares",nuevoValor-gradoMultiprogramacion);
+        for(int i = 0; i < (nuevoValor-gradoMultiprogramacion);i++){
+            sem_post(&sem_multiprogramacion);
+        }
+    }else{
+        log_info(logger,"Valor Actual: %i Valor Ingresado: %i",gradoMultiprogramacion,nuevoValor);
+        log_info(logger,"Reduzco el grado de Multiprogramacion en %i lugares",gradoMultiprogramacion-nuevoValor);
+        for(int i = 0;i < (gradoMultiprogramacion-nuevoValor);i++){
+            sem_wait(&sem_multiprogramacion);
+        }
+    }
+
+}
+
