@@ -767,6 +767,10 @@ void multiprogramacion(char *parametro){
             sem_post(&sem_multiprogramacion);
         }
     }else{
+        //habia un caso particular con esto, habian dicho que no habia que hacerlo de 
+        //esta forma con waits directamente porque se podria llegar a trabar o hacer un deadlock
+        //dijeron que habia que hacer que los proximos n procesos no hagan el post
+        //pero de esta forma esta funcionando asi que lo dejo por ahora. Pero averiguar eso
         log_info(logger,"Valor Actual: %i Valor Ingresado: %i",gradoMultiprogramacion,nuevoValor);
         log_info(logger,"Reduzco el grado de Multiprogramacion en %i lugares",gradoMultiprogramacion-nuevoValor);
         for(int i = 0;i < (gradoMultiprogramacion-nuevoValor);i++){

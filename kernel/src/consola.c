@@ -63,7 +63,6 @@ void levantar_consola(t_log *logger) {
 			//proceso_estado();
 		} else {
 			log_error(logger,"Comando desconocido campeon, leete la documentacion de nuevo :p");
-			printf("ERROR COMANDO DESCONOCIDO");
 		}
 
 		free(linea);
