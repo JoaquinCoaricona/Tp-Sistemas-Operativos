@@ -27,6 +27,7 @@
 #include "opcode.h"
 #include <semaphore.h>
 #include "comunication.h"
+#include <commons/temporal.h>
 
 // STRUCTS
 //extern t_queue *queue_instrucciones;

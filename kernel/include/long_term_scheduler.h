@@ -10,6 +10,7 @@
 extern t_queue* queue_new;
 //extern t_queue* queue_ready; //LO LLEVO A RECEPCION.h para probar INTERFACES
 extern t_queue* queue_exit;
+extern t_queue* queue_prioridad;
 extern t_queue* queue_block;
 extern char* scheduler_algorithm;
 
@@ -31,6 +32,8 @@ void end_process();
 void long_term_scheduler();
 void *Aready(void *arg);
 void addEstadoExit(t_pcb *pcb);
+void addColaPrioridad(t_pcb *pcb);
+t_pcb *obtenerSiguienteColaPrioridad();
 
 
 extern sem_t m_execute_process;
@@ -39,9 +42,11 @@ extern sem_t m_ready_queue;
 extern sem_t sem_hay_pcb_esperando_ready;
 extern sem_t sem_multiprogramacion;
 extern sem_t sem_ready;
+
 extern pthread_mutex_t mutex_state_exit;
 extern pthread_mutex_t mutex_state_new;
 extern pthread_mutex_t mutex_state_ready;
+extern pthread_mutex_t mutex_state_prioridad;
 
 extern pthread_mutex_t m_planificador_corto_plazo;
 extern pthread_mutex_t m_planificador_largo_plazo;

@@ -10,6 +10,7 @@ sem_t sem_multiprogramacion; //hay que inicializarlo en 0
 pthread_mutex_t mutex_state_exit;
 pthread_mutex_t mutex_state_new;
 pthread_mutex_t mutex_state_ready;
+pthread_mutex_t mutex_state_prioridad;
 
 pthread_mutex_t m_planificador_corto_plazo;
 pthread_mutex_t m_planificador_largo_plazo;
@@ -19,6 +20,7 @@ pthread_mutex_t m_procesoEjectuandoActualmente;
 //Estado EXEC y BLOCKED no usan queue
 t_queue* queue_new;
 t_queue* queue_ready;
+t_queue* queue_prioridad;
 t_queue* queue_exit;
 //t_queue* queue_block;
 
@@ -33,6 +35,7 @@ void initialize_queue_and_semaphore() {
     queue_ready = queue_create();
 	//queue_block = queue_create(); //Cola de procesos bloqueados
     queue_exit = queue_create();
+	queue_prioridad = queue_create();
     sem_init(&m_execute_process, 0, 1);
     sem_init(&sem_ready, 0, 0);
 	sem_init(&short_term_scheduler_semaphore, 0, 0);
@@ -42,6 +45,7 @@ void initialize_queue_and_semaphore() {
     pthread_mutex_init(&mutex_state_new, NULL);
     pthread_mutex_init(&mutex_state_ready, NULL);
     pthread_mutex_init(&mutex_state_exit, NULL);
+	pthread_mutex_init(&mutex_state_prioridad, NULL);
     pthread_mutex_init(&m_planificador_corto_plazo, NULL);
 	pthread_mutex_init(&m_planificador_largo_plazo, NULL);
 	pthread_mutex_init(&m_procesoEjectuandoActualmente, NULL);
@@ -135,3 +139,26 @@ void addEstadoExit(t_pcb *pcb){
 
 	log_info(logger, "Se agrega el proceso: %d a Exit \n", pcb->pid);
 }
+
+//Agregar y Sacar PCB de Cola Prioridad
+
+void addColaPrioridad(t_pcb *pcb){
+    pthread_mutex_lock(&mutex_state_prioridad);
+	queue_push(queue_prioridad,pcb);
+	pthread_mutex_unlock(&mutex_state_prioridad);
+
+	log_info(logger, "Se agrega el proceso: %d a la cola Prioridad", pcb->pid);
+}
+
+t_pcb *obtenerSiguienteColaPrioridad(){
+	    
+	t_pcb *pcb = NULL;
+    pthread_mutex_lock(&mutex_state_prioridad);
+    pcb = queue_pop(queue_prioridad);
+    pthread_mutex_unlock(&mutex_state_prioridad);
+    log_info(logger, "Saco el proceso: %d de la cola Prioridad", pcb->pid);
+	return pcb;
+}
+
+
+

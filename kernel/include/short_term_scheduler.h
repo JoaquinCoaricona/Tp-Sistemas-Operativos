@@ -27,7 +27,12 @@ void send_execution_context_to_CPU(t_pcb *process);
 t_pcb *initializePCB();
 void *planificadorCortoPlazo(void *arg);
 void enviar_proceso_cpu(t_pcb *proceso);
+void manejoHiloQuantumVRR(void *pcb);
 
+//Para VRR
+
+extern t_temporal *timer;
+extern int ms_transcurridos;
 
 
 #endif //SHORT_TERM_SCHEDULER_H_
