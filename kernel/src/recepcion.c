@@ -159,9 +159,9 @@ void llamadas_io(t_interfaz_registrada *interfaz){
         int operation_code = fetch_codop(interfaz->socket_de_conexion); //aca se queda bloqueante esperando la respuesta
     
         int total_size;
+        //ACLARACION: es fetch_buffer de protocol.c , no es fetch pcb, solo recibe el numero que se envio para confirmar 
         void *buffer2 = fetch_buffer(&total_size,interfaz->socket_de_conexion); // recibo porque puse un numero en el buffer
-        free(buffer2);  
-                            //para no enviarlo vacio
+        free(buffer2);  //para no enviarlo vacio
         
         if(operation_code == CONFIRMACION_SLEEP_COMPLETO){
         log_info(logger, "%s CONFIRMA CODIGO FIN SLEEP\n",interfaz->nombre); 
@@ -169,9 +169,25 @@ void llamadas_io(t_interfaz_registrada *interfaz){
         }                                    
         log_info(logger, "LA INTERFAZ: %s TERMINO SLEEP DE : %i\n",interfaz->nombre,pcbEnviado->tiempoDormir); 
 
-        
-        addEstadoReady(pcbEnviado->PCB);//meto en ready el pcb 
-        sem_post(&sem_ready); 
+        //Este if lo que hace es ver si estamos en RR o VRR, en caso que estemos en RR nunca vamos a usar
+        // el valor del quantum y como siempre que los creamos le asignamos el quantumGlobal ese no se
+        // va a modificar nunca y todos los pcb van a tener ese valor y asi los idenfitico para ponerlo en la 
+        // cola de ready. Pero en VRR el quantum cambia y siempre que vuelven de io tenemos que meterlo a la 
+        // cola prioritaria, porque salieron antes de fin de quantum y tienen el restante en su PCB entonces 
+        // asi los identifico y los pongo en la cola de prioridad
+
+        //Tengo una duda sobre si esta bien hacer el semPost ready en el else, pero creo que esta bien porque el
+        //unico lugar donde se controla la cola prioritaria es cuando miro ready, ahi si hay 
+        //
+        if(pcbEnviado->PCB->quantum == quantumGlobal){
+            log_info(logger,"Como estoy en RoundRobin lo agrego a ready directamente");
+            addEstadoReady(pcbEnviado->PCB);//meto en ready el pcb 
+            sem_post(&sem_ready); 
+        }else{
+            log_info(logger,"Como estoy en Virtual RoundRobin lo agrego a la cola prioridad");
+            addColaPrioridad(pcbEnviado->PCB);
+            sem_post(&sem_ready); 
+        }
 
         
         sem_post(&(soloUnoEnvia));

@@ -205,6 +205,7 @@ void *manage_request_from_dispatch(void *args)
             // printf("Llego Un PCB");
             log_info(logger, "LLEGO UN PCB");
             fetch_pcb_actualizado(server_socket);
+            temporal_destroy(timer);
             sem_post(&short_term_scheduler_semaphore);
             controlGradoMultiprogramacion();
             //sem_post(&sem_multiprogramacion);
@@ -215,6 +216,7 @@ void *manage_request_from_dispatch(void *args)
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
             log_info(logger, "LLEGO UN PCB POR FIN DE QUANTUM");
             fetch_pcb_actualizado_fin_quantum(server_socket);
+            temporal_destroy(timer);
             sem_post(&short_term_scheduler_semaphore);
             // sem_post(&sem_multiprogramacion);
             // el de multiprogramacion aca no, porque es fin de quantum, el proceso
@@ -227,6 +229,7 @@ void *manage_request_from_dispatch(void *args)
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
             log_info(logger, "LLEGO UN PCB PARA ELIMINARSE");
             fetch_pcb_actualizado_A_eliminar(server_socket);
+            temporal_destroy(timer);
             sem_post(&short_term_scheduler_semaphore);
             controlGradoMultiprogramacion();
             //sem_post(&sem_multiprogramacion);
@@ -246,6 +249,10 @@ void *manage_request_from_dispatch(void *args)
             // Y DESPUES EN EL FIND NO PODIA COMPAARAR CON NULL. TODO POR INTENTAR SEPARAR EN FUNCIONES
             // DEL OTRO LADO RECIBO COMO PUNTERO A PUNTERO ** Y AL HACERLE EL MEMCPY
             // DESREFERENCIO CON EL *
+            obtenerDatosTemporal();
+            //la multiplicacion es para pasarlo a microsegundos, que es lo usa usleep
+            //t_temporal devuelve milisegundos. El quantumglobal esta en microsegundos
+            receptorPCB->quantum = receptorPCB->quantum - (ms_transcurridos * 1000);
             interfaz = buscar_interfaz(nombreInter);
             cargarEnListaIO(receptorPCB, interfaz, tiempoDormir);
             sem_post(&short_term_scheduler_semaphore);

@@ -73,7 +73,7 @@ void manejoHiloQuantum(void *pcb){
 
     t_quantum *proceso = (t_quantum *)pcb;
     
-    usleep(1000000 * quantumGlobal);
+    usleep(quantumGlobal);
 
     pthread_mutex_lock(&m_procesoEjectuandoActualmente);
     if(procesoEjectuandoActualmente == proceso->pid){
@@ -161,9 +161,8 @@ void planificador_corto_plazo_Virtual_RoundRobin(){
             log_info(logger,"Elijo Cola Prioridad");
             //Aca desbloqueo el semaoro de la cola prioridad
             pthread_mutex_unlock(&mutex_state_prioridad);
-            proceso = obtenerSiguienteColaPrioridad;
-            
-
+            proceso = obtenerSiguienteColaPrioridad();
+            log_info(logger,"Quantum Restante: %i",proceso->quantum);
         }else{
             log_info(logger,"Elijo Cola Ready");
             //Aca desbloqueo el semaoro de la cola prioridad
@@ -194,6 +193,7 @@ void planificador_corto_plazo_Virtual_RoundRobin(){
     pthread_t hiloQuantum;
     t_quantum *quatnumHilo = malloc(sizeof(t_quantum));
     quatnumHilo->pid = proceso->pid;
+    quatnumHilo->quantum = proceso->quantum;
     //solo le paso el pid, no le paso el puntero al pcb
     //el puntero al pcb esta en pcbEJECUTANDO
     //Aca no es necesario pasarle un quantum porque hay un quantum Global
@@ -212,7 +212,7 @@ void manejoHiloQuantumVRR(void *pcb){
 //que funciona 
     t_quantum *proceso = (t_quantum *)pcb;
     
-    usleep(1000000 * proceso->quantum);
+    usleep(proceso->quantum);
 
     pthread_mutex_lock(&m_procesoEjectuandoActualmente);
     if(procesoEjectuandoActualmente == proceso->pid){
@@ -230,6 +230,15 @@ void manejoHiloQuantumVRR(void *pcb){
     free(pcb);
     pthread_cancel(pthread_self());
    
+}
+
+void obtenerDatosTemporal(){
+    //Detengo el Temporal y guardo el tiempo transcurrido en la variable global
+    temporal_stop(timer);
+    ms_transcurridos = temporal_gettime(timer);
+    log_info(logger,"Tiempo Transcurrido: %i",ms_transcurridos * 1000); //Multiplico Por mil porque me interesan
+    //los microsegundos que son los que usa usleep y no milisegundos que es lo que devuelve t_temporal
+    temporal_destroy(timer);
 }
 
 void enviar_proceso_cpu(t_pcb *proceso){
