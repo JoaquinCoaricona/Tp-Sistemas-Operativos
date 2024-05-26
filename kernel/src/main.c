@@ -253,6 +253,16 @@ void *manage_request_from_dispatch(void *args)
             //la multiplicacion es para pasarlo a microsegundos, que es lo usa usleep
             //t_temporal devuelve milisegundos. El quantumglobal esta en microsegundos
             receptorPCB->quantum = receptorPCB->quantum - (ms_transcurridos * 1000);
+            //Hago Control de que el quantumRestante no sea negativo, en caso que sea neagativo, le cargo el original
+            //para que al volver de IO, lo carguen a la cola de ready y no a la prioritaria
+            //Esto pasaba cuando enviabamos varias veces a IO dentro de un mismo quantum, quizas entre que envia la 
+            //interrupcion y que volvia pasaba mas tiempo del que realmente se demoro en ejecutar la instruccion en cpu
+            //y al hacer las restas quedaba un valor negativo, y como al volver de IO solo se fije que sea igual al 
+            //quantumgloabl entonces podias terminar en la cola prioritaria teniendo quantum negativo.
+            if(receptorPCB->quantum < 0){
+                receptorPCB->quantum = quantumGlobal;
+                log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
+            }
             interfaz = buscar_interfaz(nombreInter);
             cargarEnListaIO(receptorPCB, interfaz, tiempoDormir);
             sem_post(&short_term_scheduler_semaphore);

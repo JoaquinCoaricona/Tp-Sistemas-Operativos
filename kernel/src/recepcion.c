@@ -180,6 +180,11 @@ void llamadas_io(t_interfaz_registrada *interfaz){
         //unico lugar donde se controla la cola prioritaria es cuando miro ready, ahi si hay 
         //
         if(pcbEnviado->PCB->quantum == quantumGlobal){
+            //No necesariamente es round robin, podria pasar que estaba en quantum negativo
+            //entonces antes de enviarlo a io le cambiaron el quantum al original para que 
+            //no se vaya a la cola prioritaria, entonces podria estar viniendo aca dentro de VRR
+            //la explicacion de porque podria llegar a quantum Negativo esta en el case SLEEP_IO
+            //en main.c Ahi se hace el control y esta la explicacion
             log_info(logger,"Como estoy en RoundRobin lo agrego a ready directamente");
             addEstadoReady(pcbEnviado->PCB);//meto en ready el pcb 
             sem_post(&sem_ready); 
