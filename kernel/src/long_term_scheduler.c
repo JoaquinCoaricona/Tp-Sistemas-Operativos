@@ -7,6 +7,7 @@ sem_t sem_ready;
 sem_t m_ready_queue;
 sem_t sem_hay_pcb_esperando_ready; //esto es para contar los PCB de ready
 sem_t sem_multiprogramacion; //hay que inicializarlo en 0
+sem_t long_term_scheduler_semaphore;
 pthread_mutex_t mutex_state_exit;
 pthread_mutex_t mutex_state_new;
 pthread_mutex_t mutex_state_ready;
@@ -42,6 +43,7 @@ void initialize_queue_and_semaphore() {
     sem_init(&sem_hay_pcb_esperando_ready,0,0);
     sem_init(&sem_multiprogramacion,0,gradoMultiprogramacion);//aca hay que poner en el segundo cero el grado de multipprogramacion
     sem_init(&m_ready_queue, 0, 1);
+	sem_init(&long_term_scheduler_semaphore,0,0);
     pthread_mutex_init(&mutex_state_new, NULL);
     pthread_mutex_init(&mutex_state_ready, NULL);
     pthread_mutex_init(&mutex_state_exit, NULL);
@@ -67,6 +69,7 @@ void agregarANew(t_pcb *pcb) //t_log *logger
 
 	log_info(logger, "Se agrega el proceso: %d a new \n", pcb->pid);
 	sem_post(&sem_hay_pcb_esperando_ready); //SEMAFORO CONTADOR
+	sem_post(&long_term_scheduler_semaphore);
 }
 
 //saca uno de NEW y lo devuelve, que seria el que iria a READY
@@ -94,6 +97,9 @@ void *Aready(void *arg)
 {
 	while (1)
 	{
+		sem_wait(&long_term_scheduler_semaphore);
+		pthread_mutex_lock(&m_planificador_largo_plazo);
+		
 		//aca puede ser que haya problemas cuando haga lo de grado de multipgraoamcion
 		//quizas haciendo un semaforoDespertar Planificador Corto PLlazo funciona
 		sem_wait(&sem_multiprogramacion);//controla que se cumpla con los hilos de multiprogramacion, se va restando hasta
@@ -102,7 +108,6 @@ void *Aready(void *arg)
 		//lo doy vuelta porque pasa lo mismo que pasaba con FIFO y VRR y porque los di vuelta ahi  
 		sem_wait(&sem_hay_pcb_esperando_ready); //controla que haya pcbs esperando entrar ready
     	
-		pthread_mutex_lock(&m_planificador_largo_plazo);
     	
 
 		log_info(logger, "Grado de multiprogramación permite agregar proceso a ready\n");

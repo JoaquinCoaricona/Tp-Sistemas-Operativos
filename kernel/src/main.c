@@ -205,7 +205,10 @@ void *manage_request_from_dispatch(void *args)
             // printf("Llego Un PCB");
             log_info(logger, "LLEGO UN PCB");
             fetch_pcb_actualizado(server_socket);
+            //Aca Controlo que solamente en VRR hago destroy al t_temporal
+            if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
             temporal_destroy(timer);
+            }
             sem_post(&short_term_scheduler_semaphore);
             controlGradoMultiprogramacion();
             //sem_post(&sem_multiprogramacion);
@@ -216,7 +219,10 @@ void *manage_request_from_dispatch(void *args)
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
             log_info(logger, "LLEGO UN PCB POR FIN DE QUANTUM");
             fetch_pcb_actualizado_fin_quantum(server_socket);
+            //Aca Controlo que solamente en VRR hago destroy al t_temporal
+            if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
             temporal_destroy(timer);
+            }
             sem_post(&short_term_scheduler_semaphore);
             // sem_post(&sem_multiprogramacion);
             // el de multiprogramacion aca no, porque es fin de quantum, el proceso
@@ -229,7 +235,10 @@ void *manage_request_from_dispatch(void *args)
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
             log_info(logger, "LLEGO UN PCB PARA ELIMINARSE");
             fetch_pcb_actualizado_A_eliminar(server_socket);
+            //Aca Controlo que solamente en VRR hago destroy al t_temporal
+            if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
             temporal_destroy(timer);
+            }
             sem_post(&short_term_scheduler_semaphore);
             controlGradoMultiprogramacion();
             //sem_post(&sem_multiprogramacion);
@@ -249,6 +258,9 @@ void *manage_request_from_dispatch(void *args)
             // Y DESPUES EN EL FIND NO PODIA COMPAARAR CON NULL. TODO POR INTENTAR SEPARAR EN FUNCIONES
             // DEL OTRO LADO RECIBO COMO PUNTERO A PUNTERO ** Y AL HACERLE EL MEMCPY
             // DESREFERENCIO CON EL *
+            
+            //El control al T_temporal es solo si estamos en VRR
+            if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
             obtenerDatosTemporal();
             //la multiplicacion es para pasarlo a microsegundos, que es lo usa usleep
             //t_temporal devuelve milisegundos. El quantumglobal esta en microsegundos
@@ -262,6 +274,7 @@ void *manage_request_from_dispatch(void *args)
             if(receptorPCB->quantum < 0){
                 receptorPCB->quantum = quantumGlobal;
                 log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
+            }
             }
             interfaz = buscar_interfaz(nombreInter);
             cargarEnListaIO(receptorPCB, interfaz, tiempoDormir);
@@ -705,6 +718,7 @@ void finalizar_proceso(char *parametro)
         // En caso que sea el que esta ejecutando en CPU mando el pid a eliminar
         pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
 
+        log_info(logger,"Es el que esta ejecutando actualmente");
         t_buffer *bufferEnvio;
         t_packet *eliminarProceso;
 
@@ -756,15 +770,39 @@ void finalizar_proceso(char *parametro)
                 addEstadoExit(punteroAEliminar);
                 encontrado = true;
 
-                }
-
-                pthread_mutex_unlock(&mutex_state_ready);
                 //hago esto de multiprogramacion porque elimine un proceso de READY
                 //y tengo que dejar entrar otro, no lo hago en NEW porque no tiene que haber uno ahi
                 sem_post(&sem_multiprogramacion);
                 sem_wait(&sem_ready); //tambien le hago wait a esto porque
                 //es un contador de cuantos hay en ready y acabo de sacar uno
-                
+                }
+                pthread_mutex_unlock(&mutex_state_ready);
+
+            }
+            
+            //Voy a Buscar en la cola de Prioridad del VRR
+             if(!encontrado){
+     
+                pthread_mutex_lock(&mutex_state_prioridad);
+     
+                punteroAEliminar = list_find(queue_prioridad->elements,encontrar_por_pid);
+                if(punteroAEliminar != NULL){
+                //Lo Borro De PRIORIDAD
+                list_remove_element(queue_prioridad->elements,punteroAEliminar);
+                log_info(logger,"PID: %i encontrado en cola Prioridad",pidAeliminar);
+                //Lo Agrego A
+                addEstadoExit(punteroAEliminar);
+                encontrado = true;
+     
+                //hago esto de multiprogramacion porque elimine un proceso de READY
+                //y tengo que dejar entrar otro, no lo hago en NEW porque no tiene que haber uno ahi
+                sem_post(&sem_multiprogramacion);
+                sem_wait(&sem_ready); //tambien le hago wait a esto porque
+                //es un contador de cuantos hay en ready y acabo de sacar uno
+               
+                pthread_mutex_unlock(&mutex_state_prioridad);
+
+                }  
             }
 
             if(!encontrado){

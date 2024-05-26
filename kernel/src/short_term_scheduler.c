@@ -29,6 +29,7 @@ void *planificadorCortoPlazo(void *arg){
 void planificador_corto_plazo_FIFO() {      
     
     sem_wait(&short_term_scheduler_semaphore);//esto es para despertar al planificador de corto plazo
+    pthread_mutex_lock(&m_planificador_corto_plazo);
     sem_wait(&sem_ready); 
     /*aca lo pongo en este orden porque antes estaba al reves, entonces lo que pasaba es que
     como la funcion planificador de corto plazo es un while(1) entonces apenas se enviaba el proceso
@@ -47,8 +48,7 @@ void planificador_corto_plazo_FIFO() {
     que puse, que por mas que le haga el wait a sem ready no servia porque ya habia sido superado
     y estaban esperando solo el signal a despetar planificador de corto plazo. Esto
     sse usa en FIFO RR y VRR
-    */
-    pthread_mutex_lock(&m_planificador_corto_plazo);
+    */   
     pthread_mutex_lock(&mutex_state_ready);
     t_pcb *proceso = queue_pop(queue_ready); //semaforo mutex para entrar a la lista de READY
     pthread_mutex_unlock(&mutex_state_ready);
@@ -97,9 +97,10 @@ void manejoHiloQuantum(void *pcb){
 void planificador_corto_plazo_RoundRobin() {
     
     sem_wait(&short_term_scheduler_semaphore);//esto es para despertar al planificador de corto plazo
+    pthread_mutex_lock(&m_planificador_corto_plazo);
+    log_info(logger,"Bloqueo");
     sem_wait(&sem_ready); //aclaracion esto estaba dado vuelta antes, aclaracion hecha en fifo
     
-    pthread_mutex_lock(&m_planificador_corto_plazo);
     
     pthread_mutex_lock(&mutex_state_ready);
     t_pcb *proceso = queue_pop(queue_ready); //semaforo mutex para entrar a la lista de READY
@@ -150,9 +151,10 @@ void planificador_corto_plazo_Virtual_RoundRobin(){
     t_pcb *proceso = NULL;
 
     sem_wait(&short_term_scheduler_semaphore);//esto es para despertar al planificador de corto plazo
+    pthread_mutex_lock(&m_planificador_corto_plazo);
+    log_info(logger,"Bloqueo");
     sem_wait(&sem_ready); //aclaracion esto estaba dado vuelta antes, aclaracion hecha en fifo
     
-    pthread_mutex_lock(&m_planificador_corto_plazo);
     
     //Me fijo si hay algo en la cola prioridad
     log_info(logger,"Momento de Eleccion");
