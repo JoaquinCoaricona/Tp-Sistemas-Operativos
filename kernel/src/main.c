@@ -751,7 +751,10 @@ void finalizar_proceso(char *parametro)
             //Lo Agrego A
             addEstadoExit(punteroAEliminar);
             encontrado = true;
-            sem_wait(&sem_hay_pcb_esperando_ready); 
+            //sem_wait(&sem_hay_pcb_esperando_ready);
+            // Aca voy a comentar este wait por lo mismo que en el short term schuduerl
+            // voy a hacer un control de que la lista dde ready no este vacia porque
+            // se seguia colgando la consola 
         }
         pthread_mutex_unlock(&mutex_state_new);
             
@@ -773,8 +776,14 @@ void finalizar_proceso(char *parametro)
                 //hago esto de multiprogramacion porque elimine un proceso de READY
                 //y tengo que dejar entrar otro, no lo hago en NEW porque no tiene que haber uno ahi
                 sem_post(&sem_multiprogramacion);
-                sem_wait(&sem_ready); //tambien le hago wait a esto porque
+                //sem_wait(&sem_ready); //tambien le hago wait a esto porque
                 //es un contador de cuantos hay en ready y acabo de sacar uno
+
+                //ACA COMENTE ESTE WAIT SEM READY PORQUE AGREGUE EL IF EN SHORT TERM SCHEDUKER
+                //ENTONCES NO IMPORTA SI PASA EL SEMREADY AUNQUE NO HAYA PROCESOS EN READY PORQUE
+                // DESPUES CONTROLA QUE LA LISTA NO ESTE VACIA Y SI ESTA VACIA HACE UN return
+                // Y ES COMO QUE LO VUELVE A TRABAR EN EL SEMAFORO SEMREADY ESPERANDO QUE ENTRE OTRO
+                // ESTO ESTA MEJOR EXPLICADO EN EL VRR
                 }
                 pthread_mutex_unlock(&mutex_state_ready);
 
@@ -797,12 +806,20 @@ void finalizar_proceso(char *parametro)
                 //hago esto de multiprogramacion porque elimine un proceso de READY
                 //y tengo que dejar entrar otro, no lo hago en NEW porque no tiene que haber uno ahi
                 sem_post(&sem_multiprogramacion);
-                sem_wait(&sem_ready); //tambien le hago wait a esto porque
+
+                //sem_wait(&sem_ready); //tambien le hago wait a esto porque
                 //es un contador de cuantos hay en ready y acabo de sacar uno
-               
-                pthread_mutex_unlock(&mutex_state_prioridad);
+                //ACA COMENTE ESTE WAIT SEM READY PORQUE AGREGUE EL IF EN SHORT TERM SCHEDUKER
+                //ENTONCES NO IMPORTA SI PASA EL SEMREADY AUNQUE NO HAYA PROCESOS EN READY PORQUE
+                // DESPUES CONTROLA QUE LA LISTA NO ESTE VACIA Y SI ESTA VACIA HACE UN return
+                // Y ES COMO QUE LO VUELVE A TRABAR EN EL SEMAFORO SEMREADY ESPERANDO QUE ENTRE OTRO
+                // ESTO ESTA MEJOR EXPLICADO EN EL VRR
 
                 }  
+                pthread_mutex_unlock(&mutex_state_prioridad);
+                //este unlock estaba dentro del if, tiene que estar afuera para que se
+                //desbloquee siempre. Lo encontre gracias al DEBUGGER
+
             }
 
             if(!encontrado){

@@ -29,8 +29,10 @@ void *planificadorCortoPlazo(void *arg){
 void planificador_corto_plazo_FIFO() {      
     
     sem_wait(&short_term_scheduler_semaphore);//esto es para despertar al planificador de corto plazo
-    pthread_mutex_lock(&m_planificador_corto_plazo);
     sem_wait(&sem_ready); 
+
+    pthread_mutex_lock(&m_planificador_corto_plazo);
+    
     /*aca lo pongo en este orden porque antes estaba al reves, entonces lo que pasaba es que
     como la funcion planificador de corto plazo es un while(1) entonces apenas se enviaba el proceso
     desde esta funcion FIFO, volvia a ejecutarse la de planificador de corto plazo que 
@@ -49,6 +51,15 @@ void planificador_corto_plazo_FIFO() {
     y estaban esperando solo el signal a despetar planificador de corto plazo. Esto
     sse usa en FIFO RR y VRR
     */   
+    
+    //ACLARACION IMPORTANTE SOBRE ESTE IF Y EL ORDEN DEL MUTEX Y WAITS ESTA EN VRR
+    if (queue_size(queue_ready) == 0) {
+		sem_post(&short_term_scheduler_semaphore);
+        log_info(logger,"La cola ready esta vacia");
+		pthread_mutex_unlock(&m_planificador_corto_plazo);
+		return;
+	}
+    
     pthread_mutex_lock(&mutex_state_ready);
     t_pcb *proceso = queue_pop(queue_ready); //semaforo mutex para entrar a la lista de READY
     pthread_mutex_unlock(&mutex_state_ready);
@@ -58,7 +69,6 @@ void planificador_corto_plazo_FIFO() {
     
     pthread_mutex_lock(&m_procesoEjectuandoActualmente);
     procesoEjectuandoActualmente = proceso ->pid;
-    int hoa = procesoEjectuandoActualmente;
     pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
     
     pcbEJECUTANDO = proceso;
@@ -97,11 +107,19 @@ void manejoHiloQuantum(void *pcb){
 void planificador_corto_plazo_RoundRobin() {
     
     sem_wait(&short_term_scheduler_semaphore);//esto es para despertar al planificador de corto plazo
-    pthread_mutex_lock(&m_planificador_corto_plazo);
-    log_info(logger,"Bloqueo");
     sem_wait(&sem_ready); //aclaracion esto estaba dado vuelta antes, aclaracion hecha en fifo
     
+    pthread_mutex_lock(&m_planificador_corto_plazo);
     
+    //ACLARACION IMPORTANTE SOBRE ESTE IF Y EL ORDEN DEL MUTEX Y WAITS ESTA EN VRR
+
+    if (queue_size(queue_ready) == 0) {
+		sem_post(&short_term_scheduler_semaphore);
+        log_info(logger,"La cola ready esta vacia");
+		pthread_mutex_unlock(&m_planificador_corto_plazo);
+		return;
+	}
+
     pthread_mutex_lock(&mutex_state_ready);
     t_pcb *proceso = queue_pop(queue_ready); //semaforo mutex para entrar a la lista de READY
     pthread_mutex_unlock(&mutex_state_ready);
@@ -149,13 +167,92 @@ void enviarInterrupcion(char *motivo, int pid){
 void planificador_corto_plazo_Virtual_RoundRobin(){
     
     t_pcb *proceso = NULL;
-
+    //log_info(logger,"Vuelvo a ejecutar");
     sem_wait(&short_term_scheduler_semaphore);//esto es para despertar al planificador de corto plazo
-    pthread_mutex_lock(&m_planificador_corto_plazo);
-    log_info(logger,"Bloqueo");
+    log_info(logger,"Paso el semaforo DetenerPlanifiacion y esta en Semwait()");
+    
+    //Esto es para obtener el valor del seamforo y probar, pero se puede comentar
+    int value;
+    sem_getvalue(&sem_ready, &value); // Obtiene el valor actual del semáforo
+    log_info(logger,"Valor actual del semáforo: %d", value);
+
     sem_wait(&sem_ready); //aclaracion esto estaba dado vuelta antes, aclaracion hecha en fifo
+    //EL DADO VUELTA SE REFIERE A ESTE SEMAFORO Y EL DE SHORT TERM SCHEDULER
     
+    pthread_mutex_lock(&m_planificador_corto_plazo);
+
+    /*Aca el problema era este: Tenia los dos waits en el orden que los tengo ahora pero
+    habia metido el mutex planificador corto plazo en el medio, para que pueda
+    detener la planificacion y eliminar procesos, pero el problema estaba en que habia
+    que pausar la planinficacion justo cuando estaba en cpu el proceso(porque los semaforos
+    que utiliza para detenerplanificacion se bloquea aca el de corto plazo 
+    mientras hace el envio). Si yo no hacia eso
+    y lo dejaba como esta ahora habia un problema cuando tenia un solo proceso porque
+    si el proceso volvia de cpu por fin de quantum y yo detenia la planificacion entonecs 
+    el proceso quedaba en ready y aca quedaba trabado en el mutex de la mitad y no llegaba a
+    ejecutarse el semwait semready y entonces como estaba frenado antes, yo podia eliminar el proceso
+    y como no se ejecutaba este wait, no consumia el signal que le hago cuando despues
+    de volver de fin de quantum lo guardo en ready. Ese signal lo usaba eliminar proceso
+    que al encontrarlo en ready le hacia un wait para bajar el semaforo contador semready
+    pero si bien esto funcionaba habia un problema porque ponele que el proceso se ejecutaba normalmente
+    y yo no detenia la planificacion y el proceso llegaba a exit entonces como llego a exit, en dispatch
+    le hacen un signal al semaforo shorttermscheduler y entra aca. Pero entonces como no detuve la planificacion
+    supera el mutex lock y se queda trabado en semready y ahi estaba el problema, en que si queria detener
+    la planificacion no podia, porque ya habia pasado ese lock aca y la consola quedaba bloqueada 
+    infinitamente porque tampoco podia meter procesos entonces no podia hacer un signal a sem ready
+    para que semready entre aca y llegue a hacer el unlock al mutex short term. Entonces ahi hay un problema
+    despues tambien podia dejarlo como esta ahora y si podia detener la planificacion pero habia otro problema
+    no funcionaba eliminar proceso de ready porque ponele que vuelve un pcb por fin de quantum
+    y yo freno la planificacion para que quede trabado en el mutex pero ya habiendo superado
+    el semready usando el signal que le hizo al ponerlo en ready por fin de Q 
+    entonces una vez que quedo trabado en el mutex le hago eliminar el proceso
+    por consola, pero en la funcion eliminar proceso habia un waitsem ready para mantener actualizado el 
+    semaforo contrador de procesos en ready  y como voy a eliminar proceso le hago el wait, pero 
+    ahi se quedaba colgada la consola porque ese 1 que tenia ya fue usado por este semaforo entones 
+    en eliminar proceso ya estaba en 0 y se bloqueaba la consola ahi. Esto tambien pasaba si lo hacia
+    en la cola prioitaria del VRR porque al volver de IO lo pone en ready y hace el signal pero lo consumia aca
+    y si bien yo frenaba la planifiaccion para que quede trabado en la cola prioridad, ya habia superado
+    el sem ready usando el signal que le dieron al volver de IO, entonces hacia finalizar proceso
+    pero al hacer el wait ready (porque para entrar a cola prioridad uso el semaforo ready pero me fijo
+    que no haya nada en cola prioridad y si hay ejecuto eso) se quedaba bloqueado el hilo consola de 
+    finalizar proceso entonces era lo mismo.
+
+    La solucion fue comentar ese wait que se hacia en finalizar proceso y que no se  haga, el problema
+    era que si yo no hacia eso, al salir de finalizar proceso y reanudar la planificacion
+    aca ya habia superado el sem ready y entonces al hacer el unlock del mutex directamente
+    iba a hacer un pop de la cola ready o de la prioridad pero estaban vacias porque habia matado 
+    al unico proceso (esto considerando que tenia solo un proceso, ahi fallaba casi siempre) entonces
+    iba a hacer pop a una cola vacia y no iba a tener nada par enviar a cpu. Entonces por eso
+    saque del otro TP resuelto esta parte que al principio me parecia que iba a desconfigurar
+    el cuidaod que habia tenido con el semaforo contrado de procesos de ready pero esto lo que hace 
+    es que despues de haber entrado y pasado ready se fija que si ready y prioridad estan vacias 
+    entonces hace un return para que vuelva a la funcion loop de short term scheuer y vuelva a ingresar a VRR
+    ademas le hago un post al short term schduler para que qude trabado en el sem ready y no en el
+    short term schduler porque eso solo se hace desde dispatch y solo desde el largo plazo una unica vez al
+    inicio de todo, entonces por eso se lo hago aca porque no tenia forma de recueprarlo ese. Pero ahi se
+    queda bloqueado en semready (es como que lo vuelvo a hacer trabarse en sem ready) y ahi se queda
+    esperando a que entren procesos nuevos a ready que desde el largo plazo le hagan el sempost a semready.
+
+    De esta forma se arreglo el probelma y ahora funcion para casi todos los casos (los que probe por ahora)
+    esta solucion es como que permite que el semaforo contador de procesos en ready este desactulizado y tenga 
+    signals de mas pero chquea esto y es como que te limpia los que tenga de mas. Esto lo aplique
+    para los otros algoritmos porque tambien servia solo que en esos me fijo solamente la cola de ready
+    aca me fijo las dos porque si hay algo en prioridad tengo que entrar igual aunque ready este vacio
+    Podria ser necesario un mutex antes de hacer el size de cada cola pero seria un lio entonces por las
+    dudas no lo agregue y en este caso seria necesario dos mutex uno por cada cola.
+    Esta parte es muy parecida a la del tp resuelto pero no hubiera pensado en modificar el semaforo
+    contador de procesos en ready, porque siempre hice todo par tratar de mantenerlo actualizado
+    pero esta solucion parcece que funciona.
+    */
     
+    //Puede ser que haya una condicion de carrera al entrar a las colas
+	if (queue_size(queue_ready) == 0 && queue_size(queue_prioridad) == 0) {
+		sem_post(&short_term_scheduler_semaphore);
+        log_info(logger,"La cola ready esta vacia");
+		pthread_mutex_unlock(&m_planificador_corto_plazo);
+		return;
+	}
+
     //Me fijo si hay algo en la cola prioridad
     log_info(logger,"Momento de Eleccion");
     pthread_mutex_lock(&mutex_state_prioridad);

@@ -69,6 +69,12 @@ int initialize_server(t_log *logger, const char *name, char *ip, char *port)
             log_error(logger, "Error al crear el socket %s", name);
             continue;
         }
+        //Este if no estaba, es para que no tengamos que esperar un minuto para
+        //volver a levantar todos los modulos, lo configuramos como reusable
+        //solo cambiamos el primer parametro por el resultado de la funcion socket de arriba
+        if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0)
+        error("setsockopt(SO_REUSEADDR) failed");
+        //hasta aca es el codigo para no esperar el minuto extra
 
         // Bind socket
         if (bind(server_socket, info->ai_addr, info->ai_addrlen) == -1)

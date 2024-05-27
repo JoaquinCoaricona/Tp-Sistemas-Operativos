@@ -7,7 +7,6 @@ sem_t sem_ready;
 sem_t m_ready_queue;
 sem_t sem_hay_pcb_esperando_ready; //esto es para contar los PCB de ready
 sem_t sem_multiprogramacion; //hay que inicializarlo en 0
-sem_t long_term_scheduler_semaphore;
 pthread_mutex_t mutex_state_exit;
 pthread_mutex_t mutex_state_new;
 pthread_mutex_t mutex_state_ready;
@@ -43,7 +42,6 @@ void initialize_queue_and_semaphore() {
     sem_init(&sem_hay_pcb_esperando_ready,0,0);
     sem_init(&sem_multiprogramacion,0,gradoMultiprogramacion);//aca hay que poner en el segundo cero el grado de multipprogramacion
     sem_init(&m_ready_queue, 0, 1);
-	sem_init(&long_term_scheduler_semaphore,0,0);
     pthread_mutex_init(&mutex_state_new, NULL);
     pthread_mutex_init(&mutex_state_ready, NULL);
     pthread_mutex_init(&mutex_state_exit, NULL);
@@ -69,7 +67,6 @@ void agregarANew(t_pcb *pcb) //t_log *logger
 
 	log_info(logger, "Se agrega el proceso: %d a new \n", pcb->pid);
 	sem_post(&sem_hay_pcb_esperando_ready); //SEMAFORO CONTADOR
-	sem_post(&long_term_scheduler_semaphore);
 }
 
 //saca uno de NEW y lo devuelve, que seria el que iria a READY
@@ -97,8 +94,6 @@ void *Aready(void *arg)
 {
 	while (1)
 	{
-		sem_wait(&long_term_scheduler_semaphore);
-		pthread_mutex_lock(&m_planificador_largo_plazo);
 		
 		//aca puede ser que haya problemas cuando haga lo de grado de multipgraoamcion
 		//quizas haciendo un semaforoDespertar Planificador Corto PLlazo funciona
@@ -108,8 +103,42 @@ void *Aready(void *arg)
 		//lo doy vuelta porque pasa lo mismo que pasaba con FIFO y VRR y porque los di vuelta ahi  
 		sem_wait(&sem_hay_pcb_esperando_ready); //controla que haya pcbs esperando entrar ready
     	
-    	
+		pthread_mutex_lock(&m_planificador_largo_plazo);
 
+		/*IMPORTANTE: Aca lo que hice fue lo mismo que en el shorttermScheduler, saque el wait m_planificador_largo_plazo
+		que habia en caso de matar un proceso que este en new(esto puede generar que el semaforo
+		hay pcb esperando ready no este actualizado y deje pasar aun si new esta vacio), entonces 
+		agregue el control en caso que new este vacio lo que hace es desbloquea el semaforo ready que
+		se usa para el chqequeo y ademas del log tambien le hace un post al grado de multiprogramacion
+		que desperdicio para poder entrar aca y que la cola este vacia. Como eso no lo recupera
+		le hago un post para que supere ese semaforo y quede trabado en sem_hay_pcb_esperando_ready 
+		esperando que entren procesos a new, tambien hago el unlcokk del planificaodo largo plazo
+		para que pueda detener la planificacion. En caso que haya entrado bien y la cola de new tenga
+		elementos, entonces se hace lo que se hacia normalmente aca. Esto generaba problemas
+		y se colgaba la consola porque hacia el wait en finalizar proceso si estaba en new.
+		Pasaba algo parecido a lo que esta detallado en el planificador de corto plazo.
+		*/
+		//Un error que pareceria que podria tener es que cuando yo detengo la pllanificacion
+		// y cargo dos procesos por ejemplo en new y borro los dos, entonces pareceria que 
+		// si solo le hago un post al grado de multiporgramacion y una sola vez llega a entrar
+		// por cola new vacia entonces se perderia un grado de multiprogramacion pero si
+		// haces el seguimiento pensandolo es como que de la nada aparece con los dos 
+		// lugares en sem multiprogramacion y no los pierde. Digo de la nada pero no es 
+		// que no se como lo hace, hay que hacer el seguimiento pero los recupera. Funciona
+
+
+		pthread_mutex_lock(&mutex_state_ready);
+		
+		if(queue_size(queue_new) == 0){
+			
+			pthread_mutex_unlock(&mutex_state_ready);
+			
+			log_info(logger,"Cola de New Vacia");
+			sem_post(&sem_multiprogramacion);
+			pthread_mutex_unlock(&m_planificador_largo_plazo);
+		}else{
+		
+		pthread_mutex_unlock(&mutex_state_ready);
 		log_info(logger, "Grado de multiprogramación permite agregar proceso a ready\n");
 		
     	t_pcb *pcb = obtenerSiguienteAready();
@@ -131,7 +160,8 @@ void *Aready(void *arg)
 		}
 		
 		pthread_mutex_unlock(&m_planificador_largo_plazo);
-
+		
+		}
 		
 	}
 }

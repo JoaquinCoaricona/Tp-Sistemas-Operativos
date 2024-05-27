@@ -42,7 +42,6 @@ extern sem_t m_ready_queue;
 extern sem_t sem_hay_pcb_esperando_ready;
 extern sem_t sem_multiprogramacion;
 extern sem_t sem_ready;
-extern sem_t long_term_scheduler_semaphore;
 
 extern pthread_mutex_t mutex_state_exit;
 extern pthread_mutex_t mutex_state_new;
