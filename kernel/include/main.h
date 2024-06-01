@@ -1,11 +1,19 @@
 #ifndef MAIN_H_
 #define MAIN_H_
+#include "../include/utils.h"
+#include "recepcion.h"
+#include "short_term_scheduler.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <commons/log.h>
-#include <commons/string.h>
-#include <commons/config.h>
-#include <readline/readline.h>
+
+
+void iniciar_planificacion();
+void detener_planificacion();
+
+
+void* manage_request_from_input_output(void *args);
+void* manage_request_from_dispatch(void *args);
+void create_process(char* path);
+void end_process();
+t_interfaz_registrada *recibir_interfaz(int client_socket);
 
 #endif /* MAIN_H_ */

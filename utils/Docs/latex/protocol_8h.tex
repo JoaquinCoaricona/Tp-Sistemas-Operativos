@@ -1,0 +1,230 @@
+\hypertarget{protocol_8h}{}\doxysection{utils/include/protocol.h File Reference}
+\label{protocol_8h}\index{utils/include/protocol.h@{utils/include/protocol.h}}
+
+
+Handles the protocol of the communication between the client and the server.  
+
+
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include $<$stdlib.\+h$>$}\newline
+{\ttfamily \#include $<$sys/socket.\+h$>$}\newline
+{\ttfamily \#include $<$signal.\+h$>$}\newline
+{\ttfamily \#include $<$unistd.\+h$>$}\newline
+{\ttfamily \#include $<$netdb.\+h$>$}\newline
+{\ttfamily \#include $<$commons/log.\+h$>$}\newline
+{\ttfamily \#include $<$commons/collections/list.\+h$>$}\newline
+{\ttfamily \#include $<$string.\+h$>$}\newline
+{\ttfamily \#include $<$assert.\+h$>$}\newline
+{\ttfamily \#include \char`\"{}opcode.\+h\char`\"{}}\newline
+Include dependency graph for protocol.\+h\+:
+% FIG 0
+This graph shows which files directly or indirectly include this file\+:
+% FIG 1
+\doxysubsection*{Data Structures}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structt__buffer}{t\+\_\+buffer}}
+\begin{DoxyCompactList}\small\item\em Struct to handle the buffer of the packet. \end{DoxyCompactList}\item 
+struct \mbox{\hyperlink{structt__packet}{t\+\_\+packet}}
+\begin{DoxyCompactList}\small\item\em struct to handle the packet \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{structt__buffer}{t\+\_\+buffer}} $\ast$ \mbox{\hyperlink{protocol_8h_a716f201529d2f774fa22369e2d39fe56}{create\+\_\+buffer}} ()
+\begin{DoxyCompactList}\small\item\em Create a buffer object. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{structt__packet}{t\+\_\+packet}} $\ast$ \mbox{\hyperlink{protocol_8h_a9728a992cfcad1d0195d075a9d13439e}{create\+\_\+packet}} (\mbox{\hyperlink{opcode_8h_aa48c0ba3c7a16f8d52b2f905b2ba940f}{op\+\_\+code}} code, \mbox{\hyperlink{structt__buffer}{t\+\_\+buffer}} $\ast$buffer)
+\begin{DoxyCompactList}\small\item\em Create a packet object that contains the operation code and the buffer to send. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{protocol_8h_a36cb4ee6ec88fd43ceb7e25a015863de}{add\+\_\+to\+\_\+packet}} (\mbox{\hyperlink{structt__packet}{t\+\_\+packet}} $\ast$packet, void $\ast$stream, int size)
+\begin{DoxyCompactList}\small\item\em Add the stream to the packet. \end{DoxyCompactList}\item 
+void $\ast$ \mbox{\hyperlink{protocol_8h_aa122c0bc354ce4bfc6667b9aa67c035f}{serialize\+\_\+packet}} (\mbox{\hyperlink{structt__packet}{t\+\_\+packet}} $\ast$packet, int buffer\+\_\+size)
+\begin{DoxyCompactList}\small\item\em Serializes the packet to send it. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{protocol_8h_a0ddfadd37aa10e5630d37e9b242fed65}{destroy\+\_\+packet}} (\mbox{\hyperlink{structt__packet}{t\+\_\+packet}} $\ast$packet)
+\begin{DoxyCompactList}\small\item\em Destroys the packet freeing the memory. It is used by send\+\_\+packet function. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{protocol_8h_af5cae91677a1a528cbce3322bcb03579}{send\+\_\+packet}} (\mbox{\hyperlink{structt__packet}{t\+\_\+packet}} $\ast$packet, int client\+\_\+socket)
+\begin{DoxyCompactList}\small\item\em Sends the packet to the server. \end{DoxyCompactList}\item 
+t\+\_\+list $\ast$ \mbox{\hyperlink{protocol_8h_a0e4a4b90103742646c78af1641ed7e91}{fetch\+\_\+packet}} (int client\+\_\+socket)
+\begin{DoxyCompactList}\small\item\em Fetch the packet from the client. \end{DoxyCompactList}\item 
+void $\ast$ \mbox{\hyperlink{protocol_8h_add90d82ce43706a959bf634c438040d5}{fetch\+\_\+buffer}} (int $\ast$size, int client\+\_\+socket)
+\begin{DoxyCompactList}\small\item\em Fetch the buffer from the client. It is used by fetch\+\_\+packet function. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{protocol_8h_a7f4105b88fc389555611d3dae59943ea}{fetch\+\_\+codop}} (int client\+\_\+socket)
+\begin{DoxyCompactList}\small\item\em Fetch the operation code from the client. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Handles the protocol of the communication between the client and the server. 
+
+\begin{DoxyAuthor}{Author}
+your name (\href{mailto:you@domain.com}{\texttt{ you@domain.\+com}}) 
+\end{DoxyAuthor}
+\begin{DoxyVersion}{Version}
+1.\+0 
+\end{DoxyVersion}
+\begin{DoxyDate}{Date}
+2024-\/04-\/18
+\end{DoxyDate}
+\begin{DoxyCopyright}{Copyright}
+Copyright (c) 2024 
+\end{DoxyCopyright}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{protocol_8h_a36cb4ee6ec88fd43ceb7e25a015863de}\label{protocol_8h_a36cb4ee6ec88fd43ceb7e25a015863de}} 
+\index{protocol.h@{protocol.h}!add\_to\_packet@{add\_to\_packet}}
+\index{add\_to\_packet@{add\_to\_packet}!protocol.h@{protocol.h}}
+\doxysubsubsection{\texorpdfstring{add\_to\_packet()}{add\_to\_packet()}}
+{\footnotesize\ttfamily void add\+\_\+to\+\_\+packet (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structt__packet}{t\+\_\+packet}} $\ast$}]{packet,  }\item[{void $\ast$}]{stream,  }\item[{int}]{size }\end{DoxyParamCaption})}
+
+
+
+Add the stream to the packet. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em packet} & Packet to add the stream \\
+\hline
+{\em stream} & Data of the buffer \\
+\hline
+{\em size} & size of the stream \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{protocol_8h_a716f201529d2f774fa22369e2d39fe56}\label{protocol_8h_a716f201529d2f774fa22369e2d39fe56}} 
+\index{protocol.h@{protocol.h}!create\_buffer@{create\_buffer}}
+\index{create\_buffer@{create\_buffer}!protocol.h@{protocol.h}}
+\doxysubsubsection{\texorpdfstring{create\_buffer()}{create\_buffer()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structt__buffer}{t\+\_\+buffer}}$\ast$ create\+\_\+buffer (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})}
+
+
+
+Create a buffer object. 
+
+\begin{DoxyReturn}{Returns}
+t\+\_\+buffer$\ast$ 
+\end{DoxyReturn}
+Implementar stream\mbox{\Hypertarget{protocol_8h_a9728a992cfcad1d0195d075a9d13439e}\label{protocol_8h_a9728a992cfcad1d0195d075a9d13439e}} 
+\index{protocol.h@{protocol.h}!create\_packet@{create\_packet}}
+\index{create\_packet@{create\_packet}!protocol.h@{protocol.h}}
+\doxysubsubsection{\texorpdfstring{create\_packet()}{create\_packet()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structt__packet}{t\+\_\+packet}}$\ast$ create\+\_\+packet (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{opcode_8h_aa48c0ba3c7a16f8d52b2f905b2ba940f}{op\+\_\+code}}}]{code,  }\item[{\mbox{\hyperlink{structt__buffer}{t\+\_\+buffer}} $\ast$}]{buffer }\end{DoxyParamCaption})}
+
+
+
+Create a packet object that contains the operation code and the buffer to send. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em code} & operation code \\
+\hline
+{\em buffer} & buffer to send \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+t\+\_\+packet$\ast$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{protocol_8h_a0ddfadd37aa10e5630d37e9b242fed65}\label{protocol_8h_a0ddfadd37aa10e5630d37e9b242fed65}} 
+\index{protocol.h@{protocol.h}!destroy\_packet@{destroy\_packet}}
+\index{destroy\_packet@{destroy\_packet}!protocol.h@{protocol.h}}
+\doxysubsubsection{\texorpdfstring{destroy\_packet()}{destroy\_packet()}}
+{\footnotesize\ttfamily void destroy\+\_\+packet (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structt__packet}{t\+\_\+packet}} $\ast$}]{packet }\end{DoxyParamCaption})}
+
+
+
+Destroys the packet freeing the memory. It is used by send\+\_\+packet function. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em packet} & packet to destroy \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{protocol_8h_add90d82ce43706a959bf634c438040d5}\label{protocol_8h_add90d82ce43706a959bf634c438040d5}} 
+\index{protocol.h@{protocol.h}!fetch\_buffer@{fetch\_buffer}}
+\index{fetch\_buffer@{fetch\_buffer}!protocol.h@{protocol.h}}
+\doxysubsubsection{\texorpdfstring{fetch\_buffer()}{fetch\_buffer()}}
+{\footnotesize\ttfamily void$\ast$ fetch\+\_\+buffer (\begin{DoxyParamCaption}\item[{int $\ast$}]{size,  }\item[{int}]{client\+\_\+socket }\end{DoxyParamCaption})}
+
+
+
+Fetch the buffer from the client. It is used by fetch\+\_\+packet function. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em size} & size of the buffer \\
+\hline
+{\em client\+\_\+socket} & client file descriptor \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+void$\ast$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{protocol_8h_a7f4105b88fc389555611d3dae59943ea}\label{protocol_8h_a7f4105b88fc389555611d3dae59943ea}} 
+\index{protocol.h@{protocol.h}!fetch\_codop@{fetch\_codop}}
+\index{fetch\_codop@{fetch\_codop}!protocol.h@{protocol.h}}
+\doxysubsubsection{\texorpdfstring{fetch\_codop()}{fetch\_codop()}}
+{\footnotesize\ttfamily int fetch\+\_\+codop (\begin{DoxyParamCaption}\item[{int}]{client\+\_\+socket }\end{DoxyParamCaption})}
+
+
+
+Fetch the operation code from the client. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em client\+\_\+socket} & client file descriptor \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+int Returns operation code or -\/1 if there is an error 
+\end{DoxyReturn}
+\mbox{\Hypertarget{protocol_8h_a0e4a4b90103742646c78af1641ed7e91}\label{protocol_8h_a0e4a4b90103742646c78af1641ed7e91}} 
+\index{protocol.h@{protocol.h}!fetch\_packet@{fetch\_packet}}
+\index{fetch\_packet@{fetch\_packet}!protocol.h@{protocol.h}}
+\doxysubsubsection{\texorpdfstring{fetch\_packet()}{fetch\_packet()}}
+{\footnotesize\ttfamily t\+\_\+list$\ast$ fetch\+\_\+packet (\begin{DoxyParamCaption}\item[{int}]{client\+\_\+socket }\end{DoxyParamCaption})}
+
+
+
+Fetch the packet from the client. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em client\+\_\+socket} & client file descriptor \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+t\+\_\+list$\ast$ List of packets 
+\end{DoxyReturn}
+\mbox{\Hypertarget{protocol_8h_af5cae91677a1a528cbce3322bcb03579}\label{protocol_8h_af5cae91677a1a528cbce3322bcb03579}} 
+\index{protocol.h@{protocol.h}!send\_packet@{send\_packet}}
+\index{send\_packet@{send\_packet}!protocol.h@{protocol.h}}
+\doxysubsubsection{\texorpdfstring{send\_packet()}{send\_packet()}}
+{\footnotesize\ttfamily void send\+\_\+packet (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structt__packet}{t\+\_\+packet}} $\ast$}]{packet,  }\item[{int}]{client\+\_\+socket }\end{DoxyParamCaption})}
+
+
+
+Sends the packet to the server. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em packet} & packet to send \\
+\hline
+{\em client\+\_\+socket} & client file descriptor \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{protocol_8h_aa122c0bc354ce4bfc6667b9aa67c035f}\label{protocol_8h_aa122c0bc354ce4bfc6667b9aa67c035f}} 
+\index{protocol.h@{protocol.h}!serialize\_packet@{serialize\_packet}}
+\index{serialize\_packet@{serialize\_packet}!protocol.h@{protocol.h}}
+\doxysubsubsection{\texorpdfstring{serialize\_packet()}{serialize\_packet()}}
+{\footnotesize\ttfamily void$\ast$ serialize\+\_\+packet (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structt__packet}{t\+\_\+packet}} $\ast$}]{packet,  }\item[{int}]{buffer\+\_\+size }\end{DoxyParamCaption})}
+
+
+
+Serializes the packet to send it. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em packet} & packet to serialize \\
+\hline
+{\em buffer\+\_\+size} & size of the buffer \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+void$\ast$ 
+\end{DoxyReturn}

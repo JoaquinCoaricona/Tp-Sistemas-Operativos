@@ -1,0 +1,99 @@
+\begin{theindex}
+
+  \item {add\_to\_packet}
+    \subitem {protocol.h}, \hyperpage{13}
+
+  \indexspace
+
+  \item {close\_conection}
+    \subitem {sockets.h}, \hyperpage{17}
+  \item {configs.h}
+    \subitem {end\_program}, \hyperpage{8}
+    \subitem {initialize\_config}, \hyperpage{8}
+  \item {create\_buffer}
+    \subitem {protocol.h}, \hyperpage{13}
+  \item {create\_conection}
+    \subitem {sockets.h}, \hyperpage{17}
+  \item {create\_packet}
+    \subitem {protocol.h}, \hyperpage{14}
+
+  \indexspace
+
+  \item {destroy\_packet}
+    \subitem {protocol.h}, \hyperpage{14}
+
+  \indexspace
+
+  \item {end\_program}
+    \subitem {configs.h}, \hyperpage{8}
+
+  \indexspace
+
+  \item {fetch\_buffer}
+    \subitem {protocol.h}, \hyperpage{14}
+  \item {fetch\_codop}
+    \subitem {protocol.h}, \hyperpage{15}
+  \item {fetch\_packet}
+    \subitem {protocol.h}, \hyperpage{15}
+
+  \indexspace
+
+  \item {initialize\_config}
+    \subitem {configs.h}, \hyperpage{8}
+  \item {initialize\_logger}
+    \subitem {logger.h}, \hyperpage{10}
+  \item {initialize\_server}
+    \subitem {sockets.h}, \hyperpage{18}
+
+  \indexspace
+
+  \item {logger.h}
+    \subitem {initialize\_logger}, \hyperpage{10}
+
+  \indexspace
+
+  \item {protocol.h}
+    \subitem {add\_to\_packet}, \hyperpage{13}
+    \subitem {create\_buffer}, \hyperpage{13}
+    \subitem {create\_packet}, \hyperpage{14}
+    \subitem {destroy\_packet}, \hyperpage{14}
+    \subitem {fetch\_buffer}, \hyperpage{14}
+    \subitem {fetch\_codop}, \hyperpage{15}
+    \subitem {fetch\_packet}, \hyperpage{15}
+    \subitem {send\_packet}, \hyperpage{15}
+    \subitem {serialize\_packet}, \hyperpage{16}
+
+  \indexspace
+
+  \item {send\_packet}
+    \subitem {protocol.h}, \hyperpage{15}
+  \item {serialize\_packet}
+    \subitem {protocol.h}, \hyperpage{16}
+  \item {sockets.h}
+    \subitem {close\_conection}, \hyperpage{17}
+    \subitem {create\_conection}, \hyperpage{17}
+    \subitem {initialize\_server}, \hyperpage{18}
+    \subitem {wait\_client}, \hyperpage{18}
+
+  \indexspace
+
+  \item {t\_buffer}, \hyperpage{5}
+  \item {t\_packet}, \hyperpage{5}
+  \item {t\_process\_conection\_args}, \hyperpage{6}
+
+  \indexspace
+
+  \item {utils/include/comunication.h}, \hyperpage{7}
+  \item {utils/include/configs.h}, \hyperpage{7}
+  \item {utils/include/logger.h}, \hyperpage{9}
+  \item {utils/include/opcode.h}, \hyperpage{11}
+  \item {utils/include/protocol.h}, \hyperpage{12}
+  \item {utils/include/sockets.h}, \hyperpage{16}
+  \item {utils/include/utils.h}, \hyperpage{19}
+
+  \indexspace
+
+  \item {wait\_client}
+    \subitem {sockets.h}, \hyperpage{18}
+
+\end{theindex}
