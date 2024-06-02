@@ -1,14 +1,16 @@
 #include "main.h"
 
 char *PATH_CONFIG;
-
+void *espacioUsuario;
+//lo reservo asi porque necesito la cadena de bytes pero no se que tipo
+//de dato voy a guardar
 int main(int argc, char *argv[])
 {
     char *PORT;
     char *IP;
    
-    int MEM_SIZE;
-    int PAGE_SIZE;
+    int memoriaTotal;
+    int tamaPagina;
     t_list *packet;
     t_log *logger;
 
@@ -25,6 +27,16 @@ int main(int argc, char *argv[])
     PORT = config_get_string_value(config, "PUERTO_ESCUCHA");
     IP = config_get_string_value(config, "IP");
     PATH_CONFIG = config_get_string_value(config, "PATH_INSTRUCCIONES");
+    memoriaTotal = config_get_string_value(config, "TAM_MEMORIA");
+    tamaPagina = config_get_string_value(config, "TAM_PAGINA");
+
+    //Creacion de BitMap 
+    int cantidadMarcos = memoriaTotal / tamaPagina;
+    
+
+
+    //Reserva Espacio Usuario
+    espacioUsuario = malloc(memoriaTotal);
 
     initialize_queue_and_semaphore_memoria();
 
