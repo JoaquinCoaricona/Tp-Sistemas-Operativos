@@ -4,7 +4,7 @@
 //#include "../include/utils.h"
 #include "instrucciones.h"
 
-extern t_log *logger;
+
 typedef struct{
 	int pid;
 	int numero_marco;

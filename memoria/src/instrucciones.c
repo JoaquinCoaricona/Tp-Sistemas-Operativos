@@ -55,9 +55,15 @@ void leer_pseudo(int client_socket){
 	t_instrucciones *instruccionREC = malloc(sizeof(t_instrucciones));
     fetch_pathYpid(client_socket,instruccionREC);
 
-	//*********CREACION DE LA TABLA DE PAGINAS*************
-	
-	//
+	//*********CREACION DE LA TABLA DE PAGINAS**********************
+	t_list *tablaDePaginas = list_create(); //Lista generica para cargar en el diccionario
+	//Ahora agrego al diccionario usando como llave el pid (pasado a string) y le asocio
+	//la lista generica con la tabla de paingas
+	dictionary_put(tabla_paginas_por_PID,string_itoa(instruccionREC->pid),tablaDePaginas);
+	log_info(logger,"Creacion Tabla De Paginas PID: %i Tam: 0",instruccionREC->pid);
+	//Aca directamente puse el 0 porque como es nueva su tamaño va a ser 0
+	//**************************************************************
+
 	char* path = string_new();
 	string_append(&path, PATH_CONFIG);
 	string_append(&path, instruccionREC->path);
