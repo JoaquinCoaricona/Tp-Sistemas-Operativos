@@ -3,6 +3,7 @@
 
 //#include "../include/utils.h"
 #include "instrucciones.h"
+#include <math.h>
 
 
 typedef struct{
@@ -23,6 +24,8 @@ typedef struct{
 	int bitValidez;
 }t_paginaMarco;
 
-
+bool esMarcoLibre(void* args);
+void ampliarProceso(int pid, int cantidadAgregar);
+t_situacion_marco* buscarMarcoLibre();
 
 #endif /* MAIN_H_ */

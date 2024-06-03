@@ -64,7 +64,9 @@ static void process_conection(void *args)
             //Dentro de leer_pseudo voy a crear la tabla de pagina porque ahi hago la lectura
             //del mensaje y ahi obtengo el Pid, podria cambiar la funcion y hacer que 
             // devuelvan a este archivo el pid pero para no cambiar lo que ya esta hecho lo hago dentro
-
+        break;
+        case RESIZE:
+            resizePaginas(client_socket);
         break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
