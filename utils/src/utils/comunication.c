@@ -54,12 +54,6 @@ static void process_conection(void *args)
             //close_conection(client_socket);
             //client_socket = -1;
             break;
-        case CREAR_PROCESO:
-            
-            log_info(logger,"Se Envio Un Proceso a Crear");
-            //close_conection(client_socket);
-            //client_socket = -1;
-        break;
         case SOL_INSTRUCCION:
             devolverInstruccion(client_socket);
         break;
@@ -67,12 +61,9 @@ static void process_conection(void *args)
             
             //t_instrucciones *instruccionREC = malloc(sizeof(t_instrucciones));
             leer_pseudo(client_socket);
-
-            
-            //close_conection(client_socket);
-            //client_socket = -1;
-         
-        
+            //Dentro de leer_pseudo voy a crear la tabla de pagina porque ahi hago la lectura
+            //del mensaje y ahi obtengo el Pid, podria cambiar la funcion y hacer que 
+            // devuelvan a este archivo el pid pero para no cambiar lo que ya esta hecho lo hago dentro
 
         break;
         case -1:
