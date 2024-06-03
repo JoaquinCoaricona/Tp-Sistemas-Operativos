@@ -6,6 +6,7 @@ void *espacioUsuario;
 //de dato voy a guardar
 t_list* situacionMarcos;
 t_dictionary* tabla_paginas_por_PID;
+t_log *logger;
 int main(int argc, char *argv[])
 {
     char *PORT;
@@ -14,7 +15,7 @@ int main(int argc, char *argv[])
     int memoriaTotal;
     int tamaPagina;
     t_list *packet;
-    t_log *logger;
+    
 
     initialize_queue_and_semaphore_memoria();
 
@@ -50,7 +51,10 @@ int main(int argc, char *argv[])
     espacioUsuario = malloc(memoriaTotal);
 
     //Diccionario de las tablas de Paginas
+    //Cuando se crea un proceso creo un nuevo par (key,listaTablaPagina) en el diccionario
+    //Y despues cuando quiero agregar una fila a la tabla de paginas pido la lista con la llave
     tabla_paginas_por_PID = dictionary_create();
+
     initialize_queue_and_semaphore_memoria();
 
     // SERVER

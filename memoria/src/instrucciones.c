@@ -55,6 +55,9 @@ void leer_pseudo(int client_socket){
 	t_instrucciones *instruccionREC = malloc(sizeof(t_instrucciones));
     fetch_pathYpid(client_socket,instruccionREC);
 
+	//*********CREACION DE LA TABLA DE PAGINAS*************
+	
+	//
 	char* path = string_new();
 	string_append(&path, PATH_CONFIG);
 	string_append(&path, instruccionREC->path);
