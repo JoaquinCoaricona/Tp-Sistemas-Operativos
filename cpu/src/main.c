@@ -330,7 +330,12 @@ void ciclo_de_instruccion(int socket_kernel){
 		if (strcmp(instruccion_ACTUAL->opcode, "JNZ") == 0) {
 
 			operacion_jnz(PCBACTUAL, instruccion_ACTUAL); //PASAR EL PUNTERO DIRECTAMENTE, 
-                                        //No pasar &PCBACTUAL porque eso es la direccion del punter
+            //No pasar &PCBACTUAL porque eso es la direccion del puntero
+		}
+        if (strcmp(instruccion_ACTUAL->opcode, "RESIZE") == 0) {
+
+			operacion_resize(PCBACTUAL, instruccion_ACTUAL); //PASAR EL PUNTERO DIRECTAMENTE, 
+            //No pasar &PCBACTUAL porque eso es la direccion del puntero
 		}
         if (strcmp(instruccion_ACTUAL->opcode, "IO_GEN_SLEEP") == 0){
 			//devolver_a_kernel(PCBACTUAL, SLEEP, socket_kernel); //esto estaba antes

@@ -142,6 +142,43 @@ void operacion_jnz(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 
 }
 
+// RESIZE (Tamaño): Solicitará a la Memoria ajustar el tamaño del proceso al tamaño 
+// pasado por parámetro. En caso de que la respuesta de la memoria sea Out of Memory,
+// se deberá devolver el contexto de ejecución al Kernel informando de esta situación.
+void operacion_resize(t_pcb* contexto, t_instruccion_unitaria* instruccion)
+{	
+	//Recibo el nuevo tamaño del proceso que es el unico parametro de la instruccion
+	int nuevoTamaProceso = atoi(instruccion->parametros[0]);
+
+	//Envio el Pid y el nuevo tamaño a memoria
+	t_buffer *buffer_resize;
+    t_packet *packet_resize;
+    buffer_resize = create_buffer();
+    packet_resize = create_packet(RESIZE, buffer_resize);
+
+    add_to_packet(packet_resize,&(contexto->pid),sizeof(int));
+    add_to_packet(packet_resize,&nuevoTamaProceso,sizeof(int));
+    
+    send_packet(packet_resize, client_fd_memoria);
+    destroy_packet(packet_resize);
+
+	//Aca se bloquea esperando la respuesta de memoria
+	int operation_code = fetch_codop(client_fd_memoria);
+
+	//++++++++++++Recibo Buffer y Libero+++++++++++++++++++++++++++
+	//Lo libero porque lo unico que me interesaba era el codigo de operacion
+	int total_size;
+	void *buffer2 = fetch_buffer(&total_size, client_fd_memoria);
+	free(buffer2);
+	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+	if(operation_code == RESIZE_EXITOSO){
+		log_info(logger,"RESIZE EXITOSO");
+	}else{
+		//REZISE FALLIDO
+	}
+}
+
 //IO_GEN_SLEEP (Interfaz, Unidades de trabajo): Esta instrucción solicita al Kernel que se
 //envíe a una interfaz de I/O a que realice un sleep por una cantidad de unidades de trabajo.
 

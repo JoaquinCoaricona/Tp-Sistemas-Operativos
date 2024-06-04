@@ -4,6 +4,8 @@
 #include "../include/utils.h"
 #include "main.h"
 
+extern t_log *logger;
+extern int client_fd_memoria;
 typedef struct {
 	int opcode_lenght;
 	char* opcode;

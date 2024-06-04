@@ -8,6 +8,7 @@ t_list* situacionMarcos;
 t_dictionary* tabla_paginas_por_PID;
 t_log *logger;
 int memoriaDisponible;
+int cantidadMarcos;
 int memoriaTotal;
 int tamaPagina;
 int main(int argc, char *argv[])
@@ -31,11 +32,12 @@ int main(int argc, char *argv[])
     PORT = config_get_string_value(config, "PUERTO_ESCUCHA");
     IP = config_get_string_value(config, "IP");
     PATH_CONFIG = config_get_string_value(config, "PATH_INSTRUCCIONES");
-    memoriaTotal = config_get_string_value(config, "TAM_MEMORIA");
-    tamaPagina = config_get_string_value(config, "TAM_PAGINA");
+    //Estos dos van con atoi porque esta funcion devuelve string
+    memoriaTotal = atoi(config_get_string_value(config, "TAM_MEMORIA"));
+    tamaPagina = atoi(config_get_string_value(config, "TAM_PAGINA"));
 
     //Creacion de Tabla De Marcos 
-    int cantidadMarcos = memoriaTotal / tamaPagina;
+    cantidadMarcos = memoriaTotal/tamaPagina;
     situacionMarcos = list_create();
 
     for(int i =0; i<cantidadMarcos; i++){
@@ -86,6 +88,7 @@ void resizePaginas(int client_socket){
 //-------Declaracion Varibales y Estructuras------------   
    int nuevoTama;
    int nuevaCantidadPaginas;
+   bool resizeExitoso = false; //Empieza en falso y cambia si se puede realizar
    int pid;
    int tamaActualProceso; //la cuento en cantidad de paginas
    t_list *tablaPaginasBuscada; 
@@ -119,21 +122,44 @@ void resizePaginas(int client_socket){
 //-----------------------------------------
 
 //--------Calculo el tamaño Nuevo------
-    nuevaCantidadPaginas = ceil(nuevoTama / tamaPagina);
+    //Hago esto porque ceil recibe un float por parametro
+    float resDivision = (float)nuevoTama / tamaPagina;
+    nuevaCantidadPaginas = (int)ceil(resDivision);
     //Redondeo hacia arriba para obtener la cantidad de paginas
 //-------------------------------------
 //--------Comparacion tamaños------
     if(nuevaCantidadPaginas == tamaActualProceso) {
         log_info(logger, "El proceso con su nuevo tamaño ocupa la misma cantidad de paginas que antes");
-    }else if(nuevaCantidadPaginas > tamaActualProceso){
+        resizeExitoso = true;
+    }else if(nuevaCantidadPaginas > tamaActualProceso && (cantidadMarcos >= (nuevaCantidadPaginas - tamaActualProceso)) ){
         log_info(logger, "Ampliacion de Proceso PID: %i Tamaño Actual: %i Tamaño a Ampliar: %i",pid,tamaActualProceso,nuevaCantidadPaginas - tamaActualProceso);
         ampliarProceso(pid , nuevaCantidadPaginas - tamaActualProceso);
-    }else{
+        resizeExitoso = true;
+    }else if(nuevaCantidadPaginas < tamaActualProceso){
         log_info(logger, "Reduccion de Proceso PID: %i Tamaño Actual: %i Tamaño a Reducir: %i",pid,tamaActualProceso,tamaActualProceso - nuevaCantidadPaginas);
         reducirProceso(pid , tamaActualProceso - nuevaCantidadPaginas);
+        resizeExitoso = true;
     }
-//-------------------------------------
+    //La unica forma en que no entre por ninguno es que deba entrar por el segundo
+    //pero que no haya marcos disponibles, entonces devuelvo out of memory
+//---------------------------------------
+//--------Respuesta a CPU ---------------
+    t_buffer *buffer_resize;
+    t_packet *packet_resize;
+    buffer_resize = create_buffer();
+    if(resizeExitoso){
+        packet_resize = create_packet(RESIZE_EXITOSO, buffer_resize);
+    }else{
+        packet_resize = create_packet(OUT_MEMORY, buffer_resize);
+    }
+    //+++++++++++++++SOLO PARA ENVIAR ALGO+++++++++++++++++++++++++++++
+    int numeroConfirmacion;
+    add_to_packet(packet_resize,&numeroConfirmacion,sizeof(int));
+    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+    send_packet(packet_resize, client_socket);
+    destroy_packet(packet_resize);
+//---------------------------------------
 }
 
 void ampliarProceso(int pid, int cantidadAgregar){
@@ -153,6 +179,9 @@ void ampliarProceso(int pid, int cantidadAgregar){
 
         //Agrego la la pagina nueva en la tabla de paginas del PID
         list_add(tablaPagina,nuevaPagina);
+
+        //Actualizo el contador de marcos libres
+        cantidadMarcos = cantidadMarcos - 1;
         
         log_info(logger,"Agrego Pagina a la lista de paginas PID: %i",pid);
     }
@@ -176,17 +205,13 @@ void reducirProceso(int pid, int cantidadReducir){
         marcoBuscado->esLibre = true;
         marcoBuscado->pid = -1;
 
+        //Actualizo contador de marcos libres
+        cantidadMarcos = cantidadMarcos + 1;
         //Una vez libre el marco ya puedo borrar la pagina de la tabla del proceso
         //Borro la ultima pagina que agregue porque hay que borrar del final hacia adelante 
         list_remove(tablaPagina, cantPaginas - 1);
-        log_info(logger,"Borro pagina del proceso");
+        log_info(logger,"Elimino Pagina de la lista de paginas PID: %i",pid);
     }
-}
-
-//Te devuelve un marco libre
-t_situacion_marco* buscarMarcoLibre(){
-    t_situacion_marco *marcoLibre = list_find(situacionMarcos,esMarcoLibre);
-    return marcoLibre;
 }
 
 //Funcion Para usar en el list_find de buscarMarcoLibre
@@ -194,4 +219,10 @@ bool esMarcoLibre(void* args){
     //Hacemos esto para cumplir con el tipo de funcion que acepta list_find
 	t_situacion_marco* marco_x =(t_situacion_marco*)args;
 	return marco_x->esLibre;
+}
+
+//Te devuelve un marco libre
+t_situacion_marco* buscarMarcoLibre(){
+    t_situacion_marco *marcoLibre = list_find(situacionMarcos,esMarcoLibre);
+    return marcoLibre;
 }
