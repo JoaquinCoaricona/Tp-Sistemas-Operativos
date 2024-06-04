@@ -205,23 +205,25 @@ void *manage_request_from_dispatch(void *args)
             // printf("Llego Un PCB");
             log_info(logger, "LLEGO UN PCB");
             fetch_pcb_actualizado(server_socket);
-            //Aca Controlo que solamente en VRR hago destroy al t_temporal
-            if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
-            temporal_destroy(timer);
+            // Aca Controlo que solamente en VRR hago destroy al t_temporal
+            if (string_equals_ignore_case(algoritmo_planificacion, "VRR"))
+            {
+                temporal_destroy(timer);
             }
             sem_post(&short_term_scheduler_semaphore);
             controlGradoMultiprogramacion();
-            //sem_post(&sem_multiprogramacion);
-        break;
+            // sem_post(&sem_multiprogramacion);
+            break;
         case INTERRUPCION_FIN_QUANTUM:
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
             log_info(logger, "LLEGO UN PCB POR FIN DE QUANTUM");
             fetch_pcb_actualizado_fin_quantum(server_socket);
-            //Aca Controlo que solamente en VRR hago destroy al t_temporal
-            if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
-            temporal_destroy(timer);
+            // Aca Controlo que solamente en VRR hago destroy al t_temporal
+            if (string_equals_ignore_case(algoritmo_planificacion, "VRR"))
+            {
+                temporal_destroy(timer);
             }
             sem_post(&short_term_scheduler_semaphore);
             // sem_post(&sem_multiprogramacion);
@@ -235,15 +237,16 @@ void *manage_request_from_dispatch(void *args)
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
             log_info(logger, "LLEGO UN PCB PARA ELIMINARSE");
             fetch_pcb_actualizado_A_eliminar(server_socket);
-            //Aca Controlo que solamente en VRR hago destroy al t_temporal
-            if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
-            temporal_destroy(timer);
+            // Aca Controlo que solamente en VRR hago destroy al t_temporal
+            if (string_equals_ignore_case(algoritmo_planificacion, "VRR"))
+            {
+                temporal_destroy(timer);
             }
             sem_post(&short_term_scheduler_semaphore);
             controlGradoMultiprogramacion();
-            //sem_post(&sem_multiprogramacion);
-            //ACA SI MULTIPROGRAMACION PORQUE ELIMINAMOS A UN PROCESO
-        break;
+            // sem_post(&sem_multiprogramacion);
+            // ACA SI MULTIPROGRAMACION PORQUE ELIMINAMOS A UN PROCESO
+            break;
         case SLEEP_IO:
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
@@ -258,23 +261,25 @@ void *manage_request_from_dispatch(void *args)
             // Y DESPUES EN EL FIND NO PODIA COMPAARAR CON NULL. TODO POR INTENTAR SEPARAR EN FUNCIONES
             // DEL OTRO LADO RECIBO COMO PUNTERO A PUNTERO ** Y AL HACERLE EL MEMCPY
             // DESREFERENCIO CON EL *
-            
-            //El control al T_temporal es solo si estamos en VRR
-            if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
-            obtenerDatosTemporal();
-            //la multiplicacion es para pasarlo a microsegundos, que es lo usa usleep
-            //t_temporal devuelve milisegundos. El quantumglobal esta en microsegundos
-            receptorPCB->quantum = receptorPCB->quantum - (ms_transcurridos * 1000);
-            //Hago Control de que el quantumRestante no sea negativo, en caso que sea neagativo, le cargo el original
-            //para que al volver de IO, lo carguen a la cola de ready y no a la prioritaria
-            //Esto pasaba cuando enviabamos varias veces a IO dentro de un mismo quantum, quizas entre que envia la 
-            //interrupcion y que volvia pasaba mas tiempo del que realmente se demoro en ejecutar la instruccion en cpu
-            //y al hacer las restas quedaba un valor negativo, y como al volver de IO solo se fije que sea igual al 
-            //quantumgloabl entonces podias terminar en la cola prioritaria teniendo quantum negativo.
-            if(receptorPCB->quantum < 0){
-                receptorPCB->quantum = quantumGlobal;
-                log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
-            }
+
+            // El control al T_temporal es solo si estamos en VRR
+            if (string_equals_ignore_case(algoritmo_planificacion, "VRR"))
+            {
+                obtenerDatosTemporal();
+                // la multiplicacion es para pasarlo a microsegundos, que es lo usa usleep
+                // t_temporal devuelve milisegundos. El quantumglobal esta en microsegundos
+                receptorPCB->quantum = receptorPCB->quantum - (ms_transcurridos * 1000);
+                // Hago Control de que el quantumRestante no sea negativo, en caso que sea neagativo, le cargo el original
+                // para que al volver de IO, lo carguen a la cola de ready y no a la prioritaria
+                // Esto pasaba cuando enviabamos varias veces a IO dentro de un mismo quantum, quizas entre que envia la
+                // interrupcion y que volvia pasaba mas tiempo del que realmente se demoro en ejecutar la instruccion en cpu
+                // y al hacer las restas quedaba un valor negativo, y como al volver de IO solo se fije que sea igual al
+                // quantumgloabl entonces podias terminar en la cola prioritaria teniendo quantum negativo.
+                if (receptorPCB->quantum < 0)
+                {
+                    receptorPCB->quantum = quantumGlobal;
+                    log_info(logger, "El Quantum era negativo, asigno el quantumGlobal");
+                }
             }
             interfaz = buscar_interfaz(nombreInter);
             cargarEnListaIO(receptorPCB, interfaz, tiempoDormir);
@@ -379,7 +384,7 @@ void fetch_pcb_actualizado(server_socket)
     motivo = malloc(length_motivo);
     memcpy(motivo, buffer + offset, length_motivo); // SI TENGO QUE COPIAR EL LENGTH, NO TENGO QUE PONER SIZEOF(LENGTH)
     offset += length_motivo;                        // tengo que poner directamente el length en el ultimo param de memcpy
-                             //  y lo mismo en el offset al sumarle, tengo que sumar lo que copie en memcpy
+                                                    //  y lo mismo en el offset al sumarle, tengo que sumar lo que copie en memcpy
 
     offset += sizeof(int); // Salteo El tamaño del PCB
     // aca uso el puntero global que apunta al pcb actual: pcbEJECUTANDO
@@ -462,7 +467,7 @@ void fetch_pcb_actualizado_fin_quantum(int server_socket)
     motivo = malloc(length_motivo);
     memcpy(motivo, buffer + offset, length_motivo); // SI TENGO QUE COPIAR EL LENGTH, NO TENGO QUE PONER SIZEOF(LENGTH)
     offset += length_motivo;                        // tengo que poner directamente el length en el ultimo param de memcpy
-                             //  y lo mismo en el offset al sumarle, tengo que sumar lo que copie en memcpy
+                                                    //  y lo mismo en el offset al sumarle, tengo que sumar lo que copie en memcpy
 
     offset += sizeof(int); // Salteo El tamaño del PCB
     // aca uso el puntero global que apunta al pcb actual: pcbEJECUTANDO
@@ -514,10 +519,10 @@ void fetch_pcb_actualizado_fin_quantum(int server_socket)
     pcbEJECUTANDO->state = READY;
 
     addEstadoReady(pcbEJECUTANDO); // meto en ready el pcb
-    sem_post(&sem_ready); //esto es para avisar que hay procesos en ready
-    //porque el planificador de corto plazo tiene un semaforo para saber que por lo menos hay
-    //algun proceso en ready, sino no sabe si hay y podrian pedirle que envie algo y no haya procesos
-    //para enviar, por eso esto es un contador de cuantos procesos hay en ready
+    sem_post(&sem_ready);          // esto es para avisar que hay procesos en ready
+    // porque el planificador de corto plazo tiene un semaforo para saber que por lo menos hay
+    // algun proceso en ready, sino no sabe si hay y podrian pedirle que envie algo y no haya procesos
+    // para enviar, por eso esto es un contador de cuantos procesos hay en ready
 
     // el puntero pcb global lo dejo en null
     // este no es el PID ejecutando, es el puntero al pcb que se envio
@@ -527,8 +532,9 @@ void fetch_pcb_actualizado_fin_quantum(int server_socket)
     free(motivo);
 }
 
-void fetch_pcb_actualizado_A_eliminar(int server_socket){
-    
+void fetch_pcb_actualizado_A_eliminar(int server_socket)
+{
+
     int total_size;
     int offset = 0;
     t_pcb *PCBrec = pcbEJECUTANDO;
@@ -544,7 +550,7 @@ void fetch_pcb_actualizado_A_eliminar(int server_socket){
     motivo = malloc(length_motivo);
     memcpy(motivo, buffer + offset, length_motivo); // SI TENGO QUE COPIAR EL LENGTH, NO TENGO QUE PONER SIZEOF(LENGTH)
     offset += length_motivo;                        // tengo que poner directamente el length en el ultimo param de memcpy
-                             //  y lo mismo en el offset al sumarle, tengo que sumar lo que copie en memcpy
+                                                    //  y lo mismo en el offset al sumarle, tengo que sumar lo que copie en memcpy
 
     offset += sizeof(int); // Salteo El tamaño del PCB
     // aca uso el puntero global que apunta al pcb actual: pcbEJECUTANDO
@@ -596,18 +602,16 @@ void fetch_pcb_actualizado_A_eliminar(int server_socket){
     pcbEJECUTANDO->state = EXIT;
 
     addEstadoExit(pcbEJECUTANDO); // meto en ready el pcb
-    
+
     log_info(logger, "Finaliza el Proceso  %i, por SUCCESS", pcbEJECUTANDO->pid);
 
     // el puntero pcb global lo dejo en null
     // este no es el PID ejecutando, es el puntero al pcb que se envio
     pcbEJECUTANDO = NULL;
 
-
     free(buffer);
     free(motivo);
 }
-
 
 t_interfaz_registrada *recibir_interfaz(client_socket)
 {
@@ -690,22 +694,23 @@ void iniciar_planificacion()
 void finalizar_proceso(char *parametro)
 {
 
-    //detener_planificacion(); //detengo la planificacion para evitar que haya movimientos
-    //mientras busco el proceso a eliminar
+    // detener_planificacion(); //detengo la planificacion para evitar que haya movimientos
+    // mientras busco el proceso a eliminar
 
     int pidAeliminar = atoi(parametro);
     bool encontrado = false;
     t_pcb *punteroAEliminar = NULL;
 
+    bool encontrar_por_pid(void *pcb)
+    {
+        t_pcb *pcb_n = (t_pcb *)pcb;
 
-    bool encontrar_por_pid(void *pcb) {
-		t_pcb *pcb_n = (t_pcb*) pcb;
-
-		if (pcb_n == NULL) {
-			return false;
-		}
-		return pcb_n->pid == pidAeliminar;
-	}
+        if (pcb_n == NULL)
+        {
+            return false;
+        }
+        return pcb_n->pid == pidAeliminar;
+    }
 
     // ACLARACION IMPORTANTE: T_QUEUE ES UNA ESTRUCTURA QUE DENTRO TIENE UN T_LIST QUE SE LLAMA
     // ELEMENTS, Y SOLO ESO. SOLAMENTE TIENE ESO Y POR ESO PUEDO PASAR ELEMENTS COMO PARAMETRO
@@ -718,19 +723,20 @@ void finalizar_proceso(char *parametro)
         // En caso que sea el que esta ejecutando en CPU mando el pid a eliminar
         pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
 
-        log_info(logger,"Es el que esta ejecutando actualmente");
+        log_info(logger, "Es el que esta ejecutando actualmente");
         t_buffer *bufferEnvio;
         t_packet *eliminarProceso;
 
         bufferEnvio = create_buffer();
         eliminarProceso = create_packet(FINALIZAR_PROCESO, bufferEnvio);
         add_to_packet(eliminarProceso, &pidAeliminar, sizeof(int));
-        //ACORDARSE QUE EL SEGUNDO PARAMETRO DEL ADDTOPACKET ES UN PUNTERO
-        //ASI QUE LE PASO LA DIRECCION
+        // ACORDARSE QUE EL SEGUNDO PARAMETRO DEL ADDTOPACKET ES UN PUNTERO
+        // ASI QUE LE PASO LA DIRECCION
         send_packet(eliminarProceso, cpu_interrupt_socket);
         destroy_packet(eliminarProceso);
-    
-    }else{ 
+    }
+    else
+    {
 
         // ACLARACION IMPORTANTE: T_QUEUE ES UNA ESTRUCTURA QUE DENTRO TIENE UN T_LIST QUE SE LLAMA
         // ELEMENTS, Y SOLO ESO. SOLAMENTE TIENE ESO Y POR ESO PUEDO PASAR ELEMENTS COMO PARAMETRO
@@ -739,145 +745,156 @@ void finalizar_proceso(char *parametro)
         // hago lo de abajo para el post al semaforo que esta afuera del if
         pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
 
-        //Busco en NEW
+        // Busco en NEW
         pthread_mutex_lock(&mutex_state_new);
-        punteroAEliminar = list_find(queue_new->elements,encontrar_por_pid);
-        //aca voy a eliminar el PCB de la lista pero solo lo saco de la lista, no
-        //le hago el destroy porqeu le tengo que hacer push en la cola de EXIT
-        if(punteroAEliminar != NULL){
-            //Lo Borro De NEW
-            list_remove_element(queue_new->elements,punteroAEliminar);
-            log_info(logger,"PID: %i encontrado en cola NEW",pidAeliminar);
-            //Lo Agrego A
+        punteroAEliminar = list_find(queue_new->elements, encontrar_por_pid);
+        // aca voy a eliminar el PCB de la lista pero solo lo saco de la lista, no
+        // le hago el destroy porqeu le tengo que hacer push en la cola de EXIT
+        if (punteroAEliminar != NULL)
+        {
+            // Lo Borro De NEW
+            list_remove_element(queue_new->elements, punteroAEliminar);
+            log_info(logger, "PID: %i encontrado en cola NEW", pidAeliminar);
+            // Lo Agrego A
             addEstadoExit(punteroAEliminar);
             encontrado = true;
-            //sem_wait(&sem_hay_pcb_esperando_ready);
-            // Aca voy a comentar este wait por lo mismo que en el short term schuduerl
-            // voy a hacer un control de que la lista dde ready no este vacia porque
-            // se seguia colgando la consola 
+            // sem_wait(&sem_hay_pcb_esperando_ready);
+            //  Aca voy a comentar este wait por lo mismo que en el short term schuduerl
+            //  voy a hacer un control de que la lista dde ready no este vacia porque
+            //  se seguia colgando la consola
         }
         pthread_mutex_unlock(&mutex_state_new);
-            
-            //en caso que no este en new voy a buscar en READY
-            if(!encontrado){
-                
-                pthread_mutex_lock(&mutex_state_ready);
-                
-                punteroAEliminar = list_find(queue_ready->elements,encontrar_por_pid);
 
-                if(punteroAEliminar != NULL){
-                //Lo Borro De READY
-                list_remove_element(queue_ready->elements,punteroAEliminar);
-                log_info(logger,"PID: %i encontrado en cola READY",pidAeliminar);
-                //Lo Agrego A
+        // en caso que no este en new voy a buscar en READY
+        if (!encontrado)
+        {
+
+            pthread_mutex_lock(&mutex_state_ready);
+
+            punteroAEliminar = list_find(queue_ready->elements, encontrar_por_pid);
+
+            if (punteroAEliminar != NULL)
+            {
+                // Lo Borro De READY
+                list_remove_element(queue_ready->elements, punteroAEliminar);
+                log_info(logger, "PID: %i encontrado en cola READY", pidAeliminar);
+                // Lo Agrego A
                 addEstadoExit(punteroAEliminar);
                 encontrado = true;
 
-                //hago esto de multiprogramacion porque elimine un proceso de READY
-                //y tengo que dejar entrar otro, no lo hago en NEW porque no tiene que haber uno ahi
+                // hago esto de multiprogramacion porque elimine un proceso de READY
+                // y tengo que dejar entrar otro, no lo hago en NEW porque no tiene que haber uno ahi
                 sem_post(&sem_multiprogramacion);
-                //sem_wait(&sem_ready); //tambien le hago wait a esto porque
-                //es un contador de cuantos hay en ready y acabo de sacar uno
+                // sem_wait(&sem_ready); //tambien le hago wait a esto porque
+                // es un contador de cuantos hay en ready y acabo de sacar uno
 
-                //ACA COMENTE ESTE WAIT SEM READY PORQUE AGREGUE EL IF EN SHORT TERM SCHEDUKER
-                //ENTONCES NO IMPORTA SI PASA EL SEMREADY AUNQUE NO HAYA PROCESOS EN READY PORQUE
-                // DESPUES CONTROLA QUE LA LISTA NO ESTE VACIA Y SI ESTA VACIA HACE UN return
-                // Y ES COMO QUE LO VUELVE A TRABAR EN EL SEMAFORO SEMREADY ESPERANDO QUE ENTRE OTRO
-                // ESTO ESTA MEJOR EXPLICADO EN EL VRR
-                }
-                pthread_mutex_unlock(&mutex_state_ready);
-
+                // ACA COMENTE ESTE WAIT SEM READY PORQUE AGREGUE EL IF EN SHORT TERM SCHEDUKER
+                // ENTONCES NO IMPORTA SI PASA EL SEMREADY AUNQUE NO HAYA PROCESOS EN READY PORQUE
+                //  DESPUES CONTROLA QUE LA LISTA NO ESTE VACIA Y SI ESTA VACIA HACE UN return
+                //  Y ES COMO QUE LO VUELVE A TRABAR EN EL SEMAFORO SEMREADY ESPERANDO QUE ENTRE OTRO
+                //  ESTO ESTA MEJOR EXPLICADO EN EL VRR
             }
-            
-            //Voy a Buscar en la cola de Prioridad del VRR
-             if(!encontrado){
-     
-                pthread_mutex_lock(&mutex_state_prioridad);
-     
-                punteroAEliminar = list_find(queue_prioridad->elements,encontrar_por_pid);
-                if(punteroAEliminar != NULL){
-                //Lo Borro De PRIORIDAD
-                list_remove_element(queue_prioridad->elements,punteroAEliminar);
-                log_info(logger,"PID: %i encontrado en cola Prioridad",pidAeliminar);
-                //Lo Agrego A
+            pthread_mutex_unlock(&mutex_state_ready);
+        }
+
+        // Voy a Buscar en la cola de Prioridad del VRR
+        if (!encontrado)
+        {
+
+            pthread_mutex_lock(&mutex_state_prioridad);
+
+            punteroAEliminar = list_find(queue_prioridad->elements, encontrar_por_pid);
+            if (punteroAEliminar != NULL)
+            {
+                // Lo Borro De PRIORIDAD
+                list_remove_element(queue_prioridad->elements, punteroAEliminar);
+                log_info(logger, "PID: %i encontrado en cola Prioridad", pidAeliminar);
+                // Lo Agrego A
                 addEstadoExit(punteroAEliminar);
                 encontrado = true;
-     
-                //hago esto de multiprogramacion porque elimine un proceso de READY
-                //y tengo que dejar entrar otro, no lo hago en NEW porque no tiene que haber uno ahi
+
+                // hago esto de multiprogramacion porque elimine un proceso de READY
+                // y tengo que dejar entrar otro, no lo hago en NEW porque no tiene que haber uno ahi
                 sem_post(&sem_multiprogramacion);
 
-                //sem_wait(&sem_ready); //tambien le hago wait a esto porque
-                //es un contador de cuantos hay en ready y acabo de sacar uno
-                //ACA COMENTE ESTE WAIT SEM READY PORQUE AGREGUE EL IF EN SHORT TERM SCHEDUKER
-                //ENTONCES NO IMPORTA SI PASA EL SEMREADY AUNQUE NO HAYA PROCESOS EN READY PORQUE
-                // DESPUES CONTROLA QUE LA LISTA NO ESTE VACIA Y SI ESTA VACIA HACE UN return
-                // Y ES COMO QUE LO VUELVE A TRABAR EN EL SEMAFORO SEMREADY ESPERANDO QUE ENTRE OTRO
-                // ESTO ESTA MEJOR EXPLICADO EN EL VRR
-
-                }  
-                pthread_mutex_unlock(&mutex_state_prioridad);
-                //este unlock estaba dentro del if, tiene que estar afuera para que se
-                //desbloquee siempre. Lo encontre gracias al DEBUGGER
-
+                // sem_wait(&sem_ready); //tambien le hago wait a esto porque
+                // es un contador de cuantos hay en ready y acabo de sacar uno
+                // ACA COMENTE ESTE WAIT SEM READY PORQUE AGREGUE EL IF EN SHORT TERM SCHEDUKER
+                // ENTONCES NO IMPORTA SI PASA EL SEMREADY AUNQUE NO HAYA PROCESOS EN READY PORQUE
+                //  DESPUES CONTROLA QUE LA LISTA NO ESTE VACIA Y SI ESTA VACIA HACE UN return
+                //  Y ES COMO QUE LO VUELVE A TRABAR EN EL SEMAFORO SEMREADY ESPERANDO QUE ENTRE OTRO
+                //  ESTO ESTA MEJOR EXPLICADO EN EL VRR
             }
+            pthread_mutex_unlock(&mutex_state_prioridad);
+            // este unlock estaba dentro del if, tiene que estar afuera para que se
+            // desbloquee siempre. Lo encontre gracias al DEBUGGER
+        }
 
-            if(!encontrado){
-                log_info(logger,"No se encontro el PID %i",pidAeliminar);
-            }
+        if (!encontrado)
+        {
+            log_info(logger, "No se encontro el PID %i", pidAeliminar);
+        }
     }
 
-    //iniciar_planificacion();
+    // iniciar_planificacion();
 }
 
-void multiprogramacion(char *parametro){
+void multiprogramacion(char *parametro)
+{
     int nuevoValor = atoi(parametro);
 
-    if(gradoMultiprogramacion == nuevoValor){
-        log_info(logger,"El valor ingresado es igual al actual");
-    }else if(nuevoValor > gradoMultiprogramacion){
-        log_info(logger,"Valor Actual: %i Valor Ingresado: %i",gradoMultiprogramacion,nuevoValor);
-        log_info(logger,"Expando el grado de Multiprogramacion en %i lugares",nuevoValor-gradoMultiprogramacion);
-        for(int i = 0; i < (nuevoValor-gradoMultiprogramacion);i++){
+    if (gradoMultiprogramacion == nuevoValor)
+    {
+        log_info(logger, "El valor ingresado es igual al actual");
+    }
+    else if (nuevoValor > gradoMultiprogramacion)
+    {
+        log_info(logger, "Valor Actual: %i Valor Ingresado: %i", gradoMultiprogramacion, nuevoValor);
+        log_info(logger, "Expando el grado de Multiprogramacion en %i lugares", nuevoValor - gradoMultiprogramacion);
+        for (int i = 0; i < (nuevoValor - gradoMultiprogramacion); i++)
+        {
             sem_post(&sem_multiprogramacion);
         }
-        gradoMultiprogramacion = nuevoValor; //ACA CAMBIO REALMENTE EL GRADO DE MULTIPROGRAMACION
-    }else{
-        
-        log_info(logger,"Valor Actual: %i Valor Ingresado: %i",gradoMultiprogramacion,nuevoValor);
-        log_info(logger,"Reduzco el grado de Multiprogramacion en %i lugares",gradoMultiprogramacion-nuevoValor);
-        salteoPostAlSemaforo = gradoMultiprogramacion-nuevoValor;
-        gradoMultiprogramacion = nuevoValor; //ACA CAMBIO REALMENTE EL GRADO DE MULTIPROGRAMACION
-        
-       //NO HAGO LOS WAITS PORQUE CADA VEZ QUE AUMENTO EL GRADO DE MULTIPROGRAMACION ME FIJO QUE 
-       //EL VALOR DEL SEMAFORO SEA MENOR AL GRADO DE MULTIPROGRAMACION
-       //IMPORTANTE: CUANDO ELIMINAMOS UN PROCESO QUE ESTA EN LA COLA DE READY
-       //AHI HAY UN SEMPOST AL GRADO DE MULTIPROGRAMACION Y AHI NO HACEMOS EL CHQUEOE
-       //PORQUE SERIA UN CASO MUY RARO BORRAR Y JUSTO BAJAR EL GRADO DE MULTIRPOGRAMACION
-       //PERO ACLARACION QUE PODRIA PASAR ALGO AHI IGUAL ES SOLO AGREGARLO
+        gradoMultiprogramacion = nuevoValor; // ACA CAMBIO REALMENTE EL GRADO DE MULTIPROGRAMACION
     }
+    else
+    {
 
+        log_info(logger, "Valor Actual: %i Valor Ingresado: %i", gradoMultiprogramacion, nuevoValor);
+        log_info(logger, "Reduzco el grado de Multiprogramacion en %i lugares", gradoMultiprogramacion - nuevoValor);
+        salteoPostAlSemaforo = gradoMultiprogramacion - nuevoValor;
+        gradoMultiprogramacion = nuevoValor; // ACA CAMBIO REALMENTE EL GRADO DE MULTIPROGRAMACION
+
+        // NO HAGO LOS WAITS PORQUE CADA VEZ QUE AUMENTO EL GRADO DE MULTIPROGRAMACION ME FIJO QUE
+        // EL VALOR DEL SEMAFORO SEA MENOR AL GRADO DE MULTIPROGRAMACION
+        // IMPORTANTE: CUANDO ELIMINAMOS UN PROCESO QUE ESTA EN LA COLA DE READY
+        // AHI HAY UN SEMPOST AL GRADO DE MULTIPROGRAMACION Y AHI NO HACEMOS EL CHQUEOE
+        // PORQUE SERIA UN CASO MUY RARO BORRAR Y JUSTO BAJAR EL GRADO DE MULTIRPOGRAMACION
+        // PERO ACLARACION QUE PODRIA PASAR ALGO AHI IGUAL ES SOLO AGREGARLO
+    }
 }
 
+// lo que se hace aca es que cuando tenemos que bajar el grado de multiprogamacion se le pone un valor a
+// la variable salteoPostAlsemaforo, ese valor es la cantidad de post que hay que evitar hacer
+// para que cambie el grado de multirpogramacion. Por ejemplo si tengo el grado en 3, y entran 3 procesos
+//  y tengo 4 esperando entrar a ready y en ese momento bajo el grao de multiprogramacion a 1, entonces
+//  cuando los 3 procesos lleguen a exit van a pasar por esta funcion, como el valor salteoPostAlSemaforo va
+//  a ser 2 entonces van a entrar por el if y va  van a evitar hacer el post, y asi hsta que se haga
+//  0 el valor y va  a dar false el if y entonces va ir al else y ya va volver a hacer el post SIEMPRE
+//  de entrada esta varibale vale 0 porque tienen que hacer el post, solo toma un valor distinto
+//  de 0 cuando piden un grado de multiprogramacion menor al actual.
 
-//lo que se hace aca es que cuando tenemos que bajar el grado de multiprogamacion se le pone un valor a 
-//la variable salteoPostAlsemaforo, ese valor es la cantidad de post que hay que evitar hacer 
-//para que cambie el grado de multirpogramacion. Por ejemplo si tengo el grado en 3, y entran 3 procesos
-// y tengo 4 esperando entrar a ready y en ese momento bajo el grao de multiprogramacion a 1, entonces
-// cuando los 3 procesos lleguen a exit van a pasar por esta funcion, como el valor salteoPostAlSemaforo va 
-// a ser 2 entonces van a entrar por el if y va  van a evitar hacer el post, y asi hsta que se haga 
-// 0 el valor y va  a dar false el if y entonces va ir al else y ya va volver a hacer el post SIEMPRE
-// de entrada esta varibale vale 0 porque tienen que hacer el post, solo toma un valor distinto
-// de 0 cuando piden un grado de multiprogramacion menor al actual.
+void controlGradoMultiprogramacion()
+{
 
-void controlGradoMultiprogramacion(){
-
-    if(salteoPostAlSemaforo){
-        log_info(logger,"Salteo un Post al Semaforo Grado Multiprogramacion");
+    if (salteoPostAlSemaforo)
+    {
+        log_info(logger, "Salteo un Post al Semaforo Grado Multiprogramacion");
         salteoPostAlSemaforo--;
-        //PROBABLEMENTE ACA NECESITE UN MUTEX PARA EL SALTEOPOSTALSEMAFORO
-    }else{
+        // PROBABLEMENTE ACA NECESITE UN MUTEX PARA EL SALTEOPOSTALSEMAFORO
+    }
+    else
+    {
         sem_post(&sem_multiprogramacion);
     }
 }
-
