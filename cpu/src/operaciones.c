@@ -335,6 +335,7 @@ void operacion_mov_in(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 		cantidadBits = sizeof(uint8_t);
 	}else{
 		cantidadBits = sizeof(uint32_t);
+		
 	}
 	int dirLogica = obtener_valor_del_registro(instruccion->parametros[1],contexto);
 
