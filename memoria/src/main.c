@@ -278,9 +278,9 @@ void escribirMemoria(int client_socket){
     
     //+++++++++++++++++CREO VARIABLES+++++++++++++++++++++++++++++++++++++++
     int dirFisica;
-    int valorEscribir;
     int cantBits;
     int pid;
+    void *contenidoAescribir;
     //+++++++++++++++++Recibo los datos para la escritura+++++++++++++++++++
     int total_size;
     int offset = 0;
@@ -293,15 +293,18 @@ void escribirMemoria(int client_socket){
     memcpy(&dirFisica,buffer2 + offset, sizeof(int)); //RECIBO LA DIRECCION FISICA
     offset += sizeof(int);
 
-    offset += sizeof(int); //Salteo el tamaño del INT
-    
-    memcpy(&valorEscribir,buffer2 + offset, sizeof(int)); //RECIBO EL VALOR A ESCRIBIR
-    offset += sizeof(int);
 
     offset += sizeof(int); //Salteo el tamaño del INT
     
     memcpy(&cantBits,buffer2 + offset, sizeof(int)); //RECIBO LA CANTIDAD DE BITS
     offset += sizeof(int);
+
+    contenidoAescribir = malloc(cantBits);
+
+    offset += sizeof(int); //Salteo el tamaño del INT
+    
+    memcpy(contenidoAescribir,buffer2 + offset, cantBits); //RECIBO EL VALOR A ESCRIBIR
+    offset += cantBits;
 
     offset += sizeof(int); //Salteo el tamaño del INT
 
@@ -311,7 +314,7 @@ void escribirMemoria(int client_socket){
     free(buffer2);
 
     //+++++++++++Realizo la escritura+++++++++++++++++++++++
-    memcpy(espacioUsuario+dirFisica, &valorEscribir,cantBits);
+    memcpy(espacioUsuario+dirFisica,contenidoAescribir,cantBits);
     log_info(logger,"Acceso a espacio de usuario: PID: %d - Accion: ESCRIBIR - Direccion fisica: %d",pid,dirFisica);
 
     //+++++++++++Mando confirmacion a CPU+++++++++++++++++++

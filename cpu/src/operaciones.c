@@ -260,6 +260,13 @@ int traduccionLogica(int pid, int direccion_logica){
 	return desplazamiento + marco_pagina * tamaPagina;
 }
 
+int obtenerDesplazamiento(int pid, int direccion_logica){
+
+	int numeroPagina = (int) floor(direccion_logica / tamaPagina);
+	int desplazamiento = direccion_logica - numeroPagina * tamaPagina;
+	return desplazamiento;
+}
+
 // MOV_OUT (Registro Dirección, Registro Datos): Lee el valor del
 // Registro Datos y lo escribe en la dirección física de memoria obtenida a
 // partir de la Dirección Lógica almacenada en el Registro Dirección.
@@ -269,6 +276,7 @@ void operacion_mov_out(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 	int cantidadBits;
 	//Variable que va guardar lo que voy a escribir
 	int valorEscribir;
+
 	//Separo en casos Segun sea un registro de 4 o 1 byte
 	if(
 	string_equals_ignore_case(instruccion->parametros[1],"AX") || 
@@ -283,17 +291,141 @@ void operacion_mov_out(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 		cantidadBits = sizeof(uint32_t);
 	}
 	int dirLogica = obtener_valor_del_registro(instruccion->parametros[0],contexto);
-
+	int desplazamiento = obtenerDesplazamiento(contexto->pid,dirLogica);
     int dirFisica = traduccionLogica(contexto->pid,dirLogica);
+	int numeroPagina = (int) floor(dirLogica / tamaPagina);
 
+	int diferencia = tamaPagina - desplazamiento;
+
+	int desplazamientoContenido = 0;
+
+
+	//Esto se usa cuando el dato no entra en una pagina
+	int nuevoMarco;
+	int nuevaDirFisica;
+
+	//Hago esto para poder mandarlo por partes
+	void *contenidoAescribir = malloc(cantidadBits);
+	//Copio el valor del registro en el puntero
+	memcpy(contenidoAescribir,&valorEscribir, cantidadBits);
+
+
+	//++++++++++++Calculo cantidad de Paginas a escribir++++++++++++++
+		if((cantidadBits + desplazamiento) > tamaPagina){
+			//Como entro por este if significa que ...
+			//Primero escribo lo que falta de la primera pagina
+			mandarAescribirEnMemoria(dirFisica,contenidoAescribir,diferencia,contexto);
+			desplazamientoContenido = desplazamientoContenido + diferencia;
+			cantidadBits = cantidadBits - diferencia;
+			numeroPagina++;
+			//Ahora escribo el resto
+			while(cantidadBits > tamaPagina){
+				
+				nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
+				nuevaDirFisica = nuevoMarco * tamaPagina;
+				//No hay desplazamiento porque arranco la pagina nueva de 0
+				mandarAescribirEnMemoria(nuevaDirFisica,contenidoAescribir + desplazamientoContenido,diferencia,contexto);
+				desplazamientoContenido = desplazamientoContenido + tamaPagina;
+				cantidadBits = cantidadBits - tamaPagina;
+				numeroPagina++;
+			}
+			
+			nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
+			nuevaDirFisica = nuevoMarco * tamaPagina;
+			//No hay desplazamiento porque arranco la pagina nueva de 0
+			mandarAescribirEnMemoria(nuevaDirFisica,contenidoAescribir + desplazamientoContenido,cantidadBits,contexto);
+		}else{
+			//En este caso es que todo entra en una pagina y no hay que hacer nada extra
+			mandarAescribirEnMemoria(dirFisica,contenidoAescribir,cantidadBits,contexto);
+
+		}
+	
+}
+
+// MOV_IN (Registro Datos, Registro Dirección): Lee el valor de memoria
+// correspondiente a la Dirección Lógica que se encuentra en el Registro
+// Dirección y lo almacena en el Registro Datos.
+void operacion_mov_in(t_pcb* contexto, t_instruccion_unitaria* instruccion)
+{   
+	//La cantidad de bits que voy a escribir en memoria es esto
+	int cantidadBits;
+	int tamaRegistro;
+	int nuevoMarco;
+	int nuevaDirFisica;
+	//Separo en casos Segun sea un registro de 4 o 1 byte
+	if(
+	string_equals_ignore_case(instruccion->parametros[0],"AX") || 
+	string_equals_ignore_case(instruccion->parametros[0],"BX") ||
+	string_equals_ignore_case(instruccion->parametros[0],"CX") ||
+	string_equals_ignore_case(instruccion->parametros[0],"DX"))
+	{
+		cantidadBits = sizeof(uint8_t);
+		tamaRegistro = sizeof(uint8_t);
+	}else{
+		cantidadBits = sizeof(uint32_t);
+		tamaRegistro = sizeof(uint32_t);
+	}
+	int dirLogica = obtener_valor_del_registro(instruccion->parametros[1],contexto);
+	int dirFisica = traduccionLogica(contexto->pid,dirLogica);
+
+	int desplazamiento = obtenerDesplazamiento(contexto->pid,dirLogica);
+	int numeroPagina = (int) floor(dirLogica / tamaPagina);
+	//Esto para leer lo que resta de la primera pagina
+	int diferencia = tamaPagina - desplazamiento;
+
+	//Este es el offset para escribir en contenidoLeido
+	int desplazamientoContenido = 0;
+
+	void *contenidoLeido = malloc(cantidadBits);
+
+	if((desplazamiento + cantidadBits) > tamaPagina){
+		mandarALeer(dirFisica,diferencia,contexto,contenidoLeido);
+		cantidadBits = cantidadBits - diferencia;
+		desplazamientoContenido = desplazamientoContenido + diferencia;
+		numeroPagina++;
+
+		while(cantidadBits > tamaPagina){
+			nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
+			nuevaDirFisica = nuevoMarco * tamaPagina;
+			mandarALeer(nuevaDirFisica,tamaPagina,contexto,contenidoLeido + desplazamientoContenido);
+			cantidadBits = cantidadBits - tamaPagina;
+			desplazamientoContenido = desplazamientoContenido + tamaPagina;
+			numeroPagina++;
+		}
+		nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
+		nuevaDirFisica = nuevoMarco * tamaPagina;
+		mandarALeer(nuevaDirFisica,cantidadBits,contexto,contenidoLeido + desplazamientoContenido);
+		
+	}else{
+		mandarALeer(dirFisica,cantidadBits,contexto,contenidoLeido);
+	}
+
+	//Una vez terminado de leer, guardamos el contenido en el registro
+	
+	if(tamaRegistro == sizeof(uint8_t)){
+		//PONER LOS & EN EL PRIMER PARAMETRO DE MEMCPY SI PASAS UNA VARIABLE Y NO UN PUNTERO !!!!!!!!!!!!
+		uint8_t tama8;
+		memcpy(&tama8,contenidoLeido,sizeof(uint8_t)); 
+		uint32_t valorAGuardar = tama8;
+		setear_registro(contexto,instruccion->parametros[0],valorAGuardar);
+	}else{
+		//PONER LOS & EN EL PRIMER PARAMETRO DE MEMCPY SI PASAS UNA VARIABLE Y NO UN PUNTERO !!!!!!!!!!!!
+		uint32_t valorAGuardar;
+		memcpy(&valorAGuardar,contenidoLeido,sizeof(uint32_t)); 
+		setear_registro(contexto,instruccion->parametros[0],valorAGuardar);	
+	}
+
+}
+
+void mandarAescribirEnMemoria(int dirFisica,void *contenidoAescribir, int cantidadBits,t_pcb *contexto){
 	t_buffer *bufferEscritura;
     t_packet *packetEscritura;
     bufferEscritura = create_buffer();
     packetEscritura = create_packet(SOLICITUD_ESCRIBIR, bufferEscritura);
 
     add_to_packet(packetEscritura,&dirFisica,sizeof(int));
-    add_to_packet(packetEscritura,&valorEscribir,sizeof(int));
     add_to_packet(packetEscritura,&cantidadBits,sizeof(int));
+    add_to_packet(packetEscritura,contenidoAescribir,cantidadBits);
 	add_to_packet(packetEscritura,&(contexto->pid),sizeof(int));
     
     send_packet(packetEscritura, client_fd_memoria);
@@ -301,7 +433,6 @@ void operacion_mov_out(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 
 	//-------------Aca se bloquea esperando el codop-------
 	int operation_code = fetch_codop(client_fd_memoria);
-
 	if(operation_code == CONFIRMACION_ESCRITURA){
 		int total_size;
 		void *buffer2 = fetch_buffer(&total_size, client_fd_memoria);
@@ -313,33 +444,10 @@ void operacion_mov_out(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 		free(buffer2);
 		log_info(logger,"Error en la escritura");
 	}
-	
-
+	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 }
-// MOV_IN (Registro Datos, Registro Dirección): Lee el valor de memoria
-// correspondiente a la Dirección Lógica que se encuentra en el Registro
-// Dirección y lo almacena en el Registro Datos.
-void operacion_mov_in(t_pcb* contexto, t_instruccion_unitaria* instruccion)
-{   
-	//La cantidad de bits que voy a escribir en memoria es esto
-	int cantidadBits;
-	//Variable que va guardar lo que voy a escribir
-	int valorEscribir;
-	//Separo en casos Segun sea un registro de 4 o 1 byte
-	if(
-	string_equals_ignore_case(instruccion->parametros[0],"AX") || 
-	string_equals_ignore_case(instruccion->parametros[0],"BX") ||
-	string_equals_ignore_case(instruccion->parametros[0],"CX") ||
-	string_equals_ignore_case(instruccion->parametros[0],"DX"))
-	{
-		cantidadBits = sizeof(uint8_t);
-	}else{
-		cantidadBits = sizeof(uint32_t);
-		
-	}
-	int dirLogica = obtener_valor_del_registro(instruccion->parametros[1],contexto);
 
-    int dirFisica = traduccionLogica(contexto->pid,dirLogica);
+void mandarALeer(int dirFisica, int cantidadBits, t_pcb *contexto, void *contenido){
 
 	t_buffer *bufferLectura;
     t_packet *packetLectura;
@@ -356,8 +464,6 @@ void operacion_mov_in(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 	//-------------Aca se bloquea esperando el codop-------
 	int operation_code = fetch_codop(client_fd_memoria);
 
-	
-
 	if(operation_code == CONFIRMACION_LECTURA){
 		int total_size;
 		int offset = 0;
@@ -365,23 +471,10 @@ void operacion_mov_in(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 
 		offset += sizeof(int); //Salteo el tamaño del INT
 
-			if(cantidadBits == sizeof(uint8_t)){
-				uint32_t valorAGuardar;
-				memcpy(&valorAGuardar,buffer2 + offset,cantidadBits); //RECIBO LA DIRECCION FISICA
-    			offset += sizeof(int);
-				setear_registro(contexto,instruccion->parametros[0],valorAGuardar);
-				log_info(logger,"Valor: %i", valorAGuardar);
-
-			}else{
-				uint32_t valorAGuardar;
-				memcpy(&valorAGuardar,buffer2 + offset,cantidadBits); //RECIBO LA DIRECCION FISICA
-    			offset += sizeof(int);
-				setear_registro(contexto,instruccion->parametros[0],valorAGuardar);
-				log_info(logger,"Valor: %i", valorAGuardar);
-				
-			}
-
-		
+		memcpy(contenido,buffer2 + offset,cantidadBits); 
+    	offset += cantidadBits; //Este offset no tiene sentido pero lo pongo por las dudas
+		//Esto iria pero como son numeros quizas justo leo la mitad y no tendria sentido imprimir la mitad
+		//log_info(logger,"Valor: %i", contenido);
 
 		free(buffer2);
 		log_info(logger,"Confirmacion Lectura");
@@ -391,11 +484,4 @@ void operacion_mov_in(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 		free(buffer2);
 		log_info(logger,"Error en la lectura");
 	}
-	
-
 }
-
-
-
-
-
