@@ -202,3 +202,199 @@ void operacion_sleep(t_pcb *contexto,int socket,t_instruccion_unitaria* instrucc
 	destroy_packet(packet_rta);
 
 }
+
+int solicitarMarco(int numeroPagina, int pid){
+
+	//Variable que va a recibir el marco
+	int marcoEncontrado;
+
+	//Envio el Pid y el numero de pagina a memoria
+	t_buffer *bufferMarco;
+    t_packet *packetMarco;
+    bufferMarco = create_buffer();
+    packetMarco = create_packet(SOLICITAR_MARCO, bufferMarco);
+
+    add_to_packet(packetMarco,&numeroPagina,sizeof(int));
+    add_to_packet(packetMarco,&pid,sizeof(int));
+    
+    send_packet(packetMarco, client_fd_memoria);
+    destroy_packet(packetMarco);
+
+	//-------------Aca se bloquea esperando el codop-------
+	int operation_code = fetch_codop(client_fd_memoria);
+
+	//----Separo en casos y Devuelvo dependiendo si encontre o no-----
+	if(operation_code == DEVOLVER_MARCO){
+		int total_size;
+		int offset = 0;
+		void *buffer2 = fetch_buffer(&total_size, client_fd_memoria);
+		
+    	offset += sizeof(int); //Salto el tamaño del INT
+    
+    	memcpy(&marcoEncontrado,buffer2 + offset, sizeof(int)); //RECIBO EL NUMERO DE MARCO
+    	offset += sizeof(int);
+
+		
+		free(buffer2);
+
+		return marcoEncontrado;
+	}else{
+		int total_size;
+		void *buffer2 = fetch_buffer(&total_size, client_fd_memoria);
+		free(buffer2);
+		log_info(logger,"Error al solicitar Marco");
+		return -1;
+	}
+	//---------------------------------------------------------------
+
+
+}
+
+int traduccionLogica(int pid, int direccion_logica){
+
+	int numeroPagina = (int) floor(direccion_logica / tamaPagina);
+	int desplazamiento = direccion_logica - numeroPagina * tamaPagina;
+	int marco_pagina = solicitarMarco(numeroPagina,pid);
+
+	log_info(logger, "Obtener Marco: PID: %d - OBTENER MARCO - Página: %d - Marco: %d", pid, numeroPagina, marco_pagina);
+	return desplazamiento + marco_pagina * tamaPagina;
+}
+
+// MOV_OUT (Registro Dirección, Registro Datos): Lee el valor del
+// Registro Datos y lo escribe en la dirección física de memoria obtenida a
+// partir de la Dirección Lógica almacenada en el Registro Dirección.
+void operacion_mov_out(t_pcb* contexto, t_instruccion_unitaria* instruccion)
+{   
+	//La cantidad de bits que voy a escribir en memoria es esto
+	int cantidadBits;
+	//Variable que va guardar lo que voy a escribir
+	int valorEscribir;
+	//Separo en casos Segun sea un registro de 4 o 1 byte
+	if(
+	string_equals_ignore_case(instruccion->parametros[1],"AX") || 
+	string_equals_ignore_case(instruccion->parametros[1],"BX") ||
+	string_equals_ignore_case(instruccion->parametros[1],"CX") ||
+	string_equals_ignore_case(instruccion->parametros[1],"DX"))
+	{
+		valorEscribir = obtener_valor_del_registro(instruccion->parametros[1],contexto);
+		cantidadBits = sizeof(uint8_t);
+	}else{
+		valorEscribir = obtener_valor_del_registro(instruccion->parametros[1],contexto);
+		cantidadBits = sizeof(uint32_t);
+	}
+	int dirLogica = obtener_valor_del_registro(instruccion->parametros[0],contexto);
+
+    int dirFisica = traduccionLogica(contexto->pid,dirLogica);
+
+	t_buffer *bufferEscritura;
+    t_packet *packetEscritura;
+    bufferEscritura = create_buffer();
+    packetEscritura = create_packet(SOLICITUD_ESCRIBIR, bufferEscritura);
+
+    add_to_packet(packetEscritura,&dirFisica,sizeof(int));
+    add_to_packet(packetEscritura,&valorEscribir,sizeof(int));
+    add_to_packet(packetEscritura,&cantidadBits,sizeof(int));
+	add_to_packet(packetEscritura,&(contexto->pid),sizeof(int));
+    
+    send_packet(packetEscritura, client_fd_memoria);
+    destroy_packet(packetEscritura);
+
+	//-------------Aca se bloquea esperando el codop-------
+	int operation_code = fetch_codop(client_fd_memoria);
+
+	if(operation_code == CONFIRMACION_ESCRITURA){
+		int total_size;
+		void *buffer2 = fetch_buffer(&total_size, client_fd_memoria);
+		free(buffer2);
+		log_info(logger,"Confirmacion Escritura");
+	}else{
+		int total_size;
+		void *buffer2 = fetch_buffer(&total_size, client_fd_memoria);
+		free(buffer2);
+		log_info(logger,"Error en la escritura");
+	}
+	
+
+}
+// MOV_IN (Registro Datos, Registro Dirección): Lee el valor de memoria
+// correspondiente a la Dirección Lógica que se encuentra en el Registro
+// Dirección y lo almacena en el Registro Datos.
+void operacion_mov_in(t_pcb* contexto, t_instruccion_unitaria* instruccion)
+{   
+	//La cantidad de bits que voy a escribir en memoria es esto
+	int cantidadBits;
+	//Variable que va guardar lo que voy a escribir
+	int valorEscribir;
+	//Separo en casos Segun sea un registro de 4 o 1 byte
+	if(
+	string_equals_ignore_case(instruccion->parametros[0],"AX") || 
+	string_equals_ignore_case(instruccion->parametros[0],"BX") ||
+	string_equals_ignore_case(instruccion->parametros[0],"CX") ||
+	string_equals_ignore_case(instruccion->parametros[0],"DX"))
+	{
+		cantidadBits = sizeof(uint8_t);
+	}else{
+		cantidadBits = sizeof(uint32_t);
+	}
+	int dirLogica = obtener_valor_del_registro(instruccion->parametros[1],contexto);
+
+    int dirFisica = traduccionLogica(contexto->pid,dirLogica);
+
+	t_buffer *bufferLectura;
+    t_packet *packetLectura;
+    bufferLectura = create_buffer();
+    packetLectura = create_packet(SOLICITUD_LECTURA, bufferLectura);
+
+    add_to_packet(packetLectura,&dirFisica,sizeof(int));
+    add_to_packet(packetLectura,&cantidadBits,sizeof(int));
+	add_to_packet(packetLectura,&(contexto->pid),sizeof(int));
+    
+    send_packet(packetLectura, client_fd_memoria);
+    destroy_packet(packetLectura);
+
+	//-------------Aca se bloquea esperando el codop-------
+	int operation_code = fetch_codop(client_fd_memoria);
+
+	
+
+	if(operation_code == CONFIRMACION_LECTURA){
+		int total_size;
+		int offset = 0;
+		void *buffer2 = fetch_buffer(&total_size, client_fd_memoria);
+
+		offset += sizeof(int); //Salteo el tamaño del INT
+
+			if(cantidadBits == sizeof(uint8_t)){
+				uint32_t valorAGuardar;
+				memcpy(&valorAGuardar,buffer2 + offset,cantidadBits); //RECIBO LA DIRECCION FISICA
+    			offset += sizeof(int);
+				setear_registro(contexto,instruccion->parametros[0],valorAGuardar);
+				log_info(logger,"Valor: %i", valorAGuardar);
+
+			}else{
+				uint32_t valorAGuardar;
+				memcpy(&valorAGuardar,buffer2 + offset,cantidadBits); //RECIBO LA DIRECCION FISICA
+    			offset += sizeof(int);
+				setear_registro(contexto,instruccion->parametros[0],valorAGuardar);
+				log_info(logger,"Valor: %i", valorAGuardar);
+				
+			}
+
+		
+
+		free(buffer2);
+		log_info(logger,"Confirmacion Lectura");
+	}else{
+		int total_size;
+		void *buffer2 = fetch_buffer(&total_size, client_fd_memoria);
+		free(buffer2);
+		log_info(logger,"Error en la lectura");
+	}
+	
+
+}
+
+
+
+
+

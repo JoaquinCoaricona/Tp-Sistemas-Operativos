@@ -6,6 +6,7 @@
 
 extern t_log *logger;
 extern int client_fd_memoria;
+extern int tamaPagina;
 typedef struct {
 	int opcode_lenght;
 	char* opcode;
@@ -25,7 +26,6 @@ void operacion_sum(t_pcb* contexto, t_instruccion_unitaria* instruccion);
 void operacion_sub(t_pcb* contexto, t_instruccion_unitaria* instruccion);
 void operacion_jnz(t_pcb* contexto, t_instruccion_unitaria* instruccion);
 void operacion_sleep(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion);
-
-
+int solicitarMarco(int numeroPagina, int pid);
 
 #endif // OPERACIONES_H_
