@@ -3,6 +3,7 @@
 #include <readline/readline.h>
 #include "long_term_scheduler.h"
 
+void levantar_consola(t_log *logger);
 
 
 

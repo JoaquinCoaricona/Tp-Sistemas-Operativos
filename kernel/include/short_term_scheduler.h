@@ -8,31 +8,19 @@
 #include <unistd.h>
 
 extern int id_counter;
-extern char* algoritmo_planificacion;
-
-
-//Iniciar PCB
-t_pcb *initializePCB();
-//FIFO
-void planificador_corto_plazo_FIFO();
-
-//RR
-void planificador_corto_plazo_RoundRobin();
-
-//VRR
-void short_term_scheduler_virtual_round_robin();
-
-void execute_process(t_pcb *process);
-void send_execution_context_to_CPU(t_pcb *process);
-t_pcb *initializePCB();
-void *planificadorCortoPlazo(void *arg);
-void enviar_proceso_cpu(t_pcb *proceso);
-void manejoHiloQuantumVRR(void *pcb);
-
-//Para VRR
-
 extern t_temporal *timer;
 extern int ms_transcurridos;
+extern char* algoritmo_planificacion;
 
+void *planificadorCortoPlazo(void *arg);
+void planificador_corto_plazo_FIFO();
+void manejoHiloQuantum(void *pcb);
+void planificador_corto_plazo_RoundRobin();
+void enviarInterrupcion(char *motivo, int pid);
+void planificador_corto_plazo_Virtual_RoundRobin();
+void manejoHiloQuantumVRR(void *pcb);
+void obtenerDatosTemporal();
+void enviar_proceso_cpu(t_pcb *proceso);
+t_pcb *initializePCB(int PID);
 
 #endif //SHORT_TERM_SCHEDULER_H_

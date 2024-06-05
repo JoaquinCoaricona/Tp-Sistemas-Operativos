@@ -24,8 +24,20 @@ typedef struct{
 	int bitValidez;
 }t_paginaMarco;
 
-bool esMarcoLibre(void* args);
+extern char *PATH_CONFIG;
+extern void *espacioUsuario;
+extern t_list *situacionMarcos;
+extern t_dictionary *tabla_paginas_por_PID;
+extern t_log *logger;
+extern int memoriaDisponible;
+extern int cantidadMarcos;
+extern int memoriaTotal;
+extern int tamaPagina;
+
+void resizePaginas(int client_socket);
 void ampliarProceso(int pid, int cantidadAgregar);
+void reducirProceso(int pid, int cantidadReducir);
+bool esMarcoLibre(void* args);
 t_situacion_marco* buscarMarcoLibre();
 
 #endif /* MAIN_H_ */
