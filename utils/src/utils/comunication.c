@@ -68,6 +68,15 @@ static void process_conection(void *args)
         case RESIZE:
             resizePaginas(client_socket);
         break;
+        case SOLICITAR_MARCO:
+            buscarMarco(client_socket);
+        break;
+        case SOLICITUD_ESCRIBIR:
+            escribirMemoria(client_socket);
+        break;
+        case SOLICITUD_LECTURA:
+            leerMemoria(client_socket);
+        break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
             return;

@@ -226,3 +226,152 @@ t_situacion_marco* buscarMarcoLibre(){
     t_situacion_marco *marcoLibre = list_find(situacionMarcos,esMarcoLibre);
     return marcoLibre;
 }
+
+void buscarMarco(int client_socket){
+
+    //+++++++++++++ Declaracion Variables Necesarias ++++++++++++++++++
+    int paginaBuscada;
+    int pid;
+    //+++++++++++++ Recibo el Numero Pagina y PID++++++++++++++++++
+    int total_size;
+    int offset = 0;
+    void *buffer2;
+
+    buffer2 = fetch_buffer(&total_size, client_socket);
+
+    offset += sizeof(int); //Salteo el tamaño del INT
+    
+    memcpy(&paginaBuscada,buffer2 + offset, sizeof(int)); //RECIBO LA PAGINA BUSCADA 
+    offset += sizeof(int);
+
+    offset += sizeof(int); //Salteo el tamaño del INT
+    
+    memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
+    offset += sizeof(int);
+    
+    free(buffer2);
+
+    //+++++++++++++++++++Busqueda++++++++++++++++++++++++++++
+    //Busco la tabla de paginas
+    t_list *tablaPaginas = dictionary_get(tabla_paginas_por_PID,string_itoa(pid));
+    //Busco Dentro de la tabla de paginas
+    t_paginaMarco *paginaEncontrada = list_get(tablaPaginas,paginaBuscada);
+
+    //Aca deberia controlar el bit de validez para devolver
+
+    t_buffer *bufferMarco;
+    t_packet *packetMarco;
+    bufferMarco = create_buffer();
+    packetMarco = create_packet(DEVOLVER_MARCO, bufferMarco);
+
+    //Solo envio el numero de marco en el que esta la pagina
+    add_to_packet(packetMarco,&(paginaEncontrada->numeroMarco),sizeof(int));
+    
+    send_packet(packetMarco, client_socket);
+    destroy_packet(packetMarco);
+
+    log_info(logger,"Acceso a Tabla de Páginas: PID: %d - Pagina: %d - Marco: %d",pid,paginaBuscada,paginaEncontrada->numeroMarco);
+
+}
+
+void escribirMemoria(int client_socket){
+    
+    //+++++++++++++++++CREO VARIABLES+++++++++++++++++++++++++++++++++++++++
+    int dirFisica;
+    int valorEscribir;
+    int cantBits;
+    int pid;
+    //+++++++++++++++++Recibo los datos para la escritura+++++++++++++++++++
+    int total_size;
+    int offset = 0;
+    void *buffer2;
+
+    buffer2 = fetch_buffer(&total_size, client_socket);
+
+    offset += sizeof(int); //Salteo el tamaño del INT
+    
+    memcpy(&dirFisica,buffer2 + offset, sizeof(int)); //RECIBO LA DIRECCION FISICA
+    offset += sizeof(int);
+
+    offset += sizeof(int); //Salteo el tamaño del INT
+    
+    memcpy(&valorEscribir,buffer2 + offset, sizeof(int)); //RECIBO EL VALOR A ESCRIBIR
+    offset += sizeof(int);
+
+    offset += sizeof(int); //Salteo el tamaño del INT
+    
+    memcpy(&cantBits,buffer2 + offset, sizeof(int)); //RECIBO LA CANTIDAD DE BITS
+    offset += sizeof(int);
+
+    offset += sizeof(int); //Salteo el tamaño del INT
+
+    memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
+    offset += sizeof(int);
+
+    free(buffer2);
+
+    //+++++++++++Realizo la escritura+++++++++++++++++++++++
+    memcpy(espacioUsuario+dirFisica, &valorEscribir,cantBits);
+    log_info(logger,"Acceso a espacio de usuario: PID: %d - Accion: ESCRIBIR - Direccion fisica: %d",pid,dirFisica);
+
+    //+++++++++++Mando confirmacion a CPU+++++++++++++++++++
+    t_buffer *bufferConfirmacion;
+    t_packet *packetConfirmacion;
+    bufferConfirmacion = create_buffer();
+    packetConfirmacion = create_packet(CONFIRMACION_ESCRITURA, bufferConfirmacion);
+
+    add_to_packet(packetConfirmacion,&dirFisica,sizeof(int)); //Agrego solo para enviar algo y que no quede vacio
+
+    send_packet(packetConfirmacion, client_socket);
+    destroy_packet(packetConfirmacion);
+
+
+}
+
+void leerMemoria(int client_socket){
+       //+++++++++++++++++CREO VARIABLES+++++++++++++++++++++++++++++++++++++++
+    int dirFisica;
+    int cantBits;
+    int pid;
+    //+++++++++++++++++Recibo los datos para la escritura+++++++++++++++++++
+    int total_size;
+    int offset = 0;
+    void *buffer2;
+
+    buffer2 = fetch_buffer(&total_size, client_socket);
+
+    offset += sizeof(int); //Salteo el tamaño del INT
+    
+    memcpy(&dirFisica,buffer2 + offset, sizeof(int)); //RECIBO LA DIRECCION FISICA
+    offset += sizeof(int);
+
+    offset += sizeof(int); //Salteo el tamaño del INT
+    
+    memcpy(&cantBits,buffer2 + offset, sizeof(int)); //RECIBO LA CANTIDAD DE BITS
+    offset += sizeof(int);
+
+    offset += sizeof(int); //Salteo el tamaño del INT
+
+    memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
+    offset += sizeof(int);
+
+    free(buffer2);
+    //Memoria reservda Para guardar lo leido
+    void* contenido = malloc(cantBits); 
+    //+++++++++++Copio el contenido+++++++++++++++++++++++
+    memcpy(contenido,espacioUsuario+dirFisica,cantBits);
+	log_info(logger,"Acceso a espacio de usuario: “PID: %d - Accion: LEER - Direccion fisica: %d“",pid,dirFisica);
+
+    //+++++++++++Mando lo leido a CPU+++++++++++++++++++
+    t_buffer *bufferConfirmacion;
+    t_packet *packetConfirmacion;
+    bufferConfirmacion = create_buffer();
+    packetConfirmacion = create_packet(CONFIRMACION_LECTURA, bufferConfirmacion);
+
+    add_to_packet(packetConfirmacion,contenido,cantBits);
+
+    send_packet(packetConfirmacion, client_socket);
+    destroy_packet(packetConfirmacion);
+
+
+}

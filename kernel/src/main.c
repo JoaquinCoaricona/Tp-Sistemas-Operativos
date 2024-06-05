@@ -667,6 +667,8 @@ void fetch_pcb_actualizado(server_socket)
     log_info(logger, "ESTADO PROCESO: %i", pcbEJECUTANDO->state);
     log_info(logger, "REGISTRO AX : %i", pcbEJECUTANDO->registers.AX);
     log_info(logger, "REGISTRO BX : %i", pcbEJECUTANDO->registers.BX);
+    log_info(logger, "REGISTRO CX : %i", pcbEJECUTANDO->registers.CX);
+    log_info(logger, "REGISTRO DX : %i", pcbEJECUTANDO->registers.DX);
 
     // aca le cambio el estado a exit
     pcbEJECUTANDO->state = EXIT;

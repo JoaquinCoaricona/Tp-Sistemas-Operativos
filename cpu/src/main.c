@@ -10,6 +10,7 @@ int tipoInterrupcion;
 int pid_ejecutando;
 int pid_a_desalojar;
 pthread_mutex_t mutex_interrupcion;
+int tamaPagina;
 
 int main(int argc, char *argv[])
 {
@@ -33,6 +34,7 @@ int main(int argc, char *argv[])
     dispatch_PORT = config_get_string_value(config, "PUERTO_ESCUCHA_DISPATCH");
     interrupt_PORT = config_get_string_value(config, "PUERTO_ESCUCHA_INTERRUPT");
     memory_IP = config_get_string_value(config, "IP_MEMORIA");
+    tamaPagina = atoi(config_get_string_value(config,"TAM_PAGINA"));
     // Conect to server
     client_fd_memoria = create_conection(logger, memory_IP, memory_PORT);
     log_info(logger, "Conectado al servidor de memoria %s:%s", memory_IP, memory_PORT);
@@ -332,10 +334,16 @@ void ciclo_de_instruccion(int socket_kernel){
 			operacion_jnz(PCBACTUAL, instruccion_ACTUAL); //PASAR EL PUNTERO DIRECTAMENTE, 
             //No pasar &PCBACTUAL porque eso es la direccion del puntero
 		}
-        if (strcmp(instruccion_ACTUAL->opcode, "RESIZE") == 0) {
+        if (strcmp(instruccion_ACTUAL->opcode, "MOV_OUT") == 0) {
 
-			operacion_resize(PCBACTUAL, instruccion_ACTUAL); //PASAR EL PUNTERO DIRECTAMENTE, 
-            //No pasar &PCBACTUAL porque eso es la direccion del puntero
+			operacion_mov_out(PCBACTUAL, instruccion_ACTUAL);
+		}
+        if (strcmp(instruccion_ACTUAL->opcode, "MOV_IN") == 0) {
+
+			operacion_mov_in(PCBACTUAL, instruccion_ACTUAL);
+		}
+        if (strcmp(instruccion_ACTUAL->opcode, "RESIZE") == 0) {
+            operacion_resize(PCBACTUAL, instruccion_ACTUAL);
 		}
         if (strcmp(instruccion_ACTUAL->opcode, "IO_GEN_SLEEP") == 0){
 			//devolver_a_kernel(PCBACTUAL, SLEEP, socket_kernel); //esto estaba antes
