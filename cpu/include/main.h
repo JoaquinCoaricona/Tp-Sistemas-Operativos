@@ -13,5 +13,11 @@ void manage_dispatch_request();
 //void destroy_instuccion_actual(t_instruccion_unitaria *instruccion);
 //void pedirInstruccion(int pid, int pc,int client_fd);
 
+typedef struct {
+	int pid;
+    int pagina;
+    int marco;
+
+}t_entrada_TLB;
 
 #endif /* MAIN_H_ */
