@@ -340,49 +340,82 @@ void operacion_mov_out(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 		valorEscribir = obtener_valor_del_registro(instruccion->parametros[1],contexto);
 		cantidadBits = sizeof(uint32_t);
 	}
+	//La direccion logica se obtiene directamente del registro
 	int dirLogica = obtener_valor_del_registro(instruccion->parametros[0],contexto);
+	//El desplazamiento solo serviria para el calculo de la dirFisica pero lo uso mas abajo
 	int desplazamiento = obtenerDesplazamiento(contexto->pid,dirLogica);
+	//esta funcion solo calcula la direccion fisica
     int dirFisica = traduccionLogica(contexto->pid,dirLogica);
+	//Esto tambien solo deberia usarse para el calculo de la dirFisica pero lo termino usando aca
 	int numeroPagina = (int) floor(dirLogica / tamaPagina);
 
+	//Esta variable se usa en caso que tenga que escribir mas de una pagina
+	//porque guarda lo que me queda por escribir de la primer pagina
 	int diferencia = tamaPagina - desplazamiento;
-
+	//Este va a ser el delimitador de el malloc contenido, la parte que falta escribir y la que no
 	int desplazamientoContenido = 0;
 
 
-	//Esto se usa cuando el dato no entra en una pagina
+	//Estas variables se usan cuando tengo que escribir mas de una pagina
 	int nuevoMarco;
 	int nuevaDirFisica;
 
-	//Hago esto para poder mandarlo por partes
+	//Hago esto para poder mandarlo por partes, cadena de bytes
 	void *contenidoAescribir = malloc(cantidadBits);
-	//Copio el valor del registro en el puntero
+	//Copio el valor del registro en la cadena de bytes
 	memcpy(contenidoAescribir,&valorEscribir, cantidadBits);
 
 
 	//++++++++++++Calculo cantidad de Paginas a escribir++++++++++++++
+	//Aca hago una comprobacion: si lo que tengo que escribir excede una pagina
+	//entonces separo en casos. Aca desplazamiento seria lo que me muevo
+	//Desde la base de la paginaa y si le sumo la cantidad de bytes (es un error en
+	// el nombre de la variable) si le sumo eso me daria la direccion donde terminaria
+	// de escribir, pero si eso se pasa de la pagina es que tengo que separar en casos
+	//por un lado si se cumple esto entro por aca y si entra en una pagina voy por el else
+	//y lo mando todo de una porque entra
 		if((cantidadBits + desplazamiento) > tamaPagina){
-			//Como entro por este if significa que ...
 			//Primero escribo lo que falta de la primera pagina
+			//Escribo la cantidad diferencia porque es lo que falta de la primer pagina
+			//osea el cachito que queda entre el desplazamineto y el fin de la pagina
 			mandarAescribirEnMemoria(dirFisica,contenidoAescribir,diferencia,contexto);
+			//Despues actualizo el desplazamietno contenido que es el delimitador entre
+			//lo que ya escribir y lo que falta escribir del void (cadena de bytes)
 			desplazamientoContenido = desplazamientoContenido + diferencia;
+			//tambien actualizo la cantiydad de bytes que falta escribir
 			cantidadBits = cantidadBits - diferencia;
+			//Aumento el numero de pagina porque es la que sigue
 			numeroPagina++;
-			//Ahora escribo el resto
+			//Ahora hago otra comprobacion:ponele que tengo que escribir dos paginas y el cachito
+			//de la primera, entonces como ya escribi ese pedacito de la primera,
+			//ahora me fijo si la cantida de bytes que me falta es mayor a una pagina, si es
+			//mayor entonces entro al bucle y hago lo mismo de vuelta
 			while(cantidadBits > tamaPagina){
-				
+				//aca solicito el nuevo marco de la pagina nueva, le sume uno antes para 
+				//marcar que ahora estoy en la siguiente
 				nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
+				//armo la nueva dir fisica pero sin desplazamiento porque 
+				//empiezo desde el inicio en esta hoja, el desplazamiento solo era en la primera
+				//que escribia
 				nuevaDirFisica = nuevoMarco * tamaPagina;
 				//No hay desplazamiento porque arranco la pagina nueva de 0
+				//ahora mando a escribir la pagina completa
 				mandarAescribirEnMemoria(nuevaDirFisica,contenidoAescribir + desplazamientoContenido,tamaPagina,contexto);
+				//actualizo el desplazamiento sumando el tamaño de pagina que fue lo que escribi
 				desplazamientoContenido = desplazamientoContenido + tamaPagina;
+				//lo mismo, actualizo la cantidad de bytes que falta escribir
 				cantidadBits = cantidadBits - tamaPagina;
+				//paso a la siguiente pagina
 				numeroPagina++;
 			}
-			
+			//cuando salgo del bucle es porque me falta escribir una pagina pero no completa
+			//entonces en la variable cantidad de bytes tengo lo que me falta de esa pagina
+			//Primero pido el nuevo marco
 			nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
+			//ahora armo la direccion fisica nueva
 			nuevaDirFisica = nuevoMarco * tamaPagina;
 			//No hay desplazamiento porque arranco la pagina nueva de 0
+			//Mando a escribir lo que falta
 			mandarAescribirEnMemoria(nuevaDirFisica,contenidoAescribir + desplazamientoContenido,cantidadBits,contexto);
 		}else{
 			//En este caso es que todo entra en una pagina y no hay que hacer nada extra
@@ -425,15 +458,17 @@ void operacion_mov_in(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 
 	//Este es el offset para escribir en contenidoLeido
 	int desplazamientoContenido = 0;
-
+	//Esto es para poder ir leyendo por partes, porque quizas tengo que leer varias paginas
 	void *contenidoLeido = malloc(cantidadBits);
-
+	//Entro por este if en el caso que tenga que leer mas de una pagina, es la misma cuenta
+	//que es mov_out
 	if((desplazamiento + cantidadBits) > tamaPagina){
+		//mando a leer lo que resta de la primera pagina y actualizo los contadores
 		mandarALeer(dirFisica,diferencia,contexto,contenidoLeido);
 		cantidadBits = cantidadBits - diferencia;
 		desplazamientoContenido = desplazamientoContenido + diferencia;
 		numeroPagina++;
-
+		//por aca entro cuando tengo que leer paginas enteras todavia
 		while(cantidadBits > tamaPagina){
 			nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
 			nuevaDirFisica = nuevoMarco * tamaPagina;
@@ -442,16 +477,22 @@ void operacion_mov_in(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 			desplazamientoContenido = desplazamientoContenido + tamaPagina;
 			numeroPagina++;
 		}
+		//se llega aca cuando me queda leer una pagina mas pero no completa
+		//entonces leo el pedazo que falta de la ultima
 		nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
 		nuevaDirFisica = nuevoMarco * tamaPagina;
 		mandarALeer(nuevaDirFisica,cantidadBits,contexto,contenidoLeido + desplazamientoContenido);
 		
 	}else{
+		//Se va por este caso cuando no tengo que leer dos paginas, todo de una
 		mandarALeer(dirFisica,cantidadBits,contexto,contenidoLeido);
 	}
 
 	//Una vez terminado de leer, guardamos el contenido en el registro
-	
+	//Hago esto porque en el malloc reserve la memoria justa
+	//y tengo que pasarle a setear registro un uint32, entonces hago el memcpy
+	//en la variable que corresponde segun hice el malloc, y despues en el caso del
+	//uint8 lo guardo en un uint32 porque se ppuede y ahi hago el set del registro
 	if(tamaRegistro == sizeof(uint8_t)){
 		//PONER LOS & EN EL PRIMER PARAMETRO DE MEMCPY SI PASAS UNA VARIABLE Y NO UN PUNTERO !!!!!!!!!!!!
 		uint8_t tama8;
