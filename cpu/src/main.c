@@ -11,7 +11,7 @@ int pid_ejecutando;
 int pid_a_desalojar;
 pthread_mutex_t mutex_interrupcion;
 int tamaPagina;
-
+t_queue* TLB;
 int main(int argc, char *argv[])
 {
     char *memory_PORT;
@@ -50,6 +50,9 @@ int main(int argc, char *argv[])
     
     destroy_packet(packet);
     log_info(logger, "Handshake enviado");
+
+    //Inicializo la TLB
+    TLB = queue_create();
 
     pthread_mutex_init(&mutex_interrupcion, NULL);
 
