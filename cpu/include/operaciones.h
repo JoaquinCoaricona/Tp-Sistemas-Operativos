@@ -5,6 +5,7 @@
 #include "main.h"
 
 extern t_log *logger;
+extern t_queue *TLB;
 extern int client_fd_memoria;
 extern int tamaPagina;
 typedef struct {

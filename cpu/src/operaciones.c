@@ -1,5 +1,9 @@
 #include "operaciones.h"
 
+//Estas variables las uso en las busquedas en la TLB
+int paginaTLB = -1;
+int pidTLB = -1;
+
 void setear_registro(t_pcb *contexto, char* registro, uint32_t valor)
 {
 	if(strcmp(registro,"AX")==0)
@@ -202,11 +206,34 @@ void operacion_sleep(t_pcb *contexto,int socket,t_instruccion_unitaria* instrucc
 	destroy_packet(packet_rta);
 
 }
+bool busqueda_tlb(void *entradaTLB) {
+		t_entrada_TLB *entrada = (t_entrada_TLB*) entradaTLB;
 
+		if (entrada->pid == pidTLB && entrada->pagina == paginaTLB) {
+			return true;
+		}
+		return false;
+}
 int solicitarMarco(int numeroPagina, int pid){
 
 	//Variable que va a recibir el marco
 	int marcoEncontrado;
+
+	//+++++++++++++BUSCO EN LA TLB++++++++++++++++++++++++++++++++++++++++++++++
+	pidTLB = pid;
+	paginaTLB = numeroPagina;
+	t_entrada_TLB *nuevaEntrada = list_find(TLB->elements,busqueda_tlb);
+
+	if(nuevaEntrada != NULL){
+		//Las dejo asi para que no molesten en futuras busquedas
+		pidTLB = -1;
+		paginaTLB = -1;
+		log_info(logger,"PID: %i - TLB HIT - Pagina: %i",pid,numeroPagina);
+		return nuevaEntrada->marco;
+	}
+	log_info(logger,"PID: %i - TLB MISS - Pagina: %i",pid,numeroPagina);
+	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	
 
 	//Envio el Pid y el numero de pagina a memoria
 	t_buffer *bufferMarco;
@@ -237,6 +264,14 @@ int solicitarMarco(int numeroPagina, int pid){
 		
 		free(buffer2);
 
+		//Guardo el numero de marco en la TLB
+		t_entrada_TLB *nuevaEntrada = malloc(sizeof(t_entrada_TLB));
+		nuevaEntrada->pid = pid;
+		nuevaEntrada->pagina = numeroPagina;
+		nuevaEntrada->marco = marcoEncontrado;
+		queue_push(TLB,nuevaEntrada);
+		log_info(logger, "Obtener Marco: PID: %d - OBTENER MARCO - Página: %d - Marco: %d", pid, numeroPagina, marcoEncontrado);
+
 		return marcoEncontrado;
 	}else{
 		int total_size;
@@ -256,7 +291,6 @@ int traduccionLogica(int pid, int direccion_logica){
 	int desplazamiento = direccion_logica - numeroPagina * tamaPagina;
 	int marco_pagina = solicitarMarco(numeroPagina,pid);
 
-	log_info(logger, "Obtener Marco: PID: %d - OBTENER MARCO - Página: %d - Marco: %d", pid, numeroPagina, marco_pagina);
 	return desplazamiento + marco_pagina * tamaPagina;
 }
 
