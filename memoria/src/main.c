@@ -375,3 +375,118 @@ void leerMemoria(int client_socket){
 
 
 }
+
+void escribirMemoriaSTDIN(int client_socket){
+    
+    int operation_code = fetch_codop(client_socket);
+
+    switch (operation_code)
+    {
+    case STDIN_READ:
+
+        int direccion;
+        int tamInputs;
+        char* inputs;
+        int cantBits;
+        int pid;
+
+        int total_size;
+        int offset = 0;
+        void *buffer2;
+
+        buffer2 = fetch_buffer(&total_size, client_socket);
+        
+        memcpy(&direccion,buffer2 + offset, sizeof(int)); 
+        offset += sizeof(int);
+        
+        memcpy(&tamInputs,buffer2 + offset, sizeof(int)); 
+        offset += sizeof(int);
+        
+        memcpy(&inputs,buffer2 + offset, tamInputs); 
+        offset += tamInputs;
+
+        memcpy(&cantBits,buffer2 + offset, sizeof(int)); 
+        offset += sizeof(int);
+
+        memcpy(&pid,buffer2 + offset, sizeof(int)); 
+        offset += sizeof(int);
+
+        free(buffer2);
+
+        memcpy(espacioUsuario+direccion, &inputs,cantBits);
+        log_info(logger,"Acceso a espacio de usuario: PID: %d - Accion: ESCRIBIR - Direccion fisica: %d",pid,direccion);
+
+        t_buffer *bufferConfirmacion;
+        t_packet *packetConfirmacion;
+        bufferConfirmacion = create_buffer();
+        packetConfirmacion = create_packet(CONFIRMACION_ESCRITURA_STDIN, bufferConfirmacion);
+
+        add_to_packet(packetConfirmacion,&direccion,sizeof(int));
+
+        send_packet(packetConfirmacion, client_socket);
+        destroy_packet(packetConfirmacion);
+        break;
+    case -1:
+        log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
+        return;
+
+    default:
+        log_error(logger, "Alguno error inesperado %s", server_name);
+        return;
+     }
+}
+
+
+void leerMemoriaSTDOUT(int client_socket){
+    
+    int operation_code = fetch_codop(client_socket);
+
+    switch (operation_code)
+    {
+    case STDOUT_WRITE:
+
+        int tamano;
+        int direccion;
+        int pid;
+
+        int total_size;
+        int offset = 0;
+        void *buffer2;
+
+        buffer2 = fetch_buffer(&total_size, client_socket);
+        
+        memcpy(&tamano,buffer2 + offset, sizeof(int)); 
+        offset += sizeof(int);
+
+        memcpy(&direccion,buffer2 + offset, sizeof(int)); 
+        offset += sizeof(int);
+        
+        memcpy(&pid,buffer2 + offset, sizeof(int)); 
+        offset += sizeof(int);
+
+        free(buffer2);
+
+        void* contenido = malloc(tamano); 
+        memcpy(contenido,espacioUsuario+direccion,tamano);
+	    log_info(logger,"Acceso a espacio de usuario: “PID: %d - Accion: LEER - Direccion fisica: %d“",pid,direccion);
+
+        t_buffer *bufferConfirmacion;
+        t_packet *packetConfirmacion;
+        bufferConfirmacion = create_buffer();
+        packetConfirmacion = create_packet(CONFIRMACION_LECTURA_STDOUT, bufferConfirmacion);
+
+        add_to_packet(packetConfirmacion,contenido,tamano);
+
+        send_packet(packetConfirmacion, client_socket);
+        destroy_packet(packetConfirmacion);
+        break;
+    case -1:
+        log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
+        return;
+
+    default:
+        log_error(logger, "Alguno error inesperado %s", server_name);
+        return;
+     }
+}
+

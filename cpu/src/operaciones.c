@@ -179,30 +179,6 @@ void operacion_resize(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 	}
 }
 
-//IO_GEN_SLEEP (Interfaz, Unidades de trabajo): Esta instrucción solicita al Kernel que se
-//envíe a una interfaz de I/O a que realice un sleep por una cantidad de unidades de trabajo.
-
-void operacion_sleep(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
-	t_buffer *buffer_rta;
-    t_packet *packet_rta;
-    buffer_rta = create_buffer();
-    packet_rta = create_packet(SLEEP_IO,buffer_rta);
-
-	contexto->state = BLOCKED;
-
-	add_to_packet(packet_rta,instruccion->parametros[0], instruccion->parametro1_lenght); //CARGO EL NOMBRE DE LA INTERFAZ
-	
-	int valor = atoi(instruccion->parametros[1]);
-    add_to_packet(packet_rta,&valor,sizeof(int)); //CARGO EL TIEMPO A DORMIR
-
-	int tamanioPCB = sizeof(t_pcb);
-    add_to_packet(packet_rta, contexto, tamanioPCB); //CARGO EL PCB ACTUALIZADO
-	
-	send_packet(packet_rta, socket);		//ENVIO EL PAQUETE
-	destroy_packet(packet_rta);
-
-}
-
 int solicitarMarco(int numeroPagina, int pid){
 
 	//Variable que va a recibir el marco
@@ -395,7 +371,84 @@ void operacion_mov_in(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 
 }
 
+//IO_GEN_SLEEP (Interfaz, Unidades de trabajo): Esta instrucción solicita al Kernel que se
+//envíe a una interfaz de I/O a que realice un sleep por una cantidad de unidades de trabajo.
 
+void operacion_sleep(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
+	t_buffer *buffer_rta;
+    t_packet *packet_rta;
+    buffer_rta = create_buffer();
+    packet_rta = create_packet(SLEEP_IO,buffer_rta);
 
+	contexto->state = BLOCKED;
 
+	add_to_packet(packet_rta,instruccion->parametros[0], instruccion->parametro1_lenght); //CARGO EL NOMBRE DE LA INTERFAZ
+	
+	int valor = atoi(instruccion->parametros[1]);
+    add_to_packet(packet_rta,&valor,sizeof(int)); //CARGO EL TIEMPO A DORMIR
 
+	int tamanioPCB = sizeof(t_pcb);
+    add_to_packet(packet_rta, contexto, tamanioPCB); //CARGO EL PCB ACTUALIZADO
+	
+	send_packet(packet_rta, socket);		//ENVIO EL PAQUETE
+	destroy_packet(packet_rta);
+
+}
+
+void operacion_read(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion) {
+	int tamano;
+	int cantidadBits;
+	t_buffer *buffer;
+    t_packet *packet;
+    buffer = create_buffer();
+    packet = create_packet(READ_IO, buffer);
+
+	contexto->state = BLOCKED;
+
+	if(
+		string_equals_ignore_case(instruccion->parametros[2],"AX") || 
+		string_equals_ignore_case(instruccion->parametros[2],"BX") ||
+		string_equals_ignore_case(instruccion->parametros[2],"CX") ||
+		string_equals_ignore_case(instruccion->parametros[2],"DX"))
+	{
+		tamano = obtener_valor_del_registro(instruccion->parametros[2],contexto);
+		cantidadBits = sizeof(uint8_t);
+	}else{
+		tamano = obtener_valor_del_registro(instruccion->parametros[2],contexto);
+		cantidadBits = sizeof(uint32_t);
+	}
+
+	int dirLogica = obtener_valor_del_registro(instruccion->parametros[1],contexto);
+    int dirFisica = traduccionLogica(contexto->pid,dirLogica);
+
+	add_to_packet(packet,instruccion->parametros[0], instruccion->parametro1_lenght); //Nombre Interfaz
+    add_to_packet(packet,&dirFisica,sizeof(int)); //Direccion Fisica 
+    add_to_packet(packet,&tamano,sizeof(int)); //Tamano maxima de escritura
+    add_to_packet(packet,&cantidadBits,sizeof(int)); //Bits de escritura a memoria
+	add_to_packet(packet,&(contexto->pid),sizeof(int)); //PCB actualizado
+    
+    send_packet(packet, socket);
+    destroy_packet(packet);
+
+}
+
+void operacion_write(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion) {
+	t_buffer *buffer;
+    t_packet *packet;
+    buffer = create_buffer();
+    packet = create_packet(WRITE_IO, buffer);
+
+	contexto->state = BLOCKED;
+
+	int tamano = obtener_valor_del_registro(instruccion->parametros[1],contexto);
+	int dirLogica = obtener_valor_del_registro(instruccion->parametros[2],contexto);
+    int dirFisica = traduccionLogica(contexto->pid,dirLogica);
+
+	add_to_packet(packet,instruccion->parametros[0], instruccion->parametro1_lenght); //Nombre Interfaz
+    add_to_packet(packet,&dirFisica,sizeof(int)); //Direccion Fisica 
+    add_to_packet(packet,&tamano,sizeof(int)); //Tamano maxima de escritura
+	add_to_packet(packet,&(contexto->pid),sizeof(int)); //PCB actualizado
+    
+    send_packet(packet, socket);
+    destroy_packet(packet);
+}

@@ -48,14 +48,12 @@ int main(int argc, char *argv[])
     PORT_kernel = config_get_string_value(config, "PUERTO_KERNEL");
     IP_kernel = config_get_string_value(config, "IP_KERNEL");
 
-    //COMENTO TODA LA CONEXION A MEMORIA
-    // Conect to server
-    //socket_memoria = create_conection(logger, IP_memoria, PORT_memoria);
-    //log_info(logger, "Conectado al servidor de memoria %s:%s", IP_memoria, PORT_memoria);
+    
+    socket_memoria = create_conection(logger, IP_memoria, PORT_memoria);
+    log_info(logger, "Conectado al servidor de memoria %s:%s", IP_memoria, PORT_memoria);
 
     // Send handshake
    
-
     //packet = serialize_packet(packet, buffer->size);
     //send_packet(packet, socket_memoria);
 
@@ -92,6 +90,97 @@ int main(int argc, char *argv[])
             //aca antes pasaba que me decia algun error inesperado, no se porque
             //lo debugee y empezo a funcionar, pero pasaba que se iba por el default
         break;
+        case TAMANO_DIRECCION_READ:
+            int tamano = fetch_tamano(socket_kernel);
+            int direccion = fetch_direccion(socket_kernel);
+            char* inputs = leer_desde_stdin(tamano);
+            int tamInputs = strlen(tipo)+1;
+            int cantBits = fetch_cantBits(socket_kernel);
+            int pid = fetch_pid(socket_kernel);
+
+            t_buffer* buffer2 = create_buffer();
+            t_packet* packet2 = create_packet(STDIN_READ, buffer2);
+
+            add_to_packet(packet2,direccion,sizeof(int));
+            add_to_packet(packet2,tamInputs,strlen(tamInput)+1);
+            add_to_packet(packet2,inputs,tamInputs);
+            add_to_packet(packet2,cantBits,sizeof(int));
+            add_to_packet(packet2,pid,sizeof(int));
+
+            send_packet(packet2, socket_memoria);
+            destroy_packet(packet2);
+
+            int operation_code = fetch_codop(socket_memoria);
+
+            if(operation_code == CONFIRMACION_ESCRITURA_STDIN){
+                
+                int hoa = 1;
+                int total_size;
+                int offset = 0;
+
+                t_buffer *buffer3 = create_buffer();
+                t_packet *packet3 = create_packet(CONFIRMACION_STDIN_READ, buffer3)
+
+                send_packet(packet3, socket_kernel);
+                destroy_packet(packet3);
+            }else{
+                int total_size;
+                void *buffer2 = fetch_buffer(&total_size, socket_memoria);
+                free(buffer2);
+                log_info(logger,"Error en la lectura");
+            }
+
+        case TAMANO_DIRECCION_WRITE:
+            int tamano = fetch_tamano(socket_kernel);
+            int direccion = fetch_direccion(socket_kernel);
+            int pid = fetch_pid(socket_kernel);
+
+            t_buffer *buffer2 = create_buffer();
+            t_packet* packet2 = create_packet(STDOUT_WRITE, buffer2);
+
+            add_to_packet(packet2,tamano,sizeof(int));
+            add_to_packet(packet2,direccion,sizeof(int));
+            add_to_packet(packet2,pid,sizeof(int));
+
+            send_packet(packet2, socket_memoria);
+            destroy_packet(packet2);
+
+            
+            int operation_code = fetch_codop(socket_memoria);
+
+            if(operation_code == CONFIRMACION_LECTURA_STDOUT){
+                
+                char* contenido;
+                int total_size;
+                int offset = 0;
+
+                t_buffer *buffer3 = fetch_buffer(&total_size, socket_memoria);
+                buffer3 = fetch_buffer(&total_size, socket_memoria);
+
+                memcpy(&contenido,buffer2 + offset, strlen(contenido) + 1); 
+                offset += strlen(contenido) + 1; 
+
+                printf("Contenido leido desde memoria: %s\n", contenido);
+
+                free(buffer3);
+                log_info(logger,"Confirmacion Lectura");
+
+                t_buffer *buffer4 = create_buffer();
+                t_packet *packet3 = create_packet(CONFIRMACION_STDOUT_WRITE, buffer4);
+
+                add_to_packet(packet3,contenido,strlen(contenido) + 1);
+
+                send_packet(packet3, socket_kernel);
+                destroy_packet(packet3);
+            }else{
+                int total_size;
+                void *buffer2 = fetch_buffer(&total_size, socket_memoria);
+                free(buffer2);
+                log_info(logger,"Error en la lectura");
+            }
+
+
+
 
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion");
@@ -140,4 +229,90 @@ void enviarAvisoAKernel(int socket_kernel){
     destroy_packet(packetRespuesta);
 
     //destroy(packetRespuesta); hay que incluir esta funcion destroy
+}
+
+int fetch_tamano(socket_kernel) {
+    int total_size;
+    int offset = 0;
+
+    int tamano;
+   
+    void *buffer2;
+    buffer2 = fetch_buffer(&total_size, socket_kernel);
+
+    offset += sizeof(int); //No entiendo como esta salta al tamano de nombre interfaz
+    offset += sizeof(int); //Salta direccion
+
+    memcpy(&tamano,buffer2 + offset, sizeof(int)); 
+    
+    free(buffer2);
+    return tamano;
+}
+
+int fetch_direccion(socket_kernel) {
+    int total_size;
+    int offset = 0;
+
+    int direccion;
+   
+    void *buffer2;
+    buffer2 = fetch_buffer(&total_size, socket_kernel);
+
+    offset += sizeof(int);
+    
+    memcpy(&direccion,buffer2 + offset, sizeof(int)); 
+    
+    free(buffer2);
+    return direccion;
+}
+
+int fetch_cantBits(socket_kernel) {
+    int total_size;
+    int offset = 0;
+
+    int cantBits;
+   
+    void *buffer2;
+    buffer2 = fetch_buffer(&total_size, socket_kernel);
+
+    offset += sizeof(int);
+    offset += sizeof(int);
+    offset += sizeof(int);
+
+    memcpy(&cantBits,buffer2 + offset, sizeof(int)); 
+    
+    free(buffer2);
+    return cantBits;
+}
+
+int fetch_pid(socket_kernel) {
+    int total_size;
+    int offset = 0;
+
+    int pid;
+   
+    void *buffer2;
+    buffer2 = fetch_buffer(&total_size, socket_kernel);
+
+    offset += sizeof(int);
+    offset += sizeof(int);
+    offset += sizeof(int);
+    offset += sizeof(int);
+
+    memcpy(&proceso,buffer2 + offset, sizeof(int)); 
+    
+    free(buffer2);
+    return proceso;
+}
+
+char* leer_desde_stdin(int tamano) {
+    char* input = malloc((tamano + 1) * sizeof(char));
+    if (input == NULL) {
+        return NULL;
+    }
+    fgets(input, tamano + 1, stdin);
+
+    input[strcspn(input, "\n")] = '\0';
+
+    return input;
 }

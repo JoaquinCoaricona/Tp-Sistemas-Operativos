@@ -350,6 +350,14 @@ void ciclo_de_instruccion(int socket_kernel){
 			operacion_sleep(PCBACTUAL,socket_kernel,instruccion_ACTUAL);
             continuar_con_el_ciclo_instruccion = false;
         }    
+        if (strcmp(instruccion_ACTUAL->opcode, "IO_STDIN_READ") == 0){
+			operacion_read(PCBACTUAL,socket_kernel,instruccion_ACTUAL);
+            continuar_con_el_ciclo_instruccion = false;
+        }    
+        if (strcmp(instruccion_ACTUAL->opcode, "IO_STDOUT_WRITE") == 0){
+			operacion_write(PCBACTUAL,socket_kernel,instruccion_ACTUAL);
+            continuar_con_el_ciclo_instruccion = false;
+        }    
         if (strcmp(instruccion_ACTUAL->opcode, "EXIT") == 0) {
             
             continuar_con_el_ciclo_instruccion = false;
