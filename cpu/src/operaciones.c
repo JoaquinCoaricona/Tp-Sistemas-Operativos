@@ -309,7 +309,8 @@ int traduccionLogica(int pid, int direccion_logica){
 
 	return desplazamiento + marco_pagina * tamaPagina;
 }
-
+//No necesita el pid, lo puse porque copie otra funcion como base
+//y ahora ya esta siendo usada en varios lugares asi que lo dejo asi
 int obtenerDesplazamiento(int pid, int direccion_logica){
 
 	int numeroPagina = (int) floor(direccion_logica / tamaPagina);
@@ -683,4 +684,98 @@ void operacion_copy_string(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 		}
 //*********************************************************************************************
 
+}
+
+// IO_STDOUT_WRITE (Interfaz, Registro Dirección, Registro Tamaño):
+// Esta instrucción solicita al Kernel que mediante la interfaz seleccionada,
+// se lea desde la posición de memoria indicada por la Dirección Lógica almacenada
+// en el Registro Dirección, un tamaño indicado por el Registro Tamaño y se imprima por pantalla.
+
+
+void operacion_io_stdout_write(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
+	
+	t_buffer *buffer_rta;
+	t_packet *packet_rta;
+	buffer_rta = create_buffer();
+	packet_rta = create_packet(STDOUT_ESCRIBIR,buffer_rta);
+	add_to_packet(packet_rta,instruccion->parametros[0], instruccion->parametro1_lenght); //CARGO EL NOMBRE DE LA INTERFAZ
+	
+
+	int dirLogica = obtener_valor_del_registro(instruccion->parametros[1],contexto);
+	int cantidadBytes = obtener_valor_del_registro(instruccion->parametros[2],contexto);
+
+	int cantidadDireccionesFisicas = 0;
+	int nuevoMarco;
+	int nuevaDirFisica;
+
+	int dirFisica = traduccionLogica(contexto->pid,dirLogica);
+	int desplazamiento = obtenerDesplazamiento(contexto->pid,dirLogica);
+	int numeroPagina = (int) floor(dirLogica / tamaPagina);
+
+	//Esto para leer lo que resta de la primera pagina, solo en caso que se escriba mas de una pagina
+	int diferencia = tamaPagina - desplazamiento;
+
+
+	if((desplazamiento + cantidadBytes) > tamaPagina){
+		
+		add_to_packet(packet_rta,&diferencia,sizeof(int));
+		add_to_packet(packet_rta,&dirFisica,sizeof(int));
+		cantidadBytes = cantidadBytes - diferencia;
+		numeroPagina++;
+
+		while(cantidadBits > tamaPagina){
+			nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
+			nuevaDirFisica = nuevoMarco * tamaPagina;
+			add_to_packet(packet_rta,&tamaPagina,sizeof(int));
+			add_to_packet(packet_rta,&nuevaDirFisica,sizeof(int));
+			cantidadBytes = cantidadBytes - tamaPagina;
+			numeroPagina++;
+		}
+		nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
+		nuevaDirFisica = nuevoMarco * tamaPagina;
+		mandarALeer(nuevaDirFisica,cantidadBits,contexto,contenidoLeido + desplazamientoContenido);
+		
+	}else{
+		mandarALeer(dirFisica,cantidadBits,contexto,contenidoLeido);
+	}
+	
+	
+	
+
+	contexto->state = BLOCKED;
+	int tamanioPCB = sizeof(t_pcb);
+    add_to_packet(packet_rta, contexto, tamanioPCB); //CARGO EL PCB ACTUALIZADO
+	
+	send_packet(packet_rta, socket);		//ENVIO EL PAQUETE
+	destroy_packet(packet_rta);
+
+}
+
+int calcularCantDirFisicas(int desplazamiento, int cantidadBytes){
+
+	//Empieza en 0 aunque deberia empezar en 1 quizas
+		int contadorPaginas = 0;
+		int diferencia = tamaPagina - desplazamiento;
+		//Lo mismo que al leer, si entra por el if es que se va a pasar de una pagina
+		if((desplazamiento + cantidadBytes) > tamaPagina){
+		//Aca hace la resta para actualizar lo que falta
+		cantidadBytes = cantidadBytes - diferencia;
+		//Sumo uno a la cantidad de paginas porque "lei" lo que restaba de la primera
+		contadorPaginas++;
+		//Ahora voy a "leer" paginas enteras solo en caso tenga paginas enteras restantes
+		//y sumo uno por cada una
+		while(cantidadBits > tamaPagina){
+			cantidadBytes = cantidadBytes - tamaPagina;
+			contadorPaginas++;
+		}
+		//En caso que no tenga paginas enteras para leer y solo sea un cachito de la siguiente
+		//sumo uno y devuelvo
+		contadorPaginas++;
+		//por este lado como minimo vas a devolver dos paginas porque te pasabas de la original
+		return contadorPaginas;
+	}else{
+		//por aca solo "lees" una pagina, porque no te pasabas del limite. Asi que devuelvo uno
+		contadorPaginas++;
+		return contadorPaginas;
+	}
 }

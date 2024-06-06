@@ -355,6 +355,10 @@ void ciclo_de_instruccion(int socket_kernel){
 			//devolver_a_kernel(PCBACTUAL, SLEEP, socket_kernel); //esto estaba antes
 			operacion_sleep(PCBACTUAL,socket_kernel,instruccion_ACTUAL);
             continuar_con_el_ciclo_instruccion = false;
+        }
+        if (strcmp(instruccion_ACTUAL->opcode, "IO_STDOUT_WRITE") == 0){
+			operacion_io_stdout_write(PCBACTUAL,socket_kernel,instruccion_ACTUAL);
+            continuar_con_el_ciclo_instruccion = false;
         }    
         if (strcmp(instruccion_ACTUAL->opcode, "EXIT") == 0) {
             
@@ -404,8 +408,15 @@ void ciclo_de_instruccion(int socket_kernel){
         //antes estaba el free solamente, pero hay que hacer free a todos los campos
         //de adentro
     }
-
-	pid_ejecutando = 0;
+    //Antes estaba igualado a 0 pero como nuestro primer pid es 0 por las dudas
+    //lo dejo en -1 porque quizas termina el ciclo de instruccion de 0
+    // y justo llega una interrupcion buscando al pid 0 y si esto queda en 0
+    //Quizas coincide que justo lo puse en 0 para marcar que no habia nada y 
+    //busca al 0 y coincide. Igual chequearia el bool continuar ciclo
+    //de intruccion y daria falso pero por las dudas lo pongo
+    //EN CASO QUE FALLE ALGO PROBAR ACA CON CAMBIAR ESTO COMO ESTABA
+	//pid_ejecutando = 0;
+    pid_ejecutando = -1;
 	//contexto_ejecucion_destroy(PCBACTUAL);
     free(PCBACTUAL); //aca hay que crear una funcion destroy
 
