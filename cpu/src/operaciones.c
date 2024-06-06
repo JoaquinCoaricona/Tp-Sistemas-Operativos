@@ -700,17 +700,21 @@ void operacion_io_stdout_write(t_pcb *contexto,int socket,t_instruccion_unitaria
 	packet_rta = create_packet(STDOUT_ESCRIBIR,buffer_rta);
 	add_to_packet(packet_rta,instruccion->parametros[0], instruccion->parametro1_lenght); //CARGO EL NOMBRE DE LA INTERFAZ
 	
-
+	
 	int dirLogica = obtener_valor_del_registro(instruccion->parametros[1],contexto);
 	int cantidadBytes = obtener_valor_del_registro(instruccion->parametros[2],contexto);
 
-	int cantidadDireccionesFisicas = 0;
 	int nuevoMarco;
 	int nuevaDirFisica;
 
 	int dirFisica = traduccionLogica(contexto->pid,dirLogica);
 	int desplazamiento = obtenerDesplazamiento(contexto->pid,dirLogica);
 	int numeroPagina = (int) floor(dirLogica / tamaPagina);
+	add_to_packet(packet_rta,&cantidadBytes,sizeof(int));
+
+	//Calculo y agrego la cantidad de direcciones Fisicas que voy a enviar
+	int cantidadDireccionesFisicas = calcularCantDirFisicas(desplazamiento,cantidadBytes);
+	add_to_packet(packet_rta,&cantidadDireccionesFisicas,sizeof(int));
 
 	//Esto para leer lo que resta de la primera pagina, solo en caso que se escriba mas de una pagina
 	int diferencia = tamaPagina - desplazamiento;
@@ -733,20 +737,22 @@ void operacion_io_stdout_write(t_pcb *contexto,int socket,t_instruccion_unitaria
 		}
 		nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
 		nuevaDirFisica = nuevoMarco * tamaPagina;
-		mandarALeer(nuevaDirFisica,cantidadBits,contexto,contenidoLeido + desplazamientoContenido);
+		add_to_packet(packet_rta,&cantidadBytes,sizeof(int));
+		add_to_packet(packet_rta,&nuevaDirFisica,sizeof(int));
+		
 		
 	}else{
-		mandarALeer(dirFisica,cantidadBits,contexto,contenidoLeido);
+		add_to_packet(packet_rta,&cantidadBytes,sizeof(int));
+		add_to_packet(packet_rta,&dirFisica,sizeof(int));
 	}
 	
-	
-	
+	//Ahora agrego el PCB al paquete
 
 	contexto->state = BLOCKED;
 	int tamanioPCB = sizeof(t_pcb);
     add_to_packet(packet_rta, contexto, tamanioPCB); //CARGO EL PCB ACTUALIZADO
 	
-	send_packet(packet_rta, socket);		//ENVIO EL PAQUETE
+	send_packet(packet_rta,socket);		//ENVIO EL PAQUETE
 	destroy_packet(packet_rta);
 
 }

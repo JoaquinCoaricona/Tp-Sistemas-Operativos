@@ -79,11 +79,10 @@ void interfazGenerica(){
             log_info(logger, "RECIBI UN SLEEP DE %i",tiempo);
             usleep(tiempo); //falta hacer el calculo bien
             log_info(logger, "TERMINE UN SLEEP DE %i",tiempo);
-            enviarAvisoAKernel(socket_kernel);
+            enviarAvisoAKernel(socket_kernel,CONFIRMACION_SLEEP_COMPLETO);
             //aca antes pasaba que me decia algun error inesperado, no se porque
             //lo debugee y empezo a funcionar, pero pasaba que se iba por el default
         break;
-
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion");
             close_conection(socket_kernel);
@@ -120,13 +119,13 @@ int fetch_tiempoDormir(int socket_kernel){
     return tiempoSleep;
 
 }
-void enviarAvisoAKernel(int socket_kernel){
+void enviarAvisoAKernel(int socket_kernel,op_code codigo){
     t_buffer *bufferRespuesta;
     t_packet *packetRespuesta;
 
     int hola = 1; //ENVIO ALGO PARA NO ENVIAR EL BUFFER VACIO  AVERIGUAR SI SE PUEDE ENVIAR VACIO
     bufferRespuesta = create_buffer();
-    packetRespuesta = create_packet(CONFIRMACION_SLEEP_COMPLETO, bufferRespuesta);
+    packetRespuesta = create_packet(codigo, bufferRespuesta);
     add_to_packet(packetRespuesta,&hola, sizeof(int));
     send_packet(packetRespuesta,socket_kernel);   
     destroy_packet(packetRespuesta);
@@ -153,14 +152,9 @@ void interfazStdin(){
         int operation_code = fetch_codop(socket_kernel);
         switch (operation_code)
         {
-        case TIEMPO_DORMIR:
-            int tiempo = fetch_tiempoDormir(socket_kernel);
-            log_info(logger, "RECIBI UN SLEEP DE %i",tiempo);
-            usleep(tiempo); //falta hacer el calculo bien
-            log_info(logger, "TERMINE UN SLEEP DE %i",tiempo);
-            enviarAvisoAKernel(socket_kernel);
-            //aca antes pasaba que me decia algun error inesperado, no se porque
-            //lo debugee y empezo a funcionar, pero pasaba que se iba por el default
+        case STDOUT_ESCRIBIR:
+            recibirYejecutarDireccionesFisicas(socket_kernel);
+            enviarAvisoAKernel(socket_kernel,CONFIRMACION_STDOUT);
         break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion");
@@ -173,4 +167,89 @@ void interfazStdin(){
             return;
         }
     }
+}
+
+void recibirYejecutarDireccionesFisicas(int socket_kernel){
+    int total_size;
+    int offset = 0;
+    int pid;
+    int cantidadDireccionesFisicas;
+    void *buffer2;
+    int dirFisica;
+    int cantidadBytesLeer;
+    buffer2 = fetch_buffer(&total_size, socket_kernel);
+    void *contenido;
+    int cantidadBytesMalloc;
+    int desplazamientoParteLeida = 0;
+
+    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
+
+    memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
+    offset += sizeof(int);
+    
+    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
+
+    memcpy(&cantidadBytesMalloc,buffer2 + offset, sizeof(int)); //RECIBO LA CANTIDAD DE BYTES MALLOC
+    offset += sizeof(int);
+
+    contenido = malloc(cantidadBytesMalloc);
+    
+    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
+
+    memcpy(&cantidadDireccionesFisicas,buffer2 + offset, sizeof(int)); //Recibo cantidad dir Fisicas
+    offset += sizeof(int);
+
+    for(int i = 0; i < cantidadDireccionesFisicas; i++){
+        memcpy(&cantidadBytesLeer,buffer2 + offset, sizeof(int)); 
+        offset += sizeof(int);
+        memcpy(&dirFisica,buffer2 + offset, sizeof(int)); 
+        offset += sizeof(int);
+        mandarALeer(dirFisica,cantidadBytesLeer,pid,contenido + desplazamientoParteLeida);
+        desplazamientoParteLeida = desplazamientoParteLeida + cantidadBytesLeer;
+    }
+
+    char *cadena = (char *)contenido;
+    log_info(logger,"%s",cadena);
+
+    free(buffer2);
+    
+}
+
+void mandarALeer(int dirFisica, int cantidadBits, int pid, void *contenido){
+
+	t_buffer *bufferLectura;
+    t_packet *packetLectura;
+    bufferLectura = create_buffer();
+    packetLectura = create_packet(SOLICITUD_LECTURA, bufferLectura);
+
+    add_to_packet(packetLectura,&dirFisica,sizeof(int));
+    add_to_packet(packetLectura,&cantidadBits,sizeof(int));
+	add_to_packet(packetLectura,&pid,sizeof(int));
+    
+    send_packet(packetLectura, socket_memoria);
+    destroy_packet(packetLectura);
+
+	//-------------Aca se bloquea esperando el codop-------
+	int operation_code = fetch_codop(client_fd_memoria);
+
+	if(operation_code == CONFIRMACION_LECTURA){
+		int total_size;
+		int offset = 0;
+		void *buffer2 = fetch_buffer(&total_size, socket_memoria);
+
+		offset += sizeof(int); //Salteo el tamaño del INT
+
+		memcpy(contenido,buffer2 + offset,cantidadBits); 
+    	offset += cantidadBits; //Este offset no tiene sentido pero lo pongo por las dudas
+		//Esto iria pero como son numeros quizas justo leo la mitad y no tendria sentido imprimir la mitad
+		//log_info(logger,"Valor: %i", contenido);
+
+		free(buffer2);
+		log_info(logger,"Confirmacion Lectura");
+	}else{
+		int total_size;
+		void *buffer2 = fetch_buffer(&total_size, client_fd_memoria);
+		free(buffer2);
+		log_info(logger,"Error en la lectura");
+	}
 }

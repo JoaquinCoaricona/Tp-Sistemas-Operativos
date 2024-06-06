@@ -105,6 +105,14 @@ typedef struct{
     int tiempoDormir;       //como no pude entrar al hilo directamente, en esta estructura
 }t_pcbYtiempo;              //cuando llegue mi turno en la interaz tengo tambien el tiempo para que haga el sleep
 
+typedef struct{
+    t_pcb *PCB;               
+    int cantidadBytes;
+    void *contenido;
+    int bytesMalloc;
+}t_colaStdOUT;    
+
+
 typedef struct
 {
 char *nombre;
