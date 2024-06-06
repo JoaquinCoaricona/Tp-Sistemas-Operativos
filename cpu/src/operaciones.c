@@ -42,6 +42,16 @@ void setear_registro(t_pcb *contexto, char* registro, uint32_t valor)
 		contexto->registers.EDX=valor;
 		//log_info(logger, "Se setea en %s el valor: %d",registro,  contexto->registers->EDX);
 	}
+	else if(strcmp(registro,"SI")==0)
+	{
+		contexto->registers.SI=valor;
+		//log_info(logger, "Se setea en %s el valor: %d",registro,  contexto->registers->EDX);
+	}
+	else if(strcmp(registro,"DI")==0)
+	{
+		contexto->registers.DI=valor;
+		//log_info(logger, "Se setea en %s el valor: %d",registro,  contexto->registers->EDX);
+	}
     
 
 }
@@ -78,6 +88,12 @@ uint32_t obtener_valor_del_registro(char* registro_a_leer, t_pcb* contexto_actua
 	}else if(strcmp(registro_a_leer,"EDX")==0)
 	{
 		valor_leido= contexto_actual->registers.EDX;
+	}else if(strcmp(registro_a_leer,"SI")==0)
+	{
+		valor_leido= contexto_actual->registers.SI;
+	}else if(strcmp(registro_a_leer,"DI")==0)
+	{
+		valor_leido= contexto_actual->registers.DI;
 	}
 
 	//log_info(logger, "Se se lee en %s el valor: %d",registro_a_leer,  valor_leido);
@@ -518,4 +534,51 @@ void mandarALeer(int dirFisica, int cantidadBits, t_pcb *contexto, void *conteni
 		free(buffer2);
 		log_info(logger,"Error en la lectura");
 	}
+}
+// COPY_STRING (Tamaño): Toma del string apuntado por el registro SI y copia la
+// cantidad de bytes indicadas en el parámetro tamaño a la posición de memoria apuntada
+// por el registro DI. 
+void operacion_copy_string(t_pcb* contexto, t_instruccion_unitaria* instruccion){
+	
+	//La cantidad de bits que voy a escribir en memoria es esto
+	int cantidadBits = atoi(instruccion->parametros[0]);
+
+	int nuevoMarco;
+	int nuevaDirFisica;
+
+	int dirLogica = obtener_valor_del_registro("SI",contexto);
+	int dirFisica = traduccionLogica(contexto->pid,dirLogica);
+
+	int desplazamiento = obtenerDesplazamiento(contexto->pid,dirLogica);
+	int numeroPagina = (int) floor(dirLogica / tamaPagina);
+	//Esto para leer lo que resta de la primera pagina
+	int diferencia = tamaPagina - desplazamiento;
+
+	//Este es el offset para escribir en contenidoLeido
+	int desplazamientoContenido = 0;
+
+	void *contenidoLeido = malloc(cantidadBits);
+
+	if((desplazamiento + cantidadBits) > tamaPagina){
+		mandarALeer(dirFisica,diferencia,contexto,contenidoLeido);
+		cantidadBits = cantidadBits - diferencia;
+		desplazamientoContenido = desplazamientoContenido + diferencia;
+		numeroPagina++;
+
+		while(cantidadBits > tamaPagina){
+			nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
+			nuevaDirFisica = nuevoMarco * tamaPagina;
+			mandarALeer(nuevaDirFisica,tamaPagina,contexto,contenidoLeido + desplazamientoContenido);
+			cantidadBits = cantidadBits - tamaPagina;
+			desplazamientoContenido = desplazamientoContenido + tamaPagina;
+			numeroPagina++;
+		}
+		nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
+		nuevaDirFisica = nuevoMarco * tamaPagina;
+		mandarALeer(nuevaDirFisica,cantidadBits,contexto,contenidoLeido + desplazamientoContenido);
+		
+	}else{
+		mandarALeer(dirFisica,cantidadBits,contexto,contenidoLeido);
+	}
+
 }
