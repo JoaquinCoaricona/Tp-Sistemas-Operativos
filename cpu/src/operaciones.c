@@ -374,7 +374,7 @@ void operacion_mov_out(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 				nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
 				nuevaDirFisica = nuevoMarco * tamaPagina;
 				//No hay desplazamiento porque arranco la pagina nueva de 0
-				mandarAescribirEnMemoria(nuevaDirFisica,contenidoAescribir + desplazamientoContenido,diferencia,contexto);
+				mandarAescribirEnMemoria(nuevaDirFisica,contenidoAescribir + desplazamientoContenido,tamaPagina,contexto);
 				desplazamientoContenido = desplazamientoContenido + tamaPagina;
 				cantidadBits = cantidadBits - tamaPagina;
 				numeroPagina++;
@@ -539,9 +539,15 @@ void mandarALeer(int dirFisica, int cantidadBits, t_pcb *contexto, void *conteni
 // cantidad de bytes indicadas en el parámetro tamaño a la posición de memoria apuntada
 // por el registro DI. 
 void operacion_copy_string(t_pcb* contexto, t_instruccion_unitaria* instruccion){
-	
+
+//*********************************************************************************************
+//***********************PRIMERA ETAPA: LECTURA*************************************
+//*********************************************************************************************
+
 	//La cantidad de bits que voy a escribir en memoria es esto
 	int cantidadBits = atoi(instruccion->parametros[0]);
+	//Esta variable la guardo para la etapa de la escritura
+	int bytesTotal = atoi(instruccion->parametros[0]);
 
 	int nuevoMarco;
 	int nuevaDirFisica;
@@ -551,7 +557,8 @@ void operacion_copy_string(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 
 	int desplazamiento = obtenerDesplazamiento(contexto->pid,dirLogica);
 	int numeroPagina = (int) floor(dirLogica / tamaPagina);
-	//Esto para leer lo que resta de la primera pagina
+
+	//Esto para leer lo que resta de la primera pagina, solo en caso que se escriba mas de una pagina
 	int diferencia = tamaPagina - desplazamiento;
 
 	//Este es el offset para escribir en contenidoLeido
@@ -580,5 +587,59 @@ void operacion_copy_string(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 	}else{
 		mandarALeer(dirFisica,cantidadBits,contexto,contenidoLeido);
 	}
+//*********************************************************************************************
+//***********************SEGUNDA ETAPA: ESCRITURA**********************************************
+//*********************************************************************************************
+
+	int dirLogicaEscritura = obtener_valor_del_registro("DI",contexto);
+	int desplazamientoEscritura = obtenerDesplazamiento(contexto->pid,dirLogicaEscritura);
+    int dirFisicaEscritura = traduccionLogica(contexto->pid,dirLogicaEscritura);
+	int numeroPaginaEscritura = (int) floor(dirLogicaEscritura / tamaPagina);
+
+	//Solo se usa si escribo mas de una pagina
+	int diferenciaEscritura = tamaPagina - desplazamientoEscritura;
+
+	//Esto es para delimitar la parte que ya escribi, si es mas de una pagina
+	//Uso la misma variable de la primera etapa, solo que la vuelvo a poner en 0
+	desplazamientoContenido = 0;
+
+	//CONTENIDOLEIDO ES EL PUNTERO DONDE TENGO LO LEIDO Y LO QUE VOY A COPIAR ACA
+	
+	//Esto se usa cuando el dato no entra en una pagina
+	int nuevoMarcoEscritura;
+	int nuevaDirFisicaEscritura;
+	//Vuelvo a asginarle a cantidadBits el valor original, porque cambio en la lectura 
+	cantidadBits = bytesTotal;
+
+	//++++++++++++Calculo cantidad de Paginas a escribir++++++++++++++
+		if((bytesTotal + desplazamientoEscritura) > tamaPagina){
+			//Como entro por este if significa que ...
+			//Primero escribo lo que falta de la primera pagina
+			mandarAescribirEnMemoria(dirFisicaEscritura,contenidoLeido,diferenciaEscritura,contexto);
+			desplazamientoContenido = desplazamientoContenido + diferenciaEscritura;
+			cantidadBits = cantidadBits - diferenciaEscritura;
+			numeroPaginaEscritura++;
+			//Ahora escribo el resto
+			while(cantidadBits > tamaPagina){
+				
+				nuevoMarcoEscritura = solicitarMarco(numeroPaginaEscritura,contexto->pid);
+				nuevaDirFisicaEscritura = nuevoMarcoEscritura * tamaPagina;
+				//No hay desplazamiento porque arranco la pagina nueva de 0
+				mandarAescribirEnMemoria(nuevaDirFisicaEscritura,contenidoLeido + desplazamientoContenido,tamaPagina,contexto);
+				desplazamientoContenido = desplazamientoContenido + tamaPagina;
+				cantidadBits = cantidadBits - tamaPagina;
+				numeroPaginaEscritura++;
+			}
+			
+			nuevoMarcoEscritura = solicitarMarco(numeroPaginaEscritura,contexto->pid);
+			nuevaDirFisicaEscritura = nuevoMarcoEscritura * tamaPagina;
+			//No hay desplazamiento porque arranco la pagina nueva de 0
+			mandarAescribirEnMemoria(nuevaDirFisicaEscritura,contenidoLeido + desplazamientoContenido,cantidadBits,contexto);
+		}else{
+			//En este caso es que todo entra en una pagina y no hay que hacer nada extra
+			mandarAescribirEnMemoria(dirFisicaEscritura,contenidoLeido,cantidadBits,contexto);
+
+		}
+//*********************************************************************************************
 
 }
