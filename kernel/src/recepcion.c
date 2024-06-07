@@ -275,7 +275,7 @@ t_pcb *fetch_pcb_con_STDIN(int server_socket,char **nomrebInterfaz,void *conteni
     offset += sizeof(uint32_t);
 
    
-    log_info(logger, "SE RECIBIO UN SLEEP A UNA INTERFAZ Y DEVOLVEMOS PCB");
+    log_info(logger, "SE RECIBIO UN STDIN A UNA INTERFAZ Y DEVOLVEMOS PCB");
     log_info(logger, "PID RECIBIDO : %i",PCBrec->pid);
     log_info(logger, "PC RECIBIDO : %i",PCBrec->program_counter);
     log_info(logger, "REGISTRO AX : %i",PCBrec->registers.AX);
