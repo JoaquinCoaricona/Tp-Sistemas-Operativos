@@ -7,8 +7,7 @@ char *PORT_memoria;
 char *IP_memoria;
 char *PORT_kernel;
 char *IP_kernel;
-//int main(int argc, char *argv[])
-int main()
+int main(int argc, char *argv[])
 {   
     //ARGV ES UN VECTOR D DE TODAS LAS VARIABLES DE ENTORNO, EN LA POSICION 0 ESTA
     //LA LLAMADA AL ARCHIVO QUE EN ESTE CASO ES EL ./bin/entradasalida A PARTIR DEL 
@@ -17,12 +16,8 @@ int main()
     // printf("PARAMETRO: %s\n",argv[1]); // NOMBRE DE LA INTERFAZ
     // printf("PARAMETRO: %s\n",argv[2]); // CONFIG AL QUE LO CONECTO
     
-//    char *nombreInterfaz = argv[1];
-//    char *configRecibido = argv[2];
-
-    char *nombreInterfaz = "nombre1";
-    char *configRecibido = "teclado.config";
-
+    char *nombreInterfaz = argv[1];
+    char *configRecibido = argv[2];
 
     // ESTO ES PARA TENER LOS NOMBRE YA PUESTOS ACA Y NO ESTAR PASANDOLOS AL LLAMAR AL EXE
     //char *nombreInterfaz = "nombre1";
@@ -54,7 +49,6 @@ int main()
     //Envio paquete a kernel
     send_packet(packet, socket_kernel);
     destroy_packet(packet);
-
     if(string_equals_ignore_case(tipo,"GENERICA")){
         interfazGenerica();
     }else if(string_equals_ignore_case(tipo,"STDIN")){
@@ -217,9 +211,10 @@ void recibirYejecutarDireccionesFisicas(int socket_kernel){
     free(buffer2);
     
 }
-
-void interfazStdin(int socket_kernel){
-    
+//ESTA FUNCION NO RECIBE NADA Y ESTABA RECIBIENDO ACA COMO PRAMEtro al socket kernel
+// ESO ES GLOBAL Y NO TENIA PORQUE RECIBIRILO, Y ES COMO QUE ESCRIBIA ALGO EN EN ESA VARIABLES
+//PORQUE SE SALTEABA EL FETchccodop
+void interfazStdin(){
     // Conexion a Memoria
     //Hago el handshake con memoria porque en este tipo de interfaz tengo que hacerlo
     socket_memoria = create_conection(logger, IP_memoria, PORT_memoria);
