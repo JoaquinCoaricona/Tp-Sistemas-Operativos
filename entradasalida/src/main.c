@@ -7,8 +7,8 @@ char *PORT_memoria;
 char *IP_memoria;
 char *PORT_kernel;
 char *IP_kernel;
-
-int main(int argc, char *argv[])
+//int main(int argc, char *argv[])
+int main()
 {   
     //ARGV ES UN VECTOR D DE TODAS LAS VARIABLES DE ENTORNO, EN LA POSICION 0 ESTA
     //LA LLAMADA AL ARCHIVO QUE EN ESTE CASO ES EL ./bin/entradasalida A PARTIR DEL 
@@ -17,8 +17,11 @@ int main(int argc, char *argv[])
     // printf("PARAMETRO: %s\n",argv[1]); // NOMBRE DE LA INTERFAZ
     // printf("PARAMETRO: %s\n",argv[2]); // CONFIG AL QUE LO CONECTO
     
-   char *nombreInterfaz = argv[1];
-   char *configRecibido = argv[2];
+//    char *nombreInterfaz = argv[1];
+//    char *configRecibido = argv[2];
+
+    char *nombreInterfaz = "nombre1";
+    char *configRecibido = "teclado.config";
 
 
     // ESTO ES PARA TENER LOS NOMBRE YA PUESTOS ACA Y NO ESTAR PASANDOLOS AL LLAMAR AL EXE
@@ -57,7 +60,7 @@ int main(int argc, char *argv[])
     }else if(string_equals_ignore_case(tipo,"STDIN")){
         interfazStdin();
     }else if(string_equals_ignore_case(tipo,"STDOUT")){
-        //interfazStdout();
+        interfazStdout();
     }else{
         log_info(logger,"Error");
     }
@@ -133,7 +136,7 @@ void enviarAvisoAKernel(int socket_kernel,op_code codigo){
     //destroy(packetRespuesta); hay que incluir esta funcion destroy
 }
 
-void interfazStdin(){
+void interfazStdout(){
     
     // Conexion a Memoria
     //Hago el handshake con memoria porque en este tipo de interfaz tengo que hacerlo
@@ -148,7 +151,7 @@ void interfazStdin(){
     //------------------------------------------------------------------------------
     //LOOP INFINITO DE ESCUCHA A KERNEL
     while (1)
-    {
+    {   
         int operation_code = fetch_codop(socket_kernel);
         switch (operation_code)
         {
@@ -193,8 +196,8 @@ void recibirYejecutarDireccionesFisicas(int socket_kernel){
     offset += sizeof(int);
 
     contenido = malloc(cantidadBytesMalloc);
-    
-    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
+    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT QUE INDICA EL TAMAÑO DEL VOID* CONTENIDO
+    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT DIR FISICAS;
 
     memcpy(&cantidadDireccionesFisicas,buffer2 + offset, sizeof(int)); //Recibo cantidad dir Fisicas
     offset += sizeof(int);
@@ -215,6 +218,92 @@ void recibirYejecutarDireccionesFisicas(int socket_kernel){
     
 }
 
+void interfazStdin(int socket_kernel){
+    
+    // Conexion a Memoria
+    //Hago el handshake con memoria porque en este tipo de interfaz tengo que hacerlo
+    socket_memoria = create_conection(logger, IP_memoria, PORT_memoria);
+    log_info(logger, "Conectado al servidor de memoria %s:%s", IP_memoria, PORT_memoria);
+    t_buffer *buffer_handshake = create_buffer();
+    t_packet *packet_handshake = create_packet(HANDSHAKE_ENTRADA_SALIDA, buffer_handshake);
+    add_to_packet(packet_handshake, buffer_handshake->stream, buffer_handshake->size);
+    send_packet(packet_handshake,socket_memoria); 
+    log_info(logger, "Handshake enviado");   
+    destroy_packet(packet_handshake);
+    //------------------------------------------------------------------------------
+    //LOOP INFINITO DE ESCUCHA A KERNEL
+    while (1)
+    {
+
+        int operation_code = fetch_codop(socket_kernel);
+        switch (operation_code)
+        {
+        case STDIN_LEER:
+            recibirYejecutarDireccionesFisicasSTDIN(socket_kernel);
+            enviarAvisoAKernel(socket_kernel,CONFIRMACION_STDIN);
+        break;
+        case -1:
+            log_error(logger, "Error al recibir el codigo de operacion");
+            close_conection(socket_kernel);
+
+            return;
+        default:
+            log_error(logger, "Algun error inesperado ");
+            close_conection(socket_kernel);
+            return;
+        }
+    }
+}
+
+void recibirYejecutarDireccionesFisicasSTDIN(int socket_kernel){
+    char *cadenaPrueba = "hola como estas";
+    int limiteAEscribir;
+
+    int total_size;
+    int offset = 0;
+    int pid;
+    int cantidadDireccionesFisicas;
+    void *buffer2;
+    int dirFisica;
+    int cantidadBytesEscribir;
+
+    buffer2 = fetch_buffer(&total_size, socket_kernel);
+    void *contenido;
+    int cantidadBytesMalloc;
+    int parteEscrita = 0;
+
+    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
+
+    memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
+    offset += sizeof(int);
+    
+    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT que indica el tamaño de void* contenido
+    
+    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
+
+    memcpy(&limiteAEscribir,buffer2 + offset, sizeof(int)); //Recibo el tamaño de bytes
+    //a copiar que mandaron en la instruccion
+    offset += sizeof(int);
+
+    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
+
+    memcpy(&cantidadDireccionesFisicas,buffer2 + offset, sizeof(int)); //Recibo cantidad dir Fisicas
+    offset += sizeof(int);
+
+    while((cantidadDireccionesFisicas > 0) && (parteEscrita < limiteAEscribir)){
+        
+        memcpy(&cantidadBytesEscribir,buffer2 + offset, sizeof(int)); 
+        offset += sizeof(int);
+        memcpy(&dirFisica,buffer2 + offset, sizeof(int)); 
+        offset += sizeof(int);
+        mandarAescribirEnMemoria(dirFisica,cadenaPrueba + parteEscrita,cantidadBytesEscribir,pid);
+        parteEscrita = parteEscrita + cantidadBytesEscribir;
+    }
+
+    free(buffer2);
+
+}
+
 void mandarALeer(int dirFisica, int cantidadBits, int pid, void *contenido){
 
 	t_buffer *bufferLectura;
@@ -230,7 +319,7 @@ void mandarALeer(int dirFisica, int cantidadBits, int pid, void *contenido){
     destroy_packet(packetLectura);
 
 	//-------------Aca se bloquea esperando el codop-------
-	int operation_code = fetch_codop(client_fd_memoria);
+	int operation_code = fetch_codop(socket_memoria);
 
 	if(operation_code == CONFIRMACION_LECTURA){
 		int total_size;
@@ -248,8 +337,38 @@ void mandarALeer(int dirFisica, int cantidadBits, int pid, void *contenido){
 		log_info(logger,"Confirmacion Lectura");
 	}else{
 		int total_size;
-		void *buffer2 = fetch_buffer(&total_size, client_fd_memoria);
+		void *buffer2 = fetch_buffer(&total_size, socket_memoria);
 		free(buffer2);
 		log_info(logger,"Error en la lectura");
 	}
+}
+
+void mandarAescribirEnMemoria(int dirFisica,void *contenidoAescribir, int cantidadBits,int pid){
+	t_buffer *bufferEscritura;
+    t_packet *packetEscritura;
+    bufferEscritura = create_buffer();
+    packetEscritura = create_packet(SOLICITUD_ESCRIBIR, bufferEscritura);
+
+    add_to_packet(packetEscritura,&dirFisica,sizeof(int));
+    add_to_packet(packetEscritura,&cantidadBits,sizeof(int));
+    add_to_packet(packetEscritura,contenidoAescribir,cantidadBits);
+	add_to_packet(packetEscritura,&pid,sizeof(int));
+    
+    send_packet(packetEscritura, socket_memoria);
+    destroy_packet(packetEscritura);
+
+	//-------------Aca se bloquea esperando el codop-------
+	int operation_code = fetch_codop(socket_memoria);
+	if(operation_code == CONFIRMACION_ESCRITURA){
+		int total_size;
+		void *buffer2 = fetch_buffer(&total_size, socket_memoria);
+		free(buffer2);
+		log_info(logger,"Confirmacion Escritura");
+	}else{
+		int total_size;
+		void *buffer2 = fetch_buffer(&total_size, socket_memoria);
+		free(buffer2);
+		log_info(logger,"Error en la escritura");
+	}
+	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 }

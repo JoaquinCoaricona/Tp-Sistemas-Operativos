@@ -329,13 +329,13 @@ void *manage_request_from_dispatch(void *args)
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
-            t_pcb *receptorPCB = NULL;
-            t_interfaz_registrada *interfaz = NULL;
-            char *nombreInter = NULL;
+            t_pcb *receptorPCBOUT = NULL;
+            t_interfaz_registrada *interfazOUT = NULL;
+            char *nombreInterOUT = NULL;
             void *contenido;
             int tamanio;
             int bytesMalloc;
-            receptorPCB = fetch_pcb_con_STDOUT(server_socket, &nombreInter,contenido,&tamanio,&bytesMalloc);
+            receptorPCBOUT = fetch_pcb_con_STDOUT(server_socket, &nombreInterOUT,contenido,&tamanio,&bytesMalloc);
             // ACA HABIA UN ERROR CON EL PUNTERO NOMBREINTERFAZ PORQUE
             // LE ESTABA PASANDO EL PUNTERO PERO LA COPIA, OSEA QUE NO CAMBIABA EL DE ACA Y QUEDABA EN NULL
             // Y DESPUES EN EL FIND NO PODIA COMPAARAR CON NULL. TODO POR INTENTAR SEPARAR EN FUNCIONES
@@ -347,20 +347,60 @@ void *manage_request_from_dispatch(void *args)
             obtenerDatosTemporal();
             //la multiplicacion es para pasarlo a microsegundos, que es lo usa usleep
             //t_temporal devuelve milisegundos. El quantumglobal esta en microsegundos
-            receptorPCB->quantum = receptorPCB->quantum - (ms_transcurridos * 1000);
+            receptorPCBOUT->quantum = receptorPCBOUT->quantum - (ms_transcurridos * 1000);
             //Hago Control de que el quantumRestante no sea negativo, en caso que sea neagativo, le cargo el original
             //para que al volver de IO, lo carguen a la cola de ready y no a la prioritaria
             //Esto pasaba cuando enviabamos varias veces a IO dentro de un mismo quantum, quizas entre que envia la 
             //interrupcion y que volvia pasaba mas tiempo del que realmente se demoro en ejecutar la instruccion en cpu
             //y al hacer las restas quedaba un valor negativo, y como al volver de IO solo se fije que sea igual al 
             //quantumgloabl entonces podias terminar en la cola prioritaria teniendo quantum negativo.
-            if(receptorPCB->quantum < 0){
+            if(receptorPCBOUT->quantum < 0){
                 receptorPCB->quantum = quantumGlobal;
                 log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
             }
             }
-            interfaz = buscar_interfaz(nombreInter);
-            cargarEnListaSTDOUT(receptorPCB, interfaz, contenido,tamanio,bytesMalloc);
+            interfazOUT = buscar_interfaz(nombreInterOUT);
+            cargarEnListaSTDOUT(receptorPCBOUT, interfazOUT, contenido,tamanio,bytesMalloc);
+            sem_post(&short_term_scheduler_semaphore);
+            // sem_post(&sem_multiprogramacion);
+            // aca el grado de multiprogramacion no cambia, porque los procesos en block tambien entratran dentro del
+            // grado de multiprogramacion, solo cuando sale por exit se aumenta el grado de multiprogramacion
+            break;
+            case STDIN_LEER:
+            pthread_mutex_lock(&m_procesoEjectuandoActualmente);
+            procesoEjectuandoActualmente = -1;
+            pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
+            t_pcb *receptorPCBIN = NULL;
+            t_interfaz_registrada *interfazIN = NULL;
+            char *nombreInterIN = NULL;
+            void *contenidoIN;
+            int tamanioIN;
+            receptorPCBIN = fetch_pcb_con_STDIN(server_socket, &nombreInterIN,contenidoIN,&tamanioIN);
+            // ACA HABIA UN ERROR CON EL PUNTERO NOMBREINTERFAZ PORQUE
+            // LE ESTABA PASANDO EL PUNTERO PERO LA COPIA, OSEA QUE NO CAMBIABA EL DE ACA Y QUEDABA EN NULL
+            // Y DESPUES EN EL FIND NO PODIA COMPAARAR CON NULL. TODO POR INTENTAR SEPARAR EN FUNCIONES
+            // DEL OTRO LADO RECIBO COMO PUNTERO A PUNTERO ** Y AL HACERLE EL MEMCPY
+            // DESREFERENCIO CON EL *
+            
+            //El control al T_temporal es solo si estamos en VRR
+            if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
+            obtenerDatosTemporal();
+            //la multiplicacion es para pasarlo a microsegundos, que es lo usa usleep
+            //t_temporal devuelve milisegundos. El quantumglobal esta en microsegundos
+            receptorPCBIN->quantum = receptorPCBIN->quantum - (ms_transcurridos * 1000);
+            //Hago Control de que el quantumRestante no sea negativo, en caso que sea neagativo, le cargo el original
+            //para que al volver de IO, lo carguen a la cola de ready y no a la prioritaria
+            //Esto pasaba cuando enviabamos varias veces a IO dentro de un mismo quantum, quizas entre que envia la 
+            //interrupcion y que volvia pasaba mas tiempo del que realmente se demoro en ejecutar la instruccion en cpu
+            //y al hacer las restas quedaba un valor negativo, y como al volver de IO solo se fije que sea igual al 
+            //quantumgloabl entonces podias terminar en la cola prioritaria teniendo quantum negativo.
+            if(receptorPCBIN->quantum < 0){
+                receptorPCBIN->quantum = quantumGlobal;
+                log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
+            }
+            }
+            interfazIN = buscar_interfaz(nombreInterIN);
+            cargarEnListaSTDIN(receptorPCBIN, interfazIN, contenidoIN,tamanioIN);
             sem_post(&short_term_scheduler_semaphore);
             // sem_post(&sem_multiprogramacion);
             // aca el grado de multiprogramacion no cambia, porque los procesos en block tambien entratran dentro del

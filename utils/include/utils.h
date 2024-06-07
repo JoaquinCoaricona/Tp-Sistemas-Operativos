@@ -113,6 +113,13 @@ typedef struct{
 }t_colaStdOUT;    
 
 
+typedef struct{
+    t_pcb *PCB;               
+    int cantidadBytes;
+    void *contenido;
+}t_colaStdIN;    
+
+
 typedef struct
 {
 char *nombre;
