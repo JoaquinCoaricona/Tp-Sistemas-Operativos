@@ -13,9 +13,9 @@ int quantumGlobal;
 int procesoEjectuandoActualmente;
 char *algoritmo_planificacion;
 bool planificacion_detenida;
+
 int main(int argc, char *argv[])
 {
-
     char *memory_PORT;
     char *cpu_dispatch_PORT;
     char *cpu_interrupt_PORT;
@@ -84,9 +84,7 @@ int main(int argc, char *argv[])
     send_packet(packet_handshake, cpu_interrupt_socket);
 
     // create_process("prueba1");
-
     // send_packet(packetPCB, cpu_dispatch_socket);
-
     int server_fd = initialize_server(logger, "kernel_server", kernel_IP, kernel_PORT);
     log_info(logger, "Server initialized");
 
@@ -100,7 +98,6 @@ int main(int argc, char *argv[])
     pthread_detach(thread_memory_peticions);
 
     // HILO DISPATCH
-
     pthread_t thread_dispatch;
     t_process_conection_args *process_conection_arguments_dispatch = malloc(sizeof(t_process_conection_args));
     process_conection_arguments_dispatch->fd = cpu_dispatch_socket;
@@ -110,13 +107,11 @@ int main(int argc, char *argv[])
     pthread_detach(thread_dispatch);
 
     // HILO PLANIFICADOR LARGO PLAZO
-
     pthread_t planificadorLargoPlazo;
     pthread_create(&planificadorLargoPlazo, NULL, Aready, NULL);
     pthread_detach(planificadorLargoPlazo);
 
     // HILO PLANIFICADOR CORTO PLAZO
-
     pthread_t planificadorDeCortoPlazo;
     pthread_create(&planificadorDeCortoPlazo, NULL, planificadorCortoPlazo, NULL);
     pthread_detach(planificadorDeCortoPlazo);
@@ -132,11 +127,9 @@ void *manage_request_from_input_output(void *args)
     int server_socket;
     char *server_name;
     t_packet *packet;
-
     t_process_conection_args *arguments = (t_process_conection_args *)args;
 
     // Pasa los arguments para poder crear el thread
-
     server_socket = arguments->fd;
     server_name = arguments->server_name;
 
@@ -161,7 +154,6 @@ void *manage_request_from_input_output(void *args)
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
             return;
-
         default:
             log_error(logger, "Alguno error inesperado %s", server_name);
             return;
@@ -174,9 +166,7 @@ void *manage_request_from_input_output(void *args)
 
 void *manage_request_from_dispatch(void *args)
 {
-
     t_process_conection_args *arguments = (t_process_conection_args *)args;
-
     int server_socket;
     char *server_name;
 
@@ -194,6 +184,9 @@ void *manage_request_from_dispatch(void *args)
         // entonces cuando vuelva a entrar al bucle y lea fetchcodop de vuelta lo que va a hacer el leer el codop
         // pero leyendo lo que falto deserializar del buffer y si tenia que quedar esperando no va a esperar
         // porque el socket todavia tiene algo cargado
+        t_pcb *receptorPCB = NULL;
+        t_interfaz_registrada *interfaz = NULL;
+        char *nombreInter = NULL;
 
         switch (operation_code)
         {
@@ -202,26 +195,33 @@ void *manage_request_from_dispatch(void *args)
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
+
             // printf("Llego Un PCB");
             log_info(logger, "LLEGO UN PCB");
             fetch_pcb_actualizado(server_socket);
+
             //Aca Controlo que solamente en VRR hago destroy al t_temporal
             if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
-            temporal_destroy(timer);
+                temporal_destroy(timer);
             }
             sem_post(&short_term_scheduler_semaphore);
             controlGradoMultiprogramacion();
+
             //sem_post(&sem_multiprogramacion);
-        break;
+            break;
+
         case INTERRUPCION_FIN_QUANTUM:
+
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
+
             log_info(logger, "LLEGO UN PCB POR FIN DE QUANTUM");
+
             fetch_pcb_actualizado_fin_quantum(server_socket);
             //Aca Controlo que solamente en VRR hago destroy al t_temporal
             if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
-            temporal_destroy(timer);
+                temporal_destroy(timer);
             }
             sem_post(&short_term_scheduler_semaphore);
             // sem_post(&sem_multiprogramacion);
@@ -233,51 +233,95 @@ void *manage_request_from_dispatch(void *args)
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
+
             log_info(logger, "LLEGO UN PCB PARA ELIMINARSE");
+
             fetch_pcb_actualizado_A_eliminar(server_socket);
+
             //Aca Controlo que solamente en VRR hago destroy al t_temporal
             if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
-            temporal_destroy(timer);
+                temporal_destroy(timer);
             }
+
             sem_post(&short_term_scheduler_semaphore);
             controlGradoMultiprogramacion();
             //sem_post(&sem_multiprogramacion);
             //ACA SI MULTIPROGRAMACION PORQUE ELIMINAMOS A UN PROCESO
+
         break;
         case SLEEP_IO:
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
-            t_pcb *receptorPCB = NULL;
-            t_interfaz_registrada *interfaz = NULL;
             int tiempoDormir;
-            char *nombreInter = NULL;
             receptorPCB = fetch_pcb_con_sleep(server_socket, &tiempoDormir, &nombreInter);
             // ACA HABIA UN ERROR CON EL PUNTERO NOMBREINTERFAZ PORQUE
             // LE ESTABA PASANDO EL PUNTERO PERO LA COPIA, OSEA QUE NO CAMBIABA EL DE ACA Y QUEDABA EN NULL
             // Y DESPUES EN EL FIND NO PODIA COMPAARAR CON NULL. TODO POR INTENTAR SEPARAR EN FUNCIONES
             // DEL OTRO LADO RECIBO COMO PUNTERO A PUNTERO ** Y AL HACERLE EL MEMCPY
             // DESREFERENCIO CON EL *
-            
+
             //El control al T_temporal es solo si estamos en VRR
             if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
-            obtenerDatosTemporal();
-            //la multiplicacion es para pasarlo a microsegundos, que es lo usa usleep
-            //t_temporal devuelve milisegundos. El quantumglobal esta en microsegundos
-            receptorPCB->quantum = receptorPCB->quantum - (ms_transcurridos * 1000);
-            //Hago Control de que el quantumRestante no sea negativo, en caso que sea neagativo, le cargo el original
-            //para que al volver de IO, lo carguen a la cola de ready y no a la prioritaria
-            //Esto pasaba cuando enviabamos varias veces a IO dentro de un mismo quantum, quizas entre que envia la 
-            //interrupcion y que volvia pasaba mas tiempo del que realmente se demoro en ejecutar la instruccion en cpu
-            //y al hacer las restas quedaba un valor negativo, y como al volver de IO solo se fije que sea igual al 
-            //quantumgloabl entonces podias terminar en la cola prioritaria teniendo quantum negativo.
-            if(receptorPCB->quantum < 0){
-                receptorPCB->quantum = quantumGlobal;
-                log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
-            }
+                obtenerDatosTemporal();
+                //la multiplicacion es para pasarlo a microsegundos, que es lo usa usleep
+                //t_temporal devuelve milisegundos. El quantumglobal esta en microsegundos
+                receptorPCB->quantum = receptorPCB->quantum - (ms_transcurridos * 1000);
+                //Hago Control de que el quantumRestante no sea negativo, en caso que sea neagativo, le cargo el original
+                //para que al volver de IO, lo carguen a la cola de ready y no a la prioritaria
+                //Esto pasaba cuando enviabamos varias veces a IO dentro de un mismo quantum, quizas entre que envia la 
+                //interrupcion y que volvia pasaba mas tiempo del que realmente se demoro en ejecutar la instruccion en cpu
+                //y al hacer las restas quedaba un valor negativo, y como al volver de IO solo se fije que sea igual al 
+                //quantumgloabl entonces podias terminar en la cola prioritaria teniendo quantum negativo.
+
+                if(receptorPCB->quantum < 0){
+                    receptorPCB->quantum = quantumGlobal;
+                    log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
+                }
             }
             interfaz = buscar_interfaz(nombreInter);
             cargarEnListaIO(receptorPCB, interfaz, tiempoDormir);
+            sem_post(&short_term_scheduler_semaphore);
+
+            // sem_post(&sem_multiprogramacion);
+            // aca el grado de multiprogramacion no cambia, porque los procesos en block tambien entratran dentro del
+            // grado de multiprogramacion, solo cuando sale por exit se aumenta el grado de multiprogramacion
+            break;
+        case STDOUT_ESCRIBIR:
+            pthread_mutex_lock(&m_procesoEjectuandoActualmente);
+            procesoEjectuandoActualmente = -1;
+            pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
+
+            void *contenido;
+            int tamanio;
+            int bytesMalloc;
+            receptorPCB = fetch_pcb_con_STDOUT(server_socket, &nombreInter,contenido,&tamanio,&bytesMalloc);
+            // ACA HABIA UN ERROR CON EL PUNTERO NOMBREINTERFAZ PORQUE
+            // LE ESTABA PASANDO EL PUNTERO PERO LA COPIA, OSEA QUE NO CAMBIABA EL DE ACA Y QUEDABA EN NULL
+            // Y DESPUES EN EL FIND NO PODIA COMPAARAR CON NULL. TODO POR INTENTAR SEPARAR EN FUNCIONES
+            // DEL OTRO LADO RECIBO COMO PUNTERO A PUNTERO ** Y AL HACERLE EL MEMCPY
+            // DESREFERENCIO CON EL *
+
+            //El control al T_temporal es solo si estamos en VRR
+            if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
+                obtenerDatosTemporal();
+                //la multiplicacion es para pasarlo a microsegundos, que es lo usa usleep
+                //t_temporal devuelve milisegundos. El quantumglobal esta en microsegundos
+                receptorPCB->quantum = receptorPCB->quantum - (ms_transcurridos * 1000);
+                //Hago Control de que el quantumRestante no sea negativo, en caso que sea neagativo, le cargo el original
+                //para que al volver de IO, lo carguen a la cola de ready y no a la prioritaria
+                //Esto pasaba cuando enviabamos varias veces a IO dentro de un mismo quantum, quizas entre que envia la 
+                //interrupcion y que volvia pasaba mas tiempo del que realmente se demoro en ejecutar la instruccion en cpu
+                //y al hacer las restas quedaba un valor negativo, y como al volver de IO solo se fije que sea igual al 
+                //quantumgloabl entonces podias terminar en la cola prioritaria teniendo quantum negativo.
+
+                if(receptorPCB->quantum < 0){
+                    receptorPCB->quantum = quantumGlobal;
+                    log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
+                }
+            }
+            interfaz = buscar_interfaz(nombreInter);
+            cargarEnListaSTDOUT(receptorPCB, interfaz, contenido,tamanio,bytesMalloc);
             sem_post(&short_term_scheduler_semaphore);
             // sem_post(&sem_multiprogramacion);
             // aca el grado de multiprogramacion no cambia, porque los procesos en block tambien entratran dentro del
@@ -286,7 +330,6 @@ void *manage_request_from_dispatch(void *args)
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
             return;
-
         default:
             log_error(logger, "Alguno error inesperado %s", server_name);
             return;
@@ -294,6 +337,7 @@ void *manage_request_from_dispatch(void *args)
     }
 
     log_warning(logger, "Conexion cerrada %s", server_name);
+
     return;
 }
 
@@ -304,11 +348,14 @@ void enviar_path_a_memoria(char *path)
     // Declaraciones
     t_buffer *bufferMemoria;
     t_packet *packetMemoria;
+
     // Inicializar Buffer y Packet
     bufferMemoria = create_buffer();
     packetMemoria = create_packet(PATH_A_MEMORIA, bufferMemoria);
+
     add_to_packet(packetMemoria, &PID, sizeof(int)); //! PID global
     add_to_packet(packetMemoria, path, (strlen(path) + 1));
+
     send_packet(packetMemoria, memory_socket);
 
     destroy_packet(packetMemoria);
@@ -316,7 +363,6 @@ void enviar_path_a_memoria(char *path)
 
 void create_process(char *path)
 {
-
     // CREACION DE UN NUEVO PROCESO
     t_pcb *PCB = initializePCB(PID);
     // t_pcb PCBPRUEBA;
@@ -359,6 +405,7 @@ void create_process(char *path)
 
 void end_process()
 {
+
 }
 
 void fetch_pcb_actualizado(server_socket)
@@ -377,10 +424,10 @@ void fetch_pcb_actualizado(server_socket)
     offset += sizeof(int);
 
     motivo = malloc(length_motivo);
+
     memcpy(motivo, buffer + offset, length_motivo); // SI TENGO QUE COPIAR EL LENGTH, NO TENGO QUE PONER SIZEOF(LENGTH)
     offset += length_motivo;                        // tengo que poner directamente el length en el ultimo param de memcpy
                              //  y lo mismo en el offset al sumarle, tengo que sumar lo que copie en memcpy
-
     offset += sizeof(int); // Salteo El tamaño del PCB
     // aca uso el puntero global que apunta al pcb actual: pcbEJECUTANDO
     // y actualizo ese pcb y despues lo pongo en NUll
@@ -399,24 +446,34 @@ void fetch_pcb_actualizado(server_socket)
 
     memcpy(&(pcbEJECUTANDO->registers.PC), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
     offset += sizeof(uint32_t);
+
     memcpy(&(pcbEJECUTANDO->registers.AX), buffer + offset, sizeof(uint8_t)); // RECIBO CPUREG
     offset += sizeof(uint8_t);
+
     memcpy(&(pcbEJECUTANDO->registers.BX), buffer + offset, sizeof(uint8_t)); // RECIBO CPUREG
     offset += sizeof(uint8_t);
+
     memcpy(&(pcbEJECUTANDO->registers.CX), buffer + offset, sizeof(uint8_t)); // RECIBO CPUREG
     offset += sizeof(uint8_t);
+
     memcpy(&(pcbEJECUTANDO->registers.DX), buffer + offset, sizeof(uint8_t)); // RECIBO CPUREG
     offset += sizeof(uint8_t);
+
     memcpy(&(pcbEJECUTANDO->registers.EAX), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
     offset += sizeof(uint32_t);
+
     memcpy(&(pcbEJECUTANDO->registers.EBX), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
     offset += sizeof(uint32_t);
+
     memcpy(&(pcbEJECUTANDO->registers.ECX), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
     offset += sizeof(uint32_t);
+
     memcpy(&(pcbEJECUTANDO->registers.EDX), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
     offset += sizeof(uint32_t);
+
     memcpy(&(pcbEJECUTANDO->registers.SI), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
     offset += sizeof(uint32_t);
+
     memcpy(&(pcbEJECUTANDO->registers.DI), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
     offset += sizeof(uint32_t);
 
@@ -428,6 +485,10 @@ void fetch_pcb_actualizado(server_socket)
     log_info(logger, "REGISTRO BX : %i", pcbEJECUTANDO->registers.BX);
     log_info(logger, "REGISTRO CX : %i", pcbEJECUTANDO->registers.CX);
     log_info(logger, "REGISTRO DX : %i", pcbEJECUTANDO->registers.DX);
+    log_info(logger, "REGISTRO EAX : %i", pcbEJECUTANDO->registers.EAX);
+    log_info(logger, "REGISTRO EBX : %i", pcbEJECUTANDO->registers.EBX);
+    log_info(logger, "REGISTRO ECX : %i", pcbEJECUTANDO->registers.ECX);
+    log_info(logger, "REGISTRO EDX : %i", pcbEJECUTANDO->registers.EDX);
 
     // aca le cambio el estado a exit
     pcbEJECUTANDO->state = EXIT;
@@ -462,14 +523,13 @@ void fetch_pcb_actualizado_fin_quantum(int server_socket)
     offset += sizeof(int);
 
     motivo = malloc(length_motivo);
+
     memcpy(motivo, buffer + offset, length_motivo); // SI TENGO QUE COPIAR EL LENGTH, NO TENGO QUE PONER SIZEOF(LENGTH)
     offset += length_motivo;                        // tengo que poner directamente el length en el ultimo param de memcpy
                              //  y lo mismo en el offset al sumarle, tengo que sumar lo que copie en memcpy
-
     offset += sizeof(int); // Salteo El tamaño del PCB
     // aca uso el puntero global que apunta al pcb actual: pcbEJECUTANDO
     // y actualizo ese pcb y despues lo pongo en NUll
-
     memcpy(&(pcbEJECUTANDO->pid), buffer + offset, sizeof(int)); // RECIBO EL PID
     offset += sizeof(int);
 
@@ -484,24 +544,34 @@ void fetch_pcb_actualizado_fin_quantum(int server_socket)
 
     memcpy(&(pcbEJECUTANDO->registers.PC), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
     offset += sizeof(uint32_t);
+
     memcpy(&(pcbEJECUTANDO->registers.AX), buffer + offset, sizeof(uint8_t)); // RECIBO CPUREG
     offset += sizeof(uint8_t);
+
     memcpy(&(pcbEJECUTANDO->registers.BX), buffer + offset, sizeof(uint8_t)); // RECIBO CPUREG
     offset += sizeof(uint8_t);
+
     memcpy(&(pcbEJECUTANDO->registers.CX), buffer + offset, sizeof(uint8_t)); // RECIBO CPUREG
     offset += sizeof(uint8_t);
+
     memcpy(&(pcbEJECUTANDO->registers.DX), buffer + offset, sizeof(uint8_t)); // RECIBO CPUREG
     offset += sizeof(uint8_t);
+
     memcpy(&(pcbEJECUTANDO->registers.EAX), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
     offset += sizeof(uint32_t);
+
     memcpy(&(pcbEJECUTANDO->registers.EBX), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
     offset += sizeof(uint32_t);
+
     memcpy(&(pcbEJECUTANDO->registers.ECX), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
     offset += sizeof(uint32_t);
+
     memcpy(&(pcbEJECUTANDO->registers.EDX), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
     offset += sizeof(uint32_t);
+
     memcpy(&(pcbEJECUTANDO->registers.SI), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
     offset += sizeof(uint32_t);
+
     memcpy(&(pcbEJECUTANDO->registers.DI), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
     offset += sizeof(uint32_t);
 
@@ -530,7 +600,6 @@ void fetch_pcb_actualizado_fin_quantum(int server_socket)
 }
 
 void fetch_pcb_actualizado_A_eliminar(int server_socket){
-    
     int total_size;
     int offset = 0;
     t_pcb *PCBrec = pcbEJECUTANDO;
@@ -544,10 +613,10 @@ void fetch_pcb_actualizado_A_eliminar(int server_socket){
     offset += sizeof(int);
 
     motivo = malloc(length_motivo);
+
     memcpy(motivo, buffer + offset, length_motivo); // SI TENGO QUE COPIAR EL LENGTH, NO TENGO QUE PONER SIZEOF(LENGTH)
     offset += length_motivo;                        // tengo que poner directamente el length en el ultimo param de memcpy
                              //  y lo mismo en el offset al sumarle, tengo que sumar lo que copie en memcpy
-
     offset += sizeof(int); // Salteo El tamaño del PCB
     // aca uso el puntero global que apunta al pcb actual: pcbEJECUTANDO
     // y actualizo ese pcb y despues lo pongo en NUll
@@ -566,24 +635,34 @@ void fetch_pcb_actualizado_A_eliminar(int server_socket){
 
     memcpy(&(pcbEJECUTANDO->registers.PC), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
     offset += sizeof(uint32_t);
+
     memcpy(&(pcbEJECUTANDO->registers.AX), buffer + offset, sizeof(uint8_t)); // RECIBO CPUREG
     offset += sizeof(uint8_t);
+
     memcpy(&(pcbEJECUTANDO->registers.BX), buffer + offset, sizeof(uint8_t)); // RECIBO CPUREG
     offset += sizeof(uint8_t);
+
     memcpy(&(pcbEJECUTANDO->registers.CX), buffer + offset, sizeof(uint8_t)); // RECIBO CPUREG
     offset += sizeof(uint8_t);
+
     memcpy(&(pcbEJECUTANDO->registers.DX), buffer + offset, sizeof(uint8_t)); // RECIBO CPUREG
     offset += sizeof(uint8_t);
+
     memcpy(&(pcbEJECUTANDO->registers.EAX), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
     offset += sizeof(uint32_t);
+
     memcpy(&(pcbEJECUTANDO->registers.EBX), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
     offset += sizeof(uint32_t);
+
     memcpy(&(pcbEJECUTANDO->registers.ECX), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
     offset += sizeof(uint32_t);
+
     memcpy(&(pcbEJECUTANDO->registers.EDX), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
     offset += sizeof(uint32_t);
+
     memcpy(&(pcbEJECUTANDO->registers.SI), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
     offset += sizeof(uint32_t);
+
     memcpy(&(pcbEJECUTANDO->registers.DI), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
     offset += sizeof(uint32_t);
 
@@ -598,28 +677,23 @@ void fetch_pcb_actualizado_A_eliminar(int server_socket){
     pcbEJECUTANDO->state = EXIT;
 
     addEstadoExit(pcbEJECUTANDO); // meto en ready el pcb
-    
+
     log_info(logger, "Finaliza el Proceso  %i, por SUCCESS", pcbEJECUTANDO->pid);
 
     // el puntero pcb global lo dejo en null
     // este no es el PID ejecutando, es el puntero al pcb que se envio
     pcbEJECUTANDO = NULL;
 
-
     free(buffer);
     free(motivo);
 }
 
-
 t_interfaz_registrada *recibir_interfaz(client_socket)
 {
     t_interfaz_registrada *interfazNueva = malloc(sizeof(t_interfaz_registrada));
-
     int total_size;
     int offset = 0;
-
     void *buffer;
-
     int strlen_nombre;
     buffer = fetch_buffer(&total_size, client_socket);
 
@@ -627,6 +701,7 @@ t_interfaz_registrada *recibir_interfaz(client_socket)
     offset += sizeof(int);
 
     interfazNueva->nombre = malloc(strlen_nombre);
+
     memcpy(interfazNueva->nombre, buffer + offset, strlen_nombre); // RECIBO EL NOMBRE
     // aca arriba tener CUIDADO con recibir strings, no tengo que poner
     //&(interfazNueva->nombre) porque es un char, ya es un puntero en si
@@ -638,13 +713,14 @@ t_interfaz_registrada *recibir_interfaz(client_socket)
     offset += sizeof(int);
 
     interfazNueva->tipo = malloc(strlen_nombre);
+
     memcpy(interfazNueva->tipo, buffer + offset, strlen_nombre); // RECIBO EL TIPO DE INTERFAZ
     offset += strlen_nombre;
 
     interfazNueva->disponible = true;
     interfazNueva->socket_de_conexion = client_socket;
-
     interfazNueva->listaProcesosEsperando = queue_create();
+
     sem_init(&(interfazNueva->semaforoContadorIO), 0, 0);    //   EL CONTADOR LO INICIO EN CERO PORQUE RECINE LLEGO LA INTERFAZ
     pthread_mutex_init(&(interfazNueva->mutexColaIO), NULL); // EL MUTEX LO PONGO PARA CUANDO ACCEDAN A SU LISTA
 
@@ -689,16 +765,15 @@ void iniciar_planificacion()
         log_info(logger, "Inicio de planificación: “INICIO DE PLANIFICACIÓN“");
     }
 }
+
 void finalizar_proceso(char *parametro)
 {
-
     //detener_planificacion(); //detengo la planificacion para evitar que haya movimientos
     //mientras busco el proceso a eliminar
 
     int pidAeliminar = atoi(parametro);
     bool encontrado = false;
     t_pcb *punteroAEliminar = NULL;
-
 
     bool encontrar_por_pid(void *pcb) {
 		t_pcb *pcb_n = (t_pcb*) pcb;
@@ -721,19 +796,21 @@ void finalizar_proceso(char *parametro)
         pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
 
         log_info(logger,"Es el que esta ejecutando actualmente");
+
         t_buffer *bufferEnvio;
         t_packet *eliminarProceso;
 
         bufferEnvio = create_buffer();
         eliminarProceso = create_packet(FINALIZAR_PROCESO, bufferEnvio);
+
         add_to_packet(eliminarProceso, &pidAeliminar, sizeof(int));
+
         //ACORDARSE QUE EL SEGUNDO PARAMETRO DEL ADDTOPACKET ES UN PUNTERO
         //ASI QUE LE PASO LA DIRECCION
         send_packet(eliminarProceso, cpu_interrupt_socket);
-        destroy_packet(eliminarProceso);
-    
-    }else{ 
 
+        destroy_packet(eliminarProceso);
+    }else{ 
         // ACLARACION IMPORTANTE: T_QUEUE ES UNA ESTRUCTURA QUE DENTRO TIENE UN T_LIST QUE SE LLAMA
         // ELEMENTS, Y SOLO ESO. SOLAMENTE TIENE ESO Y POR ESO PUEDO PASAR ELEMENTS COMO PARAMETRO
         // Y USAR LAS FUNCIONES DE T_LIST
@@ -750,6 +827,7 @@ void finalizar_proceso(char *parametro)
             //Lo Borro De NEW
             list_remove_element(queue_new->elements,punteroAEliminar);
             log_info(logger,"PID: %i encontrado en cola NEW",pidAeliminar);
+
             //Lo Agrego A
             addEstadoExit(punteroAEliminar);
             encontrado = true;
@@ -759,80 +837,73 @@ void finalizar_proceso(char *parametro)
             // se seguia colgando la consola 
         }
         pthread_mutex_unlock(&mutex_state_new);
-            
             //en caso que no este en new voy a buscar en READY
             if(!encontrado){
-                
                 pthread_mutex_lock(&mutex_state_ready);
-                
                 punteroAEliminar = list_find(queue_ready->elements,encontrar_por_pid);
 
                 if(punteroAEliminar != NULL){
-                //Lo Borro De READY
-                list_remove_element(queue_ready->elements,punteroAEliminar);
-                log_info(logger,"PID: %i encontrado en cola READY",pidAeliminar);
-                //Lo Agrego A
-                addEstadoExit(punteroAEliminar);
-                encontrado = true;
+                    //Lo Borro De READY
+                    list_remove_element(queue_ready->elements,punteroAEliminar);
+                    log_info(logger,"PID: %i encontrado en cola READY",pidAeliminar);
 
-                //hago esto de multiprogramacion porque elimine un proceso de READY
-                //y tengo que dejar entrar otro, no lo hago en NEW porque no tiene que haber uno ahi
-                sem_post(&sem_multiprogramacion);
-                //sem_wait(&sem_ready); //tambien le hago wait a esto porque
-                //es un contador de cuantos hay en ready y acabo de sacar uno
+                    //Lo Agrego A
+                    addEstadoExit(punteroAEliminar);
+                    encontrado = true;
 
-                //ACA COMENTE ESTE WAIT SEM READY PORQUE AGREGUE EL IF EN SHORT TERM SCHEDUKER
-                //ENTONCES NO IMPORTA SI PASA EL SEMREADY AUNQUE NO HAYA PROCESOS EN READY PORQUE
-                // DESPUES CONTROLA QUE LA LISTA NO ESTE VACIA Y SI ESTA VACIA HACE UN return
-                // Y ES COMO QUE LO VUELVE A TRABAR EN EL SEMAFORO SEMREADY ESPERANDO QUE ENTRE OTRO
-                // ESTO ESTA MEJOR EXPLICADO EN EL VRR
+                    //hago esto de multiprogramacion porque elimine un proceso de READY
+                    //y tengo que dejar entrar otro, no lo hago en NEW porque no tiene que haber uno ahi
+                    sem_post(&sem_multiprogramacion);
+                    //sem_wait(&sem_ready); //tambien le hago wait a esto porque
+                    //es un contador de cuantos hay en ready y acabo de sacar uno
+
+                    //ACA COMENTE ESTE WAIT SEM READY PORQUE AGREGUE EL IF EN SHORT TERM SCHEDUKER
+                    //ENTONCES NO IMPORTA SI PASA EL SEMREADY AUNQUE NO HAYA PROCESOS EN READY PORQUE
+                    // DESPUES CONTROLA QUE LA LISTA NO ESTE VACIA Y SI ESTA VACIA HACE UN return
+                    // Y ES COMO QUE LO VUELVE A TRABAR EN EL SEMAFORO SEMREADY ESPERANDO QUE ENTRE OTRO
+                    // ESTO ESTA MEJOR EXPLICADO EN EL VRR
                 }
                 pthread_mutex_unlock(&mutex_state_ready);
-
             }
-            
             //Voy a Buscar en la cola de Prioridad del VRR
              if(!encontrado){
-     
                 pthread_mutex_lock(&mutex_state_prioridad);
-     
                 punteroAEliminar = list_find(queue_prioridad->elements,encontrar_por_pid);
+
                 if(punteroAEliminar != NULL){
-                //Lo Borro De PRIORIDAD
-                list_remove_element(queue_prioridad->elements,punteroAEliminar);
-                log_info(logger,"PID: %i encontrado en cola Prioridad",pidAeliminar);
-                //Lo Agrego A
-                addEstadoExit(punteroAEliminar);
-                encontrado = true;
-     
-                //hago esto de multiprogramacion porque elimine un proceso de READY
-                //y tengo que dejar entrar otro, no lo hago en NEW porque no tiene que haber uno ahi
-                sem_post(&sem_multiprogramacion);
+                    //Lo Borro De PRIORIDAD
+                    list_remove_element(queue_prioridad->elements,punteroAEliminar);
+                    log_info(logger,"PID: %i encontrado en cola Prioridad",pidAeliminar);
+                    //Lo Agrego A
+                    addEstadoExit(punteroAEliminar);
+                    encontrado = true;
 
-                //sem_wait(&sem_ready); //tambien le hago wait a esto porque
-                //es un contador de cuantos hay en ready y acabo de sacar uno
-                //ACA COMENTE ESTE WAIT SEM READY PORQUE AGREGUE EL IF EN SHORT TERM SCHEDUKER
-                //ENTONCES NO IMPORTA SI PASA EL SEMREADY AUNQUE NO HAYA PROCESOS EN READY PORQUE
-                // DESPUES CONTROLA QUE LA LISTA NO ESTE VACIA Y SI ESTA VACIA HACE UN return
-                // Y ES COMO QUE LO VUELVE A TRABAR EN EL SEMAFORO SEMREADY ESPERANDO QUE ENTRE OTRO
-                // ESTO ESTA MEJOR EXPLICADO EN EL VRR
+                    //hago esto de multiprogramacion porque elimine un proceso de READY
+                    //y tengo que dejar entrar otro, no lo hago en NEW porque no tiene que haber uno ahi
+                    sem_post(&sem_multiprogramacion);
 
+                    //sem_wait(&sem_ready); //tambien le hago wait a esto porque
+                    //es un contador de cuantos hay en ready y acabo de sacar uno
+                    //ACA COMENTE ESTE WAIT SEM READY PORQUE AGREGUE EL IF EN SHORT TERM SCHEDUKER
+                    //ENTONCES NO IMPORTA SI PASA EL SEMREADY AUNQUE NO HAYA PROCESOS EN READY PORQUE
+                    // DESPUES CONTROLA QUE LA LISTA NO ESTE VACIA Y SI ESTA VACIA HACE UN return
+                    // Y ES COMO QUE LO VUELVE A TRABAR EN EL SEMAFORO SEMREADY ESPERANDO QUE ENTRE OTRO
+                    // ESTO ESTA MEJOR EXPLICADO EN EL VRR
                 }  
                 pthread_mutex_unlock(&mutex_state_prioridad);
                 //este unlock estaba dentro del if, tiene que estar afuera para que se
                 //desbloquee siempre. Lo encontre gracias al DEBUGGER
-
             }
 
             if(!encontrado){
                 log_info(logger,"No se encontro el PID %i",pidAeliminar);
             }
     }
-
     //iniciar_planificacion();
 }
 
 void multiprogramacion(char *parametro){
+
     int nuevoValor = atoi(parametro);
 
     if(gradoMultiprogramacion == nuevoValor){
@@ -840,17 +911,18 @@ void multiprogramacion(char *parametro){
     }else if(nuevoValor > gradoMultiprogramacion){
         log_info(logger,"Valor Actual: %i Valor Ingresado: %i",gradoMultiprogramacion,nuevoValor);
         log_info(logger,"Expando el grado de Multiprogramacion en %i lugares",nuevoValor-gradoMultiprogramacion);
+
         for(int i = 0; i < (nuevoValor-gradoMultiprogramacion);i++){
             sem_post(&sem_multiprogramacion);
         }
         gradoMultiprogramacion = nuevoValor; //ACA CAMBIO REALMENTE EL GRADO DE MULTIPROGRAMACION
     }else{
-        
         log_info(logger,"Valor Actual: %i Valor Ingresado: %i",gradoMultiprogramacion,nuevoValor);
         log_info(logger,"Reduzco el grado de Multiprogramacion en %i lugares",gradoMultiprogramacion-nuevoValor);
+
         salteoPostAlSemaforo = gradoMultiprogramacion-nuevoValor;
         gradoMultiprogramacion = nuevoValor; //ACA CAMBIO REALMENTE EL GRADO DE MULTIPROGRAMACION
-        
+
        //NO HAGO LOS WAITS PORQUE CADA VEZ QUE AUMENTO EL GRADO DE MULTIPROGRAMACION ME FIJO QUE 
        //EL VALOR DEL SEMAFORO SEA MENOR AL GRADO DE MULTIPROGRAMACION
        //IMPORTANTE: CUANDO ELIMINAMOS UN PROCESO QUE ESTA EN LA COLA DE READY
@@ -858,9 +930,7 @@ void multiprogramacion(char *parametro){
        //PORQUE SERIA UN CASO MUY RARO BORRAR Y JUSTO BAJAR EL GRADO DE MULTIRPOGRAMACION
        //PERO ACLARACION QUE PODRIA PASAR ALGO AHI IGUAL ES SOLO AGREGARLO
     }
-
 }
-
 
 //lo que se hace aca es que cuando tenemos que bajar el grado de multiprogamacion se le pone un valor a 
 //la variable salteoPostAlsemaforo, ese valor es la cantidad de post que hay que evitar hacer 
@@ -882,4 +952,3 @@ void controlGradoMultiprogramacion(){
         sem_post(&sem_multiprogramacion);
     }
 }
-
