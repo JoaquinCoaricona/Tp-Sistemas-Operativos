@@ -696,7 +696,7 @@ void fetch_pcb_actualizado_A_eliminar(int server_socket){
 }
 
 
-t_interfaz_registrada *recibir_interfaz(client_socket)
+t_interfaz_registrada *recibir_interfaz(int client_socket)
 {
     t_interfaz_registrada *interfazNueva = malloc(sizeof(t_interfaz_registrada));
 
@@ -735,9 +735,9 @@ t_interfaz_registrada *recibir_interfaz(client_socket)
 
     list_add(listaInterfaces, interfazNueva);
 
-    printf("LLEGO UNA NUEVA INTERFAZ\n");
-    printf("NOMBRE DE LA INTERFAZ: %s\n", interfazNueva->nombre);
-    printf("TIPO DE INTERFAZ: %s\n", interfazNueva->tipo);
+    log_info(logger,"LLEGO UNA NUEVA INTERFAZ");
+    log_info(logger,"Nombre: %s",interfazNueva->nombre);
+    log_info(logger,"Tipo Interfaz: %s",interfazNueva->tipo);
 
     free(buffer);
     return interfazNueva;
