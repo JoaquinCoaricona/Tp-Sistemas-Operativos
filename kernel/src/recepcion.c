@@ -96,7 +96,7 @@ t_pcb *fetch_pcb_con_sleep(int server_socket,int *tiempoDormir,char **nomrebInte
 
     return PCBrec;
 }
-t_pcb *fetch_pcb_con_STDOUT(int server_socket, char **nomrebInterfaz, void *contenido, int *tamanio, int *bytesMalloc){
+t_pcb *fetch_pcb_con_STDOUT(int server_socket, char **nomrebInterfaz, void **contenido, int *tamanio, int *bytesMalloc){
     int total_size;
     int offset = 0;
     t_pcb *PCBrec = pcbEJECUTANDO;
@@ -137,9 +137,9 @@ t_pcb *fetch_pcb_con_STDOUT(int server_socket, char **nomrebInterfaz, void *cont
     contenidoACopiar = contenidoACopiar - sizeof(int);//Resto el int bytes malloc
     contenidoACopiar = contenidoACopiar - sizeof(t_pcb);//Resto los bytes que ocupa el pcb
     //Aca reservo el espacio justo en contenido
-    contenido = malloc(contenidoACopiar);
+    *contenido = malloc(contenidoACopiar);
     //copio todas las direcciones fisicas y el entero que dice cuantas direcciones fisicas tengo
-    memcpy(contenido,buffer + offset,contenidoACopiar);
+    memcpy(*contenido,buffer + offset,contenidoACopiar);
     //Salteo el contenido de las direcciones fisicas
     offset += contenidoACopiar;
     //Asigno el tamaño del void* a la variable tamanio
@@ -196,8 +196,9 @@ t_pcb *fetch_pcb_con_STDOUT(int server_socket, char **nomrebInterfaz, void *cont
 
     return PCBrec;
 }
-t_pcb *fetch_pcb_con_STDIN(int server_socket,char **nomrebInterfaz,void *contenido,int *tamanio){
-    
+t_pcb *fetch_pcb_con_STDIN(int server_socket,char **nomrebInterfaz,void **contenido,int *tamanio){
+    //aca lo mismo recibo **contenido para poder cambiar el valor real del puntero, para cambirarlo
+    //desreferencio con *contenido
     int total_size;
     int offset = 0;
     t_pcb *PCBrec = pcbEJECUTANDO;
@@ -217,6 +218,17 @@ t_pcb *fetch_pcb_con_STDIN(int server_socket,char **nomrebInterfaz,void *conteni
     *nomrebInterfaz = malloc(length_nombre_inter);
     memcpy(*nomrebInterfaz,buffer + offset,length_nombre_inter); //RECIBO EL NOMBRE DE LA INTERFAZ
     offset += length_nombre_inter;
+
+    // int observador;
+    // memcpy(&observador,buffer + offset, sizeof(int));  //RECIBO EL LENGTH DEL NOMBRE  DE LA INTERFAZ
+    // offset += sizeof(int); 
+    // memcpy(&observador,buffer + offset, sizeof(int));  //RECIBO EL LENGTH DEL NOMBRE  DE LA INTERFAZ
+    // offset += sizeof(int); 
+    // memcpy(&observador,buffer + offset, sizeof(int));  //RECIBO EL LENGTH DEL NOMBRE  DE LA INTERFAZ
+    // offset += sizeof(int); 
+    // memcpy(&observador,buffer + offset, sizeof(int));  //RECIBO EL LENGTH DEL NOMBRE  DE LA INTERFAZ
+    // offset += sizeof(int); 
+    
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++CALCULOS PARA NO DESERIALIZAR Y VOLVER A SERIALIZAR LO MISMO++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ +++++++++++++++++
@@ -229,10 +241,12 @@ t_pcb *fetch_pcb_con_STDIN(int server_socket,char **nomrebInterfaz,void *conteni
     contenidoACopiar = contenidoACopiar -sizeof(int);//Resto el tamaño del int Length nombre que lei
     contenidoACopiar = contenidoACopiar - sizeof(int);//Resto el int que indica el tamaño del PCB
     contenidoACopiar = contenidoACopiar - sizeof(t_pcb);//Resto los bytes que ocupa el pcb
+    //En estos dos casoss hago *contenido para desrefernciar y cambiar el valor del contneido real 
+    //siempre hacer esto cuando paso punteoros por paraemtro
     //Aca reservo el espacio justo en contenido
-    contenido = malloc(contenidoACopiar);
+    *contenido = malloc(contenidoACopiar);
     //copio todas las direcciones fisicas y el entero que dice cuantas direcciones fisicas tengo
-    memcpy(contenido,buffer + offset,contenidoACopiar);
+    memcpy(*contenido,buffer + offset,contenidoACopiar);
     //Salteo el contenido de las direcciones fisicas
     offset += contenidoACopiar;
     //Asigno el tamaño del void* a la variable tamanio
@@ -315,11 +329,11 @@ void cargarEnListaIO(t_pcb *receptorPCB,t_interfaz_registrada *interfaz,int tiem
 
 }
 
-void cargarEnListaSTDOUT(t_pcb *receptorPCB,t_interfaz_registrada *interfaz,void *contenido,int tamanio, int bytesMalloc){
+void cargarEnListaSTDOUT(t_pcb *receptorPCB,t_interfaz_registrada *interfaz,void **contenido,int tamanio, int bytesMalloc){
  
     t_colaStdOUT *agregarACola = malloc(sizeof(t_colaStdOUT));
     agregarACola->PCB = receptorPCB;
-    agregarACola->contenido = contenido;
+    agregarACola->contenido = *contenido;
     agregarACola->cantidadBytes = tamanio;
     agregarACola->bytesMalloc = bytesMalloc;
     pthread_mutex_lock(&(interfaz->mutexColaIO));
@@ -330,12 +344,12 @@ void cargarEnListaSTDOUT(t_pcb *receptorPCB,t_interfaz_registrada *interfaz,void
 
 }
 
-void cargarEnListaSTDIN(t_pcb *receptorPCB,t_interfaz_registrada *interfaz,void *contenido,int tamanio){
+void cargarEnListaSTDIN(t_pcb *receptorPCB,t_interfaz_registrada *interfaz,void **contenido,int tamanio){
      
     t_colaStdIN *agregarACola = malloc(sizeof(t_colaStdIN));
     
     agregarACola->PCB = receptorPCB;
-    agregarACola->contenido = contenido;
+    agregarACola->contenido = *contenido;
     agregarACola->cantidadBytes = tamanio;
 
     pthread_mutex_lock(&(interfaz->mutexColaIO));
@@ -471,7 +485,9 @@ void llamadasIOstdout(t_interfaz_registrada *interfaz){
         packetEscribir = create_packet(STDOUT_ESCRIBIR, bufferEscribir);
         add_to_packet(packetEscribir,&(pcbEnviado->PCB->pid), sizeof(int));
         add_to_packet(packetEscribir,&(pcbEnviado->bytesMalloc), sizeof(int));
-        add_to_packet(packetEscribir,&(pcbEnviado->contenido),pcbEnviado->cantidadBytes);
+        //ACA TENIA EL MISMO ERROR QUE EN STDIN
+        void *contenidoAEnviar = pcbEnviado->contenido;
+        add_to_packet(packetEscribir,contenidoAEnviar,pcbEnviado->cantidadBytes);
         send_packet(packetEscribir,interfaz->socket_de_conexion);     //armo el paquete para enviar a la IO 
         log_info(logger, "SE ENVIARON LAS DIRECCIONES FISICAS A LA INTERFAZ: %s",interfaz->nombre); 
         int operation_code = fetch_codop(interfaz->socket_de_conexion); //aca se queda bloqueante esperando la respuesta
@@ -544,7 +560,13 @@ void llamadasIOstdin(t_interfaz_registrada *interfaz){
         bufferEscribir = create_buffer();
         packetEscribir = create_packet(STDIN_LEER, bufferEscribir);
         add_to_packet(packetEscribir,&(pcbEnviado->PCB->pid), sizeof(int));
-        add_to_packet(packetEscribir,&(pcbEnviado->contenido),pcbEnviado->cantidadBytes);
+        //ESTE ERROR ME HIZO PERDER DOS DIAS. YO PENSABA QUE NO SE ESTABAN MANDANDO LAS COSAS A ENTRADASALIDA
+        //PERO ERA ESTO Y EL ERRROR DEL PUNTERO EN FETCH_PCB_STDIN
+        //ACA CREO ESTE VOID Y LE ASIGNO EL VALOR DEL PUNTERO Y DESPUES PASO ESO AL ADD PACKET
+        //ANTES PASABA ESTO &(pcbEnviado->contenido) CREO QUE ESTA MAL PORQUE LE ESTOY PASANDO LA DIRECCION
+        //DE DONDE ESTA UBICADO EL PUNTER Y NO EL PUNTER COMO TAL. LLEGABA BIEN LA CANTBYTES PERO EL VOID NO
+        void *punteroContenido = pcbEnviado->contenido;
+        add_to_packet(packetEscribir,punteroContenido,pcbEnviado->cantidadBytes);
         send_packet(packetEscribir,interfaz->socket_de_conexion);     //armo el paquete para enviar a la IO 
         log_info(logger, "SE ENVIARON LAS DIRECCIONES FISICAS A LA INTERFAZ: %s",interfaz->nombre);
          

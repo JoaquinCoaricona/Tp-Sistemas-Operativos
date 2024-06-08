@@ -19,6 +19,10 @@ int main(int argc, char *argv[])
     char *nombreInterfaz = argv[1];
     char *configRecibido = argv[2];
 
+
+    //  char *nombreInterfaz = "nombre2";
+    //  char *configRecibido = "pantalla.config";
+
     // ESTO ES PARA TENER LOS NOMBRE YA PUESTOS ACA Y NO ESTAR PASANDOLOS AL LLAMAR AL EXE
     //char *nombreInterfaz = "nombre1";
     //char *configRecibido = "entradasalida.config";
@@ -200,8 +204,10 @@ void recibirYejecutarDireccionesFisicas(int socket_kernel){
 
 
     for(int i = 0; i < cantidadDireccionesFisicas; i++){
+        offset += sizeof(int); //Aca salteo el tamaño del int cantidadBytesLee
         memcpy(&cantidadBytesLeer,buffer2 + offset, sizeof(int)); 
         offset += sizeof(int);
+        offset += sizeof(int);//Aca salteo el tamaño del int dirfisica
         memcpy(&dirFisica,buffer2 + offset, sizeof(int)); 
         offset += sizeof(int);
         mandarALeer(dirFisica,cantidadBytesLeer,pid,contenido + desplazamientoParteLeida);
@@ -254,7 +260,10 @@ void interfazStdin(){
 }
 
 void recibirYejecutarDireccionesFisicasSTDIN(int socket_kernel){
-    char *cadenaPrueba = "hola como estas";
+    //char *cadenaPrueba = "hola como estas";
+    log_info(logger,"Ingrese cadena a escribir. No se va escribir todo (solo lo indicado en la instruccion)");
+    char *cadenaPrueba = readline(">");
+    
     int limiteAEscribir;
 
     int total_size;
@@ -274,31 +283,45 @@ void recibirYejecutarDireccionesFisicasSTDIN(int socket_kernel){
 
     memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
     offset += sizeof(int);
-    
-    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT que indica el tamaño de void* contenido
-    
-    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
+
+    int observador;
+    memcpy(&observador,buffer2 + offset, sizeof(int)); 
+
+
+    offset += sizeof(int); //Salteo el tamaño del INT void
+    memcpy(&observador,buffer2 + offset, sizeof(int)); 
+
+    offset += sizeof(int); //Salteo el tamaño del int cantBytes que esta dentro del void
 
     memcpy(&limiteAEscribir,buffer2 + offset, sizeof(int)); //Recibo el tamaño de bytes
     //a copiar que mandaron en la instruccion
     offset += sizeof(int);
 
-    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
-
+    offset += sizeof(int);//salteo el tamaño del int
     memcpy(&cantidadDireccionesFisicas,buffer2 + offset, sizeof(int)); //Recibo cantidad dir Fisicas
     offset += sizeof(int);
 
     while((cantidadDireccionesFisicas > 0) && (parteEscrita < limiteAEscribir)){
-        
+        offset += sizeof(int);//Salteo el tamaño del int
         memcpy(&cantidadBytesEscribir,buffer2 + offset, sizeof(int)); 
         offset += sizeof(int);
+        offset += sizeof(int);//Salteo el tamaño del int
         memcpy(&dirFisica,buffer2 + offset, sizeof(int)); 
-        offset += sizeof(int);
+        offset += sizeof(int);        
         mandarAescribirEnMemoria(dirFisica,cadenaPrueba + parteEscrita,cantidadBytesEscribir,pid);
+        
+        //Log para controlar que escribi bien
+        char *contenidoEscrito = malloc(cantidadBytesEscribir + 1);
+        contenidoEscrito[cantidadBytesEscribir] = '\0'; // Asegúrate de que el string esté terminado en '\0'
+        memcpy(contenidoEscrito,cadenaPrueba + parteEscrita, cantidadBytesEscribir); 
+        log_info(logger,"%s",contenidoEscrito);
+        free(contenidoEscrito);
+
         parteEscrita = parteEscrita + cantidadBytesEscribir;
     }
 
     free(buffer2);
+    free(cadenaPrueba);
 
 }
 

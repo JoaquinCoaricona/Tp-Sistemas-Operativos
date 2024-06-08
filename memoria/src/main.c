@@ -52,7 +52,6 @@ int main(int argc, char *argv[])
 
     //Reserva Espacio Usuario
     espacioUsuario = malloc(memoriaTotal);
-    memcpy(espacioUsuario,"aca va el texto",strlen("aca va el texto")+1);
 
     //Asigno la memoria total a la variable memoriaDisponible
     memoriaDisponible = memoriaTotal;
@@ -318,6 +317,13 @@ void escribirMemoria(int client_socket){
     //+++++++++++Realizo la escritura+++++++++++++++++++++++
     memcpy(espacioUsuario+dirFisica,contenidoAescribir,cantBits);
     log_info(logger,"Acceso a espacio de usuario: PID: %d - Accion: ESCRIBIR - Direccion fisica: %d",pid,dirFisica);
+
+    //+++++++++++Log para saber si lo que escribi esta bien+++++++++++++++++++
+    char *contenidoEscrito = malloc(cantBits + 1);
+    contenidoEscrito[cantBits] = '\0'; // Asegúrate de que el string esté terminado en '\0'
+    memcpy(contenidoEscrito,contenidoAescribir,cantBits); 
+    log_info(logger,"%s",contenidoEscrito);
+    free(contenidoEscrito);
 
     //+++++++++++Mando confirmacion a CPU+++++++++++++++++++
     t_buffer *bufferConfirmacion;
