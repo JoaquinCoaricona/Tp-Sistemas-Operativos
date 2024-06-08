@@ -189,12 +189,15 @@ void recibirYejecutarDireccionesFisicas(int socket_kernel){
     memcpy(&cantidadBytesMalloc,buffer2 + offset, sizeof(int)); //RECIBO LA CANTIDAD DE BYTES MALLOC
     offset += sizeof(int);
 
+    log_info(logger,"Cantidad Bytes Malloc %i",cantidadBytesMalloc);
     contenido = malloc(cantidadBytesMalloc);
     offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT QUE INDICA EL TAMAÑO DEL VOID* CONTENIDO
     offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT DIR FISICAS;
 
     memcpy(&cantidadDireccionesFisicas,buffer2 + offset, sizeof(int)); //Recibo cantidad dir Fisicas
     offset += sizeof(int);
+    log_info(logger,"Cantidad Direcciones fisicas %i",cantidadDireccionesFisicas);
+
 
     for(int i = 0; i < cantidadDireccionesFisicas; i++){
         memcpy(&cantidadBytesLeer,buffer2 + offset, sizeof(int)); 

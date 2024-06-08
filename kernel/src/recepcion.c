@@ -243,36 +243,36 @@ t_pcb *fetch_pcb_con_STDIN(int server_socket,char **nomrebInterfaz,void *conteni
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     offset += sizeof(int); //Salteo El tamaño del PCB
-    memcpy(&(PCBrec->pid),buffer + offset, sizeof(int)); //RECIBO EL PID
-    offset += sizeof(int);
-    memcpy(&(PCBrec->program_counter), buffer + offset, sizeof(int)); // RECIBO EL PROGRAM COUNTER
-    offset += sizeof(int);
-    memcpy(&(PCBrec->quantum), buffer + offset, sizeof(int)); //RECIBO EL QUANTUM
-    offset += sizeof(int);
-    memcpy(&(PCBrec->state), buffer + offset, sizeof(t_process_state)); //RECIBO EL PROCESS STATE
-    offset += sizeof(t_process_state);
-    memcpy(&(PCBrec->registers.PC), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
-    offset += sizeof(uint32_t);
-    memcpy(&(PCBrec->registers.AX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
-    offset += sizeof(uint8_t);
-    memcpy(&(PCBrec->registers.BX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
-    offset += sizeof(uint8_t);
-    memcpy(&(PCBrec->registers.CX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
-    offset += sizeof(uint8_t);
-    memcpy(&(PCBrec->registers.DX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
-    offset += sizeof(uint8_t);
-    memcpy(&(PCBrec->registers.EAX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
-    offset += sizeof(uint32_t);
-    memcpy(&(PCBrec->registers.EBX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
-    offset += sizeof(uint32_t);
-    memcpy(&(PCBrec->registers.ECX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
-    offset += sizeof(uint32_t);
-    memcpy(&(PCBrec->registers.EDX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
-    offset += sizeof(uint32_t);
-    memcpy(&(PCBrec->registers.SI), buffer+ offset, sizeof(uint32_t)); //RECIBO CPUREG
-    offset += sizeof(uint32_t);
-    memcpy(&(PCBrec->registers.DI), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
-    offset += sizeof(uint32_t);
+    memcpy((PCBrec),buffer + offset, sizeof(t_pcb)); //RECIBO EL PID
+    // offset += sizeof(int);
+    // memcpy(&(PCBrec->program_counter), buffer + offset, sizeof(int)); // RECIBO EL PROGRAM COUNTER
+    // offset += sizeof(int);
+    // memcpy(&(PCBrec->quantum), buffer + offset, sizeof(int)); //RECIBO EL QUANTUM
+    // offset += sizeof(int);
+    // memcpy(&(PCBrec->state), buffer + offset, sizeof(t_process_state)); //RECIBO EL PROCESS STATE
+    // offset += sizeof(t_process_state);
+    // memcpy(&(PCBrec->registers.PC), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    // offset += sizeof(uint32_t);
+    // memcpy(&(PCBrec->registers.AX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
+    // offset += sizeof(uint8_t);
+    // memcpy(&(PCBrec->registers.BX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
+    // offset += sizeof(uint8_t);
+    // memcpy(&(PCBrec->registers.CX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
+    // offset += sizeof(uint8_t);
+    // memcpy(&(PCBrec->registers.DX), buffer + offset, sizeof(uint8_t)); //RECIBO CPUREG
+    // offset += sizeof(uint8_t);
+    // memcpy(&(PCBrec->registers.EAX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    // offset += sizeof(uint32_t);
+    // memcpy(&(PCBrec->registers.EBX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    // offset += sizeof(uint32_t);
+    // memcpy(&(PCBrec->registers.ECX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    // offset += sizeof(uint32_t);
+    // memcpy(&(PCBrec->registers.EDX), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    // offset += sizeof(uint32_t);
+    // memcpy(&(PCBrec->registers.SI), buffer+ offset, sizeof(uint32_t)); //RECIBO CPUREG
+    // offset += sizeof(uint32_t);
+    // memcpy(&(PCBrec->registers.DI), buffer + offset, sizeof(uint32_t)); //RECIBO CPUREG
+    // offset += sizeof(uint32_t);
 
    
     log_info(logger, "SE RECIBIO UN STDIN A UNA INTERFAZ Y DEVOLVEMOS PCB");

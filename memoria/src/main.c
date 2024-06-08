@@ -52,6 +52,7 @@ int main(int argc, char *argv[])
 
     //Reserva Espacio Usuario
     espacioUsuario = malloc(memoriaTotal);
+    memcpy(espacioUsuario,"aca va el texto",strlen("aca va el texto")+1);
 
     //Asigno la memoria total a la variable memoriaDisponible
     memoriaDisponible = memoriaTotal;
@@ -271,6 +272,7 @@ void buscarMarco(int client_socket){
     destroy_packet(packetMarco);
 
     log_info(logger,"Acceso a Tabla de Páginas: PID: %d - Pagina: %d - Marco: %d",pid,paginaBuscada,paginaEncontrada->numeroMarco);
+    void *pointer = espacioUsuario;
 
 }
 
