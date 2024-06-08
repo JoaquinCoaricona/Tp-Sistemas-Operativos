@@ -194,7 +194,7 @@ void recibirYejecutarDireccionesFisicas(int socket_kernel){
     offset += sizeof(int);
 
     log_info(logger,"Cantidad Bytes Malloc %i",cantidadBytesMalloc);
-    contenido = malloc(cantidadBytesMalloc);
+    contenido = malloc(cantidadBytesMalloc + 1); //sumo uno para poner el /0 despues al final
     offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT QUE INDICA EL TAMAÑO DEL VOID* CONTENIDO
     offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT DIR FISICAS;
 
@@ -215,6 +215,9 @@ void recibirYejecutarDireccionesFisicas(int socket_kernel){
     }
 
     char *cadena = (char *)contenido;
+
+    cadena[cantidadBytesMalloc] = '\0'; // Asegúrate de que el string esté terminado en '\0'
+
     log_info(logger,"%s",cadena);
 
     free(buffer2);
