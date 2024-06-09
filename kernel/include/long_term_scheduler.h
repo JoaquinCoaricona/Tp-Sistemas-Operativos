@@ -12,7 +12,9 @@ extern t_queue* queue_new;
 extern t_queue* queue_exit;
 extern t_queue* queue_prioridad;
 extern t_queue* queue_block;
-extern char* scheduler_algorithm;
+extern t_queue* queue_block;
+
+extern t_dictionary *recursos_bloqueados;
 
 extern t_log *logger;
 extern int gradoMultiprogramacion;

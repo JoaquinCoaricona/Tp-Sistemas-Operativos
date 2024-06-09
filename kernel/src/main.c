@@ -430,7 +430,7 @@ t_list* obtener_recursos_por_pid(t_dictionary **matriz,char *pid, int cantidad){
         recursos = list_create();
 
         for(int i =0;i<cantidad;i++){
-            t_resource *resourse = new_resource(recursos_totales[i]);
+            t_resource *resourse = new_resource(recursos_completos[i]);
             list_add(recursos,resourse);
         }
     }
