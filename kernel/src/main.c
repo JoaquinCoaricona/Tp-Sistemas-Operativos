@@ -145,7 +145,7 @@ void start_resources_managment(int resources_size){
     recursos_totales =list_create();
     recursos_disponibles = malloc(sizeof(int) * resources_size);
 
-    if(resources_size !=0){
+    if(resources_size != 0){
         for (int i = 0; i < resources_size; i++)
         {
             recursos_disponibles[i]= atoi(instancias_recursos[i]);
@@ -162,7 +162,7 @@ void start_resources_managment(int resources_size){
 }
 
 t_resource* new_resource(char* resource_name){
-    t_resource* resource=malloc(sizeof(t_resource));
+    t_resource* resource = malloc(sizeof(t_resource));
     resource->name =strdup(resource_name);
     resource->instances=0;
 
@@ -399,9 +399,6 @@ void create_process(char *path)
     // send_packet(packetPCB, cpu_dispatch_socket);
 }
 
-void end_process()
-{
-}
 void block_process_by_resourse(t_pcb *pcb,char *resourse, int cantidad){
     char *pid = string_itoa(pcb->pid);
 
@@ -409,9 +406,10 @@ void block_process_by_resourse(t_pcb *pcb,char *resourse, int cantidad){
 
     log_info(logger,"Cambio de Estado: 'PID' %s - Estado Anterior : %s - Estado Actual : %s",pid,"EXEC","BLOC");
     log_info(logger,"PID: %s - Bloqueado por  %s",pid,resourse);
-    t_queue *cola_bloqueado=dictionary_get(recursos_bloqueados,resourse);
-    queue_push(cola_bloqueados,pcb);
+    t_queue *cola_bloqueado = dictionary_get(recursos_bloqueados,resourse);
+    queue_push(cola_bloqueado,pcb);
 }
+
 void incrementar_recursos(t_dictionary **matriz,char *pid,char *recurso, int cantidad){
     t_list *recursos = obtener_recursos_por_pid(matriz,pid,cantidad);
 
@@ -425,14 +423,14 @@ void disminuir_recursos(t_dictionary **matriz,char *pid,char *recurso, int canti
     rucurso_a_modificar->instances--;
 }
 
-t_list* obtener_recursos_por_pid(t_dictionay **matriz,char *pid,int cantidad){
+t_list* obtener_recursos_por_pid(t_dictionary **matriz,char *pid, int cantidad){
     t_list *recursos=dictionary_get(*matriz,pid);
 
     if(recursos ==NULL){
         recursos = list_create();
 
         for(int i =0;i<cantidad;i++){
-            t_resource *resourse = recurso_new(recursos_totales[i]);
+            t_resource *resourse = new_resource(recursos_totales[i]);
             list_add(recursos,resourse);
         }
     }
@@ -453,7 +451,7 @@ void destroy_lista_recursos(t_list* lista){
         free(recurso->name);
         free(recurso->instances);
     }
-    list_destroy_lista_recursos(lista,destruir_recurso)
+    list_destroy_and_destroy_elements(lista,destruir_recurso);
 }
 
 void fetch_pcb_actualizado(server_socket)
@@ -704,7 +702,7 @@ void fetch_pcb_actualizado_A_eliminar(int server_socket){
 }
 
 
-t_interfaz_registrada *recibir_interfaz(client_socket)
+t_interfaz_registrada *recibir_interfaz(int client_socket)
 {
     t_interfaz_registrada *interfazNueva = malloc(sizeof(t_interfaz_registrada));
 
@@ -743,9 +741,9 @@ t_interfaz_registrada *recibir_interfaz(client_socket)
 
     list_add(listaInterfaces, interfazNueva);
 
-    printf("LLEGO UNA NUEVA INTERFAZ\n");
-    printf("NOMBRE DE LA INTERFAZ: %s\n", interfazNueva->nombre);
-    printf("TIPO DE INTERFAZ: %s\n", interfazNueva->tipo);
+    log_info(logger,"LLEGO UNA NUEVA INTERFAZ");
+    log_info(logger,"Nombre: %s",interfazNueva->nombre);
+    log_info(logger,"Tipo Interfaz: %s",interfazNueva->tipo);
 
     free(buffer);
     return interfazNueva;

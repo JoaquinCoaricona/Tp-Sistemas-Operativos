@@ -20,7 +20,7 @@ void planificador_corto_plazo_FIFO();
 void planificador_corto_plazo_RoundRobin();
 
 //VRR
-void short_term_scheduler_virtual_round_robin();
+void planificador_corto_plazo_Virtual_RoundRobin();
 
 void execute_process(t_pcb *process);
 void send_execution_context_to_CPU(t_pcb *process);
