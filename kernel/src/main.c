@@ -13,6 +13,14 @@ int quantumGlobal;
 int procesoEjectuandoActualmente;
 char *algoritmo_planificacion;
 bool planificacion_detenida;
+char **instancias_recursos;
+char **recursos_completos;
+int *recursos_disponibles;
+t_list *recursos_totales;
+
+t_dictionary *recursos_asignados;
+t_dictionary *recursos_pendientes;
+
 int main(int argc, char *argv[])
 {
 
@@ -56,6 +64,8 @@ int main(int argc, char *argv[])
     gradoMultiprogramacion = atoi(config_get_string_value(config, "GRADO_MULTIPROGRAMACION"));
     quantumGlobal = atoi(config_get_string_value(config, "QUANTUM"));
     algoritmo_planificacion = config_get_string_value(config, "ALGORITMO_PLANIFICACION");
+    recursos_completos = config_get_array_value(config,"RECURSOS");
+    instancias_recursos = config_get_array_value(config,"INSTANCIAS_RECURSOS");
 
     // PRUEBAAAA
     initialize_queue_and_semaphore();
@@ -123,8 +133,40 @@ int main(int argc, char *argv[])
 
     destroy_packet(packet_handshake);
 
+    //creo un array de recursos disponibles
+    //start_resources_managment(string_array_size(instancias_recursos));
+
     levantar_consola(logger);
     return 0;
+}
+
+void start_resources_managment(int resources_size){
+
+    recursos_totales =list_create();
+    recursos_disponibles = malloc(sizeof(int) * resources_size);
+
+    if(resources_size !=0){
+        for (int i = 0; i < resources_size; i++)
+        {
+            recursos_disponibles[i]= atoi(instancias_recursos[i]);
+
+            t_resource* resource = new_resource(recursos_completos[i]);
+            resource->instances = atoi(instancias_recursos[i]);
+            list_add(recursos_totales,resource);
+        }
+        
+    }
+    recursos_asignados= dictionary_create();
+    recursos_pendientes= dictionary_create();
+    return;
+}
+
+t_resource* new_resource(char* resource_name){
+    t_resource* resource=malloc(sizeof(t_resource));
+    resource->name =strdup(resource_name);
+    resource->instances=0;
+
+    return resource;
 }
 
 void *manage_request_from_input_output(void *args)
@@ -359,6 +401,59 @@ void create_process(char *path)
 
 void end_process()
 {
+}
+void block_process_by_resourse(t_pcb *pcb,char *resourse, int cantidad){
+    char *pid = string_itoa(pcb->pid);
+
+    incrementar_recursos(&recursos_pendientes,pid,resourse,cantidad);
+
+    log_info(logger,"Cambio de Estado: 'PID' %s - Estado Anterior : %s - Estado Actual : %s",pid,"EXEC","BLOC");
+    log_info(logger,"PID: %s - Bloqueado por  %s",pid,resourse);
+    t_queue *cola_bloqueado=dictionary_get(recursos_bloqueados,resourse);
+    queue_push(cola_bloqueados,pcb);
+}
+void incrementar_recursos(t_dictionary **matriz,char *pid,char *recurso, int cantidad){
+    t_list *recursos = obtener_recursos_por_pid(matriz,pid,cantidad);
+
+    t_resource *rucurso_a_modificar = obtener_recurso_mediante_nombre(recursos,recurso);
+    rucurso_a_modificar->instances++;
+}
+void disminuir_recursos(t_dictionary **matriz,char *pid,char *recurso, int cantidad){
+    t_list *recursos = obtener_recursos_por_pid(matriz,pid,cantidad);
+
+    t_resource *rucurso_a_modificar = obtener_recurso_mediante_nombre(recursos,recurso);
+    rucurso_a_modificar->instances--;
+}
+
+t_list* obtener_recursos_por_pid(t_dictionay **matriz,char *pid,int cantidad){
+    t_list *recursos=dictionary_get(*matriz,pid);
+
+    if(recursos ==NULL){
+        recursos = list_create();
+
+        for(int i =0;i<cantidad;i++){
+            t_resource *resourse = recurso_new(recursos_totales[i]);
+            list_add(recursos,resourse);
+        }
+    }
+    return recursos;
+}
+t_resource *obtener_recurso_mediante_nombre(t_list *recursos,char *recurso_a_buscar){
+    bool existe_recurso(void *args){
+        t_resource *resource = (t_resource *) args;
+        return string_equals_ignore_case(resource->name,recurso_a_buscar);
+    }
+    return list_find(recursos,existe_recurso);
+}
+
+void destroy_lista_recursos(t_list* lista){
+    void destruir_recurso(void *args){
+        t_resource *recurso = (t_resource *)args;
+
+        free(recurso->name);
+        free(recurso->instances);
+    }
+    list_destroy_lista_recursos(lista,destruir_recurso)
 }
 
 void fetch_pcb_actualizado(server_socket)

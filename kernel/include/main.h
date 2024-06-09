@@ -9,6 +9,7 @@
 void iniciar_planificacion();
 void detener_planificacion();
 
+t_resource* new_resource(char* resource_name){
 
 void* manage_request_from_input_output(void *args);
 void* manage_request_from_dispatch(void *args);

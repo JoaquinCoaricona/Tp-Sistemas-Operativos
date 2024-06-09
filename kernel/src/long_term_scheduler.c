@@ -22,6 +22,8 @@ t_queue* queue_new;
 t_queue* queue_ready;
 t_queue* queue_prioridad;
 t_queue* queue_exit;
+
+t_dictionary *recursos_bloqueados;
 //t_queue* queue_block;
 
 //FIFO, RR, VRR

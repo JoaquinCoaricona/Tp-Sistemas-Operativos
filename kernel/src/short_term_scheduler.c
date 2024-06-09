@@ -278,7 +278,7 @@ void planificador_corto_plazo_Virtual_RoundRobin(){
 
 
     proceso->state = EXEC;
-    log_info(logger, "Cambio De Estado Proceso %d a %i\n", proceso->pid,proceso->state);
+    log_info(logger, "PID : %i -Estado Anterior : EXEC - Estado Actual : %d \n", proceso->pid,proceso->state);
 
     pthread_mutex_lock(&m_procesoEjectuandoActualmente);
     procesoEjectuandoActualmente = proceso->pid;
@@ -318,6 +318,7 @@ void manejoHiloQuantumVRR(void *pcb){
         log_info(logger,"Envio Interupcion %i",procesoEjectuandoActualmente);
         pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
         char *motivo = "Fin de Quantum";
+        log_info(logger,"PID: %i - Desalojado por fin de Quantum \n",proceso->pid);
         enviarInterrupcion(motivo,proceso->pid);
     }else{
         log_info(logger, "El Proceso %i termino antes del Quantum",proceso->pid);

@@ -9,7 +9,8 @@
 			"initializer_list": "c",
 			"utility": "c",
 			"type_traits": "c",
-			"cstdlib": "c"
+			"cstdlib": "c",
+			"memory_resource": "c"
 		},
 		"C_Cpp.errorSquiggles": "disabled",
 	},

@@ -48,6 +48,11 @@ typedef struct {
     uint32_t DI;
 } t_cpu_registers;
 
+typedef struct {
+    char* name;
+    int instances;
+} t_resource;
+
 //Instruccion
 typedef struct {
     char* opcode;
