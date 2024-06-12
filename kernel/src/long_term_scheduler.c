@@ -16,6 +16,10 @@ pthread_mutex_t m_planificador_corto_plazo;
 pthread_mutex_t m_planificador_largo_plazo;
 pthread_mutex_t m_procesoEjectuandoActualmente;
 
+// Semaforos de asignacion de recursos
+pthread_mutex_t m_recursos_asignados;
+pthread_mutex_t m_recursos_pendientes;
+
 
 //Estado EXEC y BLOCKED no usan queue
 t_queue* queue_new;
@@ -51,7 +55,8 @@ void initialize_queue_and_semaphore() {
     pthread_mutex_init(&m_planificador_corto_plazo, NULL);
 	pthread_mutex_init(&m_planificador_largo_plazo, NULL);
 	pthread_mutex_init(&m_procesoEjectuandoActualmente, NULL);
-
+	pthread_mutex_init(&m_recursos_asignados, NULL);
+    pthread_mutex_init(&m_recursos_pendientes, NULL);
 }
 
 

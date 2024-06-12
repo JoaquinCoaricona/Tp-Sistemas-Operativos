@@ -25,6 +25,10 @@ extern int procesoEjectuandoActualmente;
 
 extern t_pcb *pcbEJECUTANDO;
 
+extern pthread_mutex_t m_recursos_asignados;
+extern pthread_mutex_t m_recursos_pendientes;
+
+
 
 void agregarANew(t_pcb *pcb);
 

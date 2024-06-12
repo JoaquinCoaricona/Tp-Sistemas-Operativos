@@ -409,6 +409,134 @@ void block_process_by_resourse(t_pcb *pcb,char *resourse, int cantidad){
     t_queue *cola_bloqueado = dictionary_get(recursos_bloqueados,resourse);
     queue_push(cola_bloqueado,pcb);
 }
+void free_resource(int pid_to_free){
+    char *pid = string_itoa(pid_to_free);
+
+    pthread_mutex_lock(&m_recursos_asignados);
+    t_list* recursos_a_liberar = dictionary_get(recursos_asignados,pid);
+
+    //Verifico que el proceso tenga recursos asignados
+    if(recursos_a_liberar ==NULL){
+        pthread_mutex_unlock(&m_recursos_asignados);
+        return ;
+    }
+    t_list* lista_recursos_duplicada = duplicar_recursos(recursos_a_liberar); //lo duplico para evitar posibles problemas cuando se esta haciendo la iteracion mientras se eliminan los recursos
+    void actualizar_recursos_disponibles(void *args){
+        t_resource *recurso = (t_resource *) args;
+        int index = get_resource_index(recursos_completos, recurso->name);
+
+        recursos_disponibles[index] += recurso->instances;
+    }
+    list_iterate(recursos_a_liberar,actualizar_recursos_disponibles);
+    destroy_recursos_en_matriz(recursos_asignados,pid);
+    pthread_mutex_unlock(&m_recursos_asignados);
+
+    pthread_mutex_lock(&m_recursos_pendientes);
+    destroy_recursos_en_matriz(recursos_pendientes,pid);
+    pthread_mutex_unlock(&m_recursos_pendientes);
+
+    void desbloquear_proceso_por_recurso(void *args){
+        t_resource *recurso = (t_resource *) args;
+        if(recurso->instances >0){
+            char *name = recurso->name;
+            t_queue* cola_bloqueado= (t_queue *) dictionary_get(recursos_bloqueados, name);
+            if(queue_size(cola_bloqueado)>0){
+                t_pcb *proceso = queue_pop(cola_bloqueado);
+                char *pid= string_itoa(proceso->pid);
+
+                log_info(logger,"Cambio de Estado : PID %s - Estado Anterior : %s -Estado Actual %s",pid,"BLOCK","READY");
+                proceso->state = EXEC;
+
+                int index = get_resource_index(recursos_completos, recurso->name);
+                recursos_disponibles[index]--;
+
+                pthread_mutex_lock(&m_recursos_pendientes);
+                disminuir_recursos(&recursos_pendientes,name,pid,recurso->instances);
+                pthread_mutex_unlock(&m_recursos_pendientes);
+
+                pthread_mutex_lock(&m_recursos_asignados);
+                incrementar_recursos(&recursos_disponibles,name,pid,recurso->instances);
+                pthread_mutex_unlock(&m_recursos_asignados);
+
+                queue_push(queue_ready,proceso);
+
+            }
+        }
+
+    }
+
+    list_iterate(lista_recursos_duplicada,desbloquear_proceso_por_recurso);
+    destroy_lista_recursos(lista_recursos_duplicada);
+
+}
+int get_resource_index(char** recursos, char* recurso_a_buscar){
+    
+
+    if(string_array_is_empty(recursos)){
+        return -1;
+    }
+    
+    int indice= string_array_size(recursos);
+    do{
+        indice--;
+    }while( indice>-1 && !string_equals_ignore_case(recursos[indice],recurso_a_buscar));
+    return indice;
+}
+void set_recurso(char* recurso_nombre, t_pcb *pcb, char** recursos, int *recurso_disponible, int cantidad){
+    //char *recurso_nombre=instruccion->parametros[0];
+    char *pid=pcb->pid;
+    log_info(logger, "Inicio wait al recurso %s",recurso_nombre);
+
+    int index = get_resource_index(recursos, recurso_nombre);
+
+    if(index ==-1){
+        //tiene que terminar por recurso invalido
+        return ;
+    }
+
+    recursos_disponibles[index] --;
+
+    if(recurso_disponible[index] <0){
+        pthread_mutex_lock(&m_recursos_asignados);
+        obtener_recursos_por_pid(&recursos_asignados,pid,cantidad);
+        pthread_mutex_unlock(&m_recursos_asignados);
+
+        sem_wait(&m_execute_process);
+        block_process_by_resourse(pcb,recurso_nombre,cantidad);
+        sem_post(&m_execute_process);
+
+        return;
+
+    }
+
+    pthread_mutex_lock(&m_recursos_asignados);
+    incrementar_recursos(&recursos_asignados,pid,recurso_nombre,cantidad);
+    pthread_mutex_unlock(&m_recursos_asignados);
+
+
+}
+
+void desalojar_recurso(char* recurso_nombre, t_pcb *pcb, char** recursos, int *recurso_disponible, int cantidad){
+    //char *recurso_nombre=instruccion->parametros[0];
+    char *pid=pcb->pid;
+    free_resource(pid);
+
+}
+
+t_list* duplicar_recursos(t_list* lista_recursos){
+    t_list* lista_duplicada = list_create();
+
+    void duplicar(void *args){
+        t_resource* recurso = (t_resource*) args;
+
+        t_resource *duplicado = new_resource(recurso->name);
+        duplicado->instances = recurso->instances;
+        list_add(lista_duplicada,duplicado);
+    }
+    list_iterate(lista_recursos,duplicar);
+    return lista_duplicada;
+    
+}
 
 void incrementar_recursos(t_dictionary **matriz,char *pid,char *recurso, int cantidad){
     t_list *recursos = obtener_recursos_por_pid(matriz,pid,cantidad);
@@ -454,6 +582,26 @@ void destroy_lista_recursos(t_list* lista){
     list_destroy_and_destroy_elements(lista,destruir_recurso);
 }
 
+void destroy_recursos_en_matriz(t_dictionary *matriz,char *pid){
+    void destroy_recurso(void *args){
+        t_list *recursos = (t_list*) args;
+        destroy_lista_recursos(recursos);
+    }
+    dictionary_remove_and_destroy(matriz,pid,destroy_recurso);
+}
+
+void destroy_matriz(t_dictionary *matriz){
+    t_list *pids =dictionary_keys(matriz);
+    void destroy_proceso_en_matriz(void *args){
+        char *pid =(char *) args;
+
+        destroy_recursos_en_matriz(matriz,pid);
+    }
+    list_iterate(pids,destroy_proceso_en_matriz);
+    list_destroy(pids);
+    dictionary_destroy(matriz);
+
+}
 void fetch_pcb_actualizado(server_socket)
 {
     int total_size;
