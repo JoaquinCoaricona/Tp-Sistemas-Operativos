@@ -10,6 +10,7 @@ void iniciar_planificacion();
 void detener_planificacion();
 void liberarRecursos(int socket);
 bool buscarRecursoUsado(void* args);
+void liberacionProceso(void *cola);
 
 
 t_resource* new_resource(char* resource_name);
@@ -35,4 +36,7 @@ typedef struct
     char* nombreRecurso;
     int pidUsuario;
 }t_recursoUsado;
+
+
+
 #endif /* MAIN_H_ */
