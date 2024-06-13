@@ -841,6 +841,7 @@ void operacion_io_stdin_read(t_pcb *contexto,int socket,t_instruccion_unitaria* 
 		
 	}else{
 		add_to_packet(packet_rta,&cantidadBytes,sizeof(int));
+		
 		add_to_packet(packet_rta,&dirFisica,sizeof(int));
 	}
 	

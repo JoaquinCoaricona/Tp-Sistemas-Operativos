@@ -7,8 +7,7 @@ char *PORT_memoria;
 char *IP_memoria;
 char *PORT_kernel;
 char *IP_kernel;
-//int main(int argc, char *argv[])
-int main()
+int main(int argc, char *argv[])
 {   
     //ARGV ES UN VECTOR D DE TODAS LAS VARIABLES DE ENTORNO, EN LA POSICION 0 ESTA
     //LA LLAMADA AL ARCHIVO QUE EN ESTE CASO ES EL ./bin/entradasalida A PARTIR DEL 
@@ -17,12 +16,12 @@ int main()
     // printf("PARAMETRO: %s\n",argv[1]); // NOMBRE DE LA INTERFAZ
     // printf("PARAMETRO: %s\n",argv[2]); // CONFIG AL QUE LO CONECTO
     
-//    char *nombreInterfaz = argv[1];
-//    char *configRecibido = argv[2];
+    char *nombreInterfaz = argv[1];
+    char *configRecibido = argv[2];
 
-    char *nombreInterfaz = "nombre1";
-    char *configRecibido = "teclado.config";
 
+    //  char *nombreInterfaz = "nombre2";
+    //  char *configRecibido = "pantalla.config";
 
     // ESTO ES PARA TENER LOS NOMBRE YA PUESTOS ACA Y NO ESTAR PASANDOLOS AL LLAMAR AL EXE
     //char *nombreInterfaz = "nombre1";
@@ -54,7 +53,6 @@ int main()
     //Envio paquete a kernel
     send_packet(packet, socket_kernel);
     destroy_packet(packet);
-
     if(string_equals_ignore_case(tipo,"GENERICA")){
         interfazGenerica();
     }else if(string_equals_ignore_case(tipo,"STDIN")){
@@ -195,16 +193,21 @@ void recibirYejecutarDireccionesFisicas(int socket_kernel){
     memcpy(&cantidadBytesMalloc,buffer2 + offset, sizeof(int)); //RECIBO LA CANTIDAD DE BYTES MALLOC
     offset += sizeof(int);
 
-    contenido = malloc(cantidadBytesMalloc);
+    log_info(logger,"Cantidad Bytes Malloc %i",cantidadBytesMalloc);
+    contenido = malloc(cantidadBytesMalloc + 1); //sumo uno para poner el /0 despues al final
     offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT QUE INDICA EL TAMAÑO DEL VOID* CONTENIDO
     offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT DIR FISICAS;
 
     memcpy(&cantidadDireccionesFisicas,buffer2 + offset, sizeof(int)); //Recibo cantidad dir Fisicas
     offset += sizeof(int);
+    log_info(logger,"Cantidad Direcciones fisicas %i",cantidadDireccionesFisicas);
+
 
     for(int i = 0; i < cantidadDireccionesFisicas; i++){
+        offset += sizeof(int); //Aca salteo el tamaño del int cantidadBytesLee
         memcpy(&cantidadBytesLeer,buffer2 + offset, sizeof(int)); 
         offset += sizeof(int);
+        offset += sizeof(int);//Aca salteo el tamaño del int dirfisica
         memcpy(&dirFisica,buffer2 + offset, sizeof(int)); 
         offset += sizeof(int);
         mandarALeer(dirFisica,cantidadBytesLeer,pid,contenido + desplazamientoParteLeida);
@@ -212,14 +215,18 @@ void recibirYejecutarDireccionesFisicas(int socket_kernel){
     }
 
     char *cadena = (char *)contenido;
+
+    cadena[cantidadBytesMalloc] = '\0'; // Asegúrate de que el string esté terminado en '\0'
+
     log_info(logger,"%s",cadena);
 
     free(buffer2);
     
 }
-
-void interfazStdin(int socket_kernel){
-    
+//ESTA FUNCION NO RECIBE NADA Y ESTABA RECIBIENDO ACA COMO PRAMEtro al socket kernel
+// ESO ES GLOBAL Y NO TENIA PORQUE RECIBIRILO, Y ES COMO QUE ESCRIBIA ALGO EN EN ESA VARIABLES
+//PORQUE SE SALTEABA EL FETchccodop
+void interfazStdin(){
     // Conexion a Memoria
     //Hago el handshake con memoria porque en este tipo de interfaz tengo que hacerlo
     socket_memoria = create_conection(logger, IP_memoria, PORT_memoria);
@@ -256,7 +263,10 @@ void interfazStdin(int socket_kernel){
 }
 
 void recibirYejecutarDireccionesFisicasSTDIN(int socket_kernel){
-    char *cadenaPrueba = "hola como estas";
+    //char *cadenaPrueba = "hola como estas";
+    log_info(logger,"Ingrese cadena a escribir. No se va escribir todo (solo lo indicado en la instruccion)");
+    char *cadenaPrueba = readline(">");
+    
     int limiteAEscribir;
 
     int total_size;
@@ -276,31 +286,45 @@ void recibirYejecutarDireccionesFisicasSTDIN(int socket_kernel){
 
     memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
     offset += sizeof(int);
-    
-    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT que indica el tamaño de void* contenido
-    
-    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
+
+    int observador;
+    memcpy(&observador,buffer2 + offset, sizeof(int)); 
+
+
+    offset += sizeof(int); //Salteo el tamaño del INT void
+    memcpy(&observador,buffer2 + offset, sizeof(int)); 
+
+    offset += sizeof(int); //Salteo el tamaño del int cantBytes que esta dentro del void
 
     memcpy(&limiteAEscribir,buffer2 + offset, sizeof(int)); //Recibo el tamaño de bytes
     //a copiar que mandaron en la instruccion
     offset += sizeof(int);
 
-    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
-
+    offset += sizeof(int);//salteo el tamaño del int
     memcpy(&cantidadDireccionesFisicas,buffer2 + offset, sizeof(int)); //Recibo cantidad dir Fisicas
     offset += sizeof(int);
 
     while((cantidadDireccionesFisicas > 0) && (parteEscrita < limiteAEscribir)){
-        
+        offset += sizeof(int);//Salteo el tamaño del int
         memcpy(&cantidadBytesEscribir,buffer2 + offset, sizeof(int)); 
         offset += sizeof(int);
+        offset += sizeof(int);//Salteo el tamaño del int
         memcpy(&dirFisica,buffer2 + offset, sizeof(int)); 
-        offset += sizeof(int);
+        offset += sizeof(int);        
         mandarAescribirEnMemoria(dirFisica,cadenaPrueba + parteEscrita,cantidadBytesEscribir,pid);
+        
+        //Log para controlar que escribi bien
+        char *contenidoEscrito = malloc(cantidadBytesEscribir + 1);
+        contenidoEscrito[cantidadBytesEscribir] = '\0'; // Asegúrate de que el string esté terminado en '\0'
+        memcpy(contenidoEscrito,cadenaPrueba + parteEscrita, cantidadBytesEscribir); 
+        log_info(logger,"%s",contenidoEscrito);
+        free(contenidoEscrito);
+
         parteEscrita = parteEscrita + cantidadBytesEscribir;
     }
 
     free(buffer2);
+    free(cadenaPrueba);
 
 }
 

@@ -315,7 +315,7 @@ void *manage_request_from_dispatch(void *args)
             void *contenido;
             int tamanio;
             int bytesMalloc;
-            receptorPCBOUT = fetch_pcb_con_STDOUT(server_socket, &nombreInterOUT,contenido,&tamanio,&bytesMalloc);
+            receptorPCBOUT = fetch_pcb_con_STDOUT(server_socket, &nombreInterOUT,&contenido,&tamanio,&bytesMalloc);
             // ACA HABIA UN ERROR CON EL PUNTERO NOMBREINTERFAZ PORQUE
             // LE ESTABA PASANDO EL PUNTERO PERO LA COPIA, OSEA QUE NO CAMBIABA EL DE ACA Y QUEDABA EN NULL
             // Y DESPUES EN EL FIND NO PODIA COMPAARAR CON NULL. TODO POR INTENTAR SEPARAR EN FUNCIONES
@@ -340,7 +340,7 @@ void *manage_request_from_dispatch(void *args)
             }
             }
             interfazOUT = buscar_interfaz(nombreInterOUT);
-            cargarEnListaSTDOUT(receptorPCBOUT, interfazOUT, contenido,tamanio,bytesMalloc);
+            cargarEnListaSTDOUT(receptorPCBOUT, interfazOUT,&contenido,tamanio,bytesMalloc);
             sem_post(&short_term_scheduler_semaphore);
             // sem_post(&sem_multiprogramacion);
             // aca el grado de multiprogramacion no cambia, porque los procesos en block tambien entratran dentro del
@@ -355,7 +355,9 @@ void *manage_request_from_dispatch(void *args)
             char *nombreInterIN = NULL;
             void *contenidoIN;
             int tamanioIN;
-            receptorPCBIN = fetch_pcb_con_STDIN(server_socket, &nombreInterIN,contenidoIN,&tamanioIN);
+            //Aca paso como &contenidoIN para recibrlo como **contenido y cambiar el valor real del puntero
+            //y no una copia (no se porque pero funcion asi, y pasar asi por parametro los puntero con **)
+            receptorPCBIN = fetch_pcb_con_STDIN(server_socket, &nombreInterIN,&contenidoIN,&tamanioIN);
             // ACA HABIA UN ERROR CON EL PUNTERO NOMBREINTERFAZ PORQUE
             // LE ESTABA PASANDO EL PUNTERO PERO LA COPIA, OSEA QUE NO CAMBIABA EL DE ACA Y QUEDABA EN NULL
             // Y DESPUES EN EL FIND NO PODIA COMPAARAR CON NULL. TODO POR INTENTAR SEPARAR EN FUNCIONES
@@ -380,7 +382,9 @@ void *manage_request_from_dispatch(void *args)
             }
             }
             interfazIN = buscar_interfaz(nombreInterIN);
-            cargarEnListaSTDIN(receptorPCBIN, interfazIN, contenidoIN,tamanioIN);
+            //ACA TAMBIEN SIEMPRE QUE PASO UN PUNTERO TENGO QUE PASAR EL &puntero y no el puntero solo
+            //una vez dentro lo desreferencio con *puntero y lo recibo como **puntero
+            cargarEnListaSTDIN(receptorPCBIN, interfazIN, &contenidoIN,tamanioIN);
             sem_post(&short_term_scheduler_semaphore);
             // sem_post(&sem_multiprogramacion);
             // aca el grado de multiprogramacion no cambia, porque los procesos en block tambien entratran dentro del
@@ -724,7 +728,7 @@ void fetch_pcb_actualizado_A_eliminar(int server_socket){
 }
 
 
-t_interfaz_registrada *recibir_interfaz(client_socket)
+t_interfaz_registrada *recibir_interfaz(int client_socket)
 {
     t_interfaz_registrada *interfazNueva = malloc(sizeof(t_interfaz_registrada));
 
@@ -763,9 +767,9 @@ t_interfaz_registrada *recibir_interfaz(client_socket)
 
     list_add(listaInterfaces, interfazNueva);
 
-    printf("LLEGO UNA NUEVA INTERFAZ\n");
-    printf("NOMBRE DE LA INTERFAZ: %s\n", interfazNueva->nombre);
-    printf("TIPO DE INTERFAZ: %s\n", interfazNueva->tipo);
+    log_info(logger,"LLEGO UNA NUEVA INTERFAZ");
+    log_info(logger,"Nombre: %s",interfazNueva->nombre);
+    log_info(logger,"Tipo Interfaz: %s",interfazNueva->tipo);
 
     free(buffer);
     return interfazNueva;

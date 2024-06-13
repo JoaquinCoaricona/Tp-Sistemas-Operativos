@@ -271,6 +271,7 @@ void buscarMarco(int client_socket){
     destroy_packet(packetMarco);
 
     log_info(logger,"Acceso a Tabla de Páginas: PID: %d - Pagina: %d - Marco: %d",pid,paginaBuscada,paginaEncontrada->numeroMarco);
+    void *pointer = espacioUsuario;
 
 }
 
@@ -316,6 +317,13 @@ void escribirMemoria(int client_socket){
     //+++++++++++Realizo la escritura+++++++++++++++++++++++
     memcpy(espacioUsuario+dirFisica,contenidoAescribir,cantBits);
     log_info(logger,"Acceso a espacio de usuario: PID: %d - Accion: ESCRIBIR - Direccion fisica: %d",pid,dirFisica);
+
+    //+++++++++++Log para saber si lo que escribi esta bien+++++++++++++++++++
+    char *contenidoEscrito = malloc(cantBits + 1);
+    contenidoEscrito[cantBits] = '\0'; // Asegúrate de que el string esté terminado en '\0'
+    memcpy(contenidoEscrito,contenidoAescribir,cantBits); 
+    log_info(logger,"%s",contenidoEscrito);
+    free(contenidoEscrito);
 
     //+++++++++++Mando confirmacion a CPU+++++++++++++++++++
     t_buffer *bufferConfirmacion;
