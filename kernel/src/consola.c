@@ -60,7 +60,7 @@ void levantar_consola(t_log *logger) {
 			multiprogramacion(parametro); //Incluye parametro VALOR multiprogramacion
 			
 		} else if(strcmp(comando, "PROCESO_ESTADO") == 0){
-			//proceso_estado();
+			listarRecursos();
 		} else {
 			log_error(logger,"Comando desconocido campeon, leete la documentacion de nuevo :p");
 		}

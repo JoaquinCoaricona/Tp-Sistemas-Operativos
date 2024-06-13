@@ -1469,7 +1469,7 @@ void liberarRecursos(int socket){
     add_to_packet(packetRta,&paraEnviarAlgo2, sizeof(int));
 	send_packet(packetRta,socket);		//ENVIO EL PAQUETE
 	destroy_packet(packetRta);
-
+    //Aca quiza como estoy desbloqueando deberia guardar el recuerdo
     if(recBuscado->instancias <= 0){
         t_pcb *PCBliberado = queue_pop(recBuscado->colaBloqueo);
         addEstadoReady(PCBliberado);
@@ -1540,7 +1540,8 @@ void liberacionProceso(void *cola){
     //tambien tenga un semaforo como aca dentro de hilo
     
     t_queue *colaABuscar = (t_queue *)cola;
-
+    //Aca como estoy desbloqueando un proceso quizas deberia asignar el recurso
+    //Ahora que lo estoy desbloqueando y guardar el recuerdo, lo mismo en el signal
     pthread_mutex_lock(&procesosBloqueados);
     t_pcb *PCBliberado = queue_pop(colaABuscar);
     addEstadoReady(PCBliberado);
@@ -1548,4 +1549,13 @@ void liberacionProceso(void *cola){
     pthread_mutex_unlock(&procesosBloqueados);
 
     pthread_cancel(pthread_self());
+}
+
+void listarRecursos(){
+    for (int i = 0; i < totalRecursos; i++){
+        t_recurso *recurso = dictionary_get(recursosActuales,recursos[i]);
+        
+        log_info(logger,"Cant recursos del %s : %i",recursos[i],recurso->instancias);
+                
+}
 }
