@@ -1456,6 +1456,27 @@ void liberarRecursos(int socket){
     // NO TENGO EL RECUERDO PORQUE NO ME LO ASIGNARON NUNCA. ENTNOCES POR ESO PODRI DARSE EL CASO
     // QUE NO TENGA RECUERDO Y POR ESO EXISTE EL ELSE A ESTO. INCLUSO SE PUEDEN HACER
     // MAS SIGNALS QUE WAITS, ES RARO PERO LO PERMITIERON
+
+    //Aclaracion, si me bloquee por wait y despues me desbloquean con signal o
+    //Porque el recurso se libero, entonces me asignan el recurso asi que me estoy desbloqueando
+
+    //Muevo el desbloqueo aca (Estaba mas abajo)
+    if(recBuscado->instancias <= 0){
+
+        
+        t_pcb *PCBliberado = queue_pop(recBuscado->colaBloqueo);
+        //Agrego el recuerdo
+        t_recursoUsado *asignado = malloc(sizeof(t_recursoUsado));
+        asignado->pidUsuario = PCBliberado->pid;
+        asignado->nombreRecurso = strdup(recurso);
+        list_add(recursosAsignados,asignado);
+
+        addEstadoReady(PCBliberado);
+        sem_post(&sem_ready); 
+
+    }
+
+
     if(rec == NULL){
         log_info(logger,"Recurso no encontrado // Recuerdo no encontrado");
     }else{
@@ -1469,13 +1490,7 @@ void liberarRecursos(int socket){
     add_to_packet(packetRta,&paraEnviarAlgo2, sizeof(int));
 	send_packet(packetRta,socket);		//ENVIO EL PAQUETE
 	destroy_packet(packetRta);
-    //Aca quiza como estoy desbloqueando deberia guardar el recuerdo
-    if(recBuscado->instancias <= 0){
-        t_pcb *PCBliberado = queue_pop(recBuscado->colaBloqueo);
-        addEstadoReady(PCBliberado);
-        sem_post(&sem_ready); 
-
-    }
+    
 
     free(buffer);
 }
@@ -1512,10 +1527,14 @@ void liberarRecursosProceso(int pid){
         //Libero PCB bloqueado
         if(recBuscado->instancias <= 0){
 
+        t_colayNombre *aEnviar = malloc(sizeof(t_colayNombre));
+        aEnviar->nombreRecurso = rec->nombreRecurso;
+        aEnviar->colaBloqueo = recBuscado->colaBloqueo;
+
         //Separo la liberacion en un hilo para que si la planificacion esta
         // detenida se bloquee ahi
         pthread_t liberarProceso;
-        pthread_create(&liberarProceso,NULL,liberacionProceso,recBuscado->colaBloqueo);
+        pthread_create(&liberarProceso,NULL,liberacionProceso,aEnviar);
         pthread_detach(liberarProceso);
     
         }
@@ -1538,12 +1557,26 @@ void liberacionProceso(void *cola){
     //y asi tambien solucionariamos este problema pero con las io
     //osea que dentro de la funcion add estado ready se cree un hilo como aca y que 
     //tambien tenga un semaforo como aca dentro de hilo
-    
-    t_queue *colaABuscar = (t_queue *)cola;
+    //QUEDO ESE NOMBRE DE PARAMETRO PORQUE ANTES SOLO MANDABAMOS LA COLA
+    t_colayNombre *recurso = (t_colayNombre *)cola;
     //Aca como estoy desbloqueando un proceso quizas deberia asignar el recurso
     //Ahora que lo estoy desbloqueando y guardar el recuerdo, lo mismo en el signal
+
     pthread_mutex_lock(&procesosBloqueados);
-    t_pcb *PCBliberado = queue_pop(colaABuscar);
+    t_pcb *PCBliberado = queue_pop(recurso->colaBloqueo);
+
+    //Habia que hacer esto finalmente:
+
+    //-----------------CREACION DEL RECUERDO---------------------
+    
+    t_recursoUsado *asignado = malloc(sizeof(t_recursoUsado));
+    asignado->pidUsuario = PCBliberado->pid;
+    asignado->nombreRecurso = strdup(recurso->nombreRecurso);
+    list_add(recursosAsignados,asignado);
+    
+    //----------------------------------------------------------
+
+
     addEstadoReady(PCBliberado);
     sem_post(&sem_ready);
     pthread_mutex_unlock(&procesosBloqueados);
