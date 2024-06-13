@@ -32,6 +32,12 @@ typedef struct
     int pidUsuario;
 }t_recursoUsado;
 
+typedef struct
+{
+    char* nombreRecurso;
+    t_queue *colaBloqueo;
+}t_colayNombre;
+
 
 
 #endif /* MAIN_H_ */
