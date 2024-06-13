@@ -19,6 +19,7 @@ t_dictionary* recursosActuales;
 t_list *recursosAsignados;
 int pidBuscadoRecurso;
 char *recursoBuscado;
+int totalRecursos;
 int main(int argc, char *argv[])
 {
 
@@ -68,7 +69,7 @@ int main(int argc, char *argv[])
 //-------------------------------Inicializacion Recursos------------------------------
     recursosActuales = dictionary_create();
     recursosAsignados = list_create();
-    int totalRecursos = string_array_size(recursos); //Esta funcion es para string pero funcion
+    totalRecursos = string_array_size(recursos); //Esta funcion es para string pero funcion
     //para contar cantidad de lugares dentro de vector
     for (int i = 0; i < totalRecursos; i++){
         t_recurso *recursoAAgregar = malloc(sizeof(t_recurso));
@@ -786,6 +787,7 @@ void detener_planificacion()
     {
         pthread_mutex_lock(&m_planificador_largo_plazo);
         pthread_mutex_lock(&m_planificador_corto_plazo);
+        pthread_mutex_lock(&procesosBloqueados);
         planificacion_detenida = true;
         log_info(logger, "Pausa planificación: “PAUSA DE PLANIFICACIÓN“");
     }
@@ -802,6 +804,7 @@ void iniciar_planificacion()
     {
         pthread_mutex_unlock(&m_planificador_largo_plazo);
         pthread_mutex_unlock(&m_planificador_corto_plazo);
+        pthread_mutex_unlock(&procesosBloqueados);
         planificacion_detenida = false;
         log_info(logger, "Inicio de planificación: “INICIO DE PLANIFICACIÓN“");
     }
@@ -939,6 +942,46 @@ void finalizar_proceso(char *parametro)
                 //este unlock estaba dentro del if, tiene que estar afuera para que se
                 //desbloquee siempre. Lo encontre gracias al DEBUGGER
 
+            }
+            //Ahora busco en la cola de bloqueados
+            if(!encontrado){
+                
+                for (int i = 0; i < totalRecursos; i++){
+                t_recurso *recurso = dictionary_get(recursosActuales,recursos[i]);
+                t_queue *colaABuscar = recurso->colaBloqueo;
+                punteroAEliminar = list_find(colaABuscar->elements,encontrar_por_pid);
+                log_info(logger,"Busco en la cola del recurso %s",recursos[i]);
+                
+
+                if(punteroAEliminar != NULL){
+                //PROBLEMA DIFICIL DE ENCONTRAR
+                //Aca como estoy finalizando un proceso bloqueado en esa cola,
+                // tengo que sumarle uno a las instancias de ese proceso. Porque si ESTABA
+                // en -1, ahora deberia estar en 0. Porque ya no hay procesos bloqueados
+
+                //Es como hacer el signal y desbloquear un proceso
+                //Aca el proceso lo estoy desbloqueando yo porque lo finalizaron
+                //Entonces lo desbloqueo y le sumo uno a la instancia como si lo hubiera desbloqueado
+                //Un signal que le sumaba uno y despues desbloqueaba el proceso
+                //Hice las cuentas para ver si habia problemas con el <= 0 de la liberacion de 
+                //Recursos de AddestadoExit y parece que no va haber problemas
+                recurso->instancias = recurso->instancias + 1;
+                log_info(logger,"Sumo uno a la instancia que elimine");
+
+                list_remove_element(colaABuscar->elements,punteroAEliminar);
+                log_info(logger,"PID: %i encontrado en cola de bloqueo de %s",pidAeliminar,recursos[i]);
+                
+                //Lo Agrego A
+                addEstadoExit(punteroAEliminar);
+                encontrado = true;
+     
+                //hago esto de multiprogramacion porque elimine un proceso de BLOCK
+                //y tengo que dejar entrar otro
+                sem_post(&sem_multiprogramacion);
+                }
+                
+                }  
+                
             }
 
             if(!encontrado){
@@ -1170,10 +1213,22 @@ void liberarRecursos(int socket){
     pidBuscadoRecurso = PCBrec->pid; //Asigno al global el que quiero buscar
     //t_recursoUsado *rec = list_find(recursosAsignados,buscarRecursoUsado);
     t_recursoUsado *rec = list_remove_by_condition(recursosAsignados,buscarRecursoUsado);
-    
+    //ACA LO PASA ES QUE SE BUSCA SI ESE SIGNAL QUE HICIMOS ES DE ALGUN WAIT PREVIO
+    //OSEA SI ES LA LIBERACION DE ALGUN PEDIDO PREVIO. SI ES LA SEGUNDA PARTE DEL PAR
+    //WAIT SIGNAL. EJ WAIT A, SIGNAL A. PODRIA DARSE EL CASO QUE LO SEA ENTONCES
+    //AHI TENDRIAMOS EL RECUERDO PORQUE CUANDO HACEMOS EL WAIT GUARDAMOS EL RECUERDO EN 
+    //LA TABLA DE RECURSOS ASIGNADOS Y ENTONCES ESTARIA AHI Y LO BORRAMOS ACA CON EL SIGNAL
+    //PARA QUE CUANDO LIBEREMOS EN EXIT, LIBEREMOS LO QUE REALMENTE QUEDO SIN LIBERAR.
+    // PERO TAMBIEN PODRIA PASAR QUE NO SE HAYA HECHO EL WAIT, ENTONCES NO EXISTE EL Recuerdo
+    // TAMBIEN PODRIA PASAR QUE CUANDO HICE EL WAIT ME BLOQUEE, Y ENTONCES NO ME ASIGNARON
+    // EL RECURSO ENTONCES NO EXISTE EL RECUERDO Y SI YO AHORA YA ME DESBLOQUEARON PERO AUN ASI
+    // NO TENGO EL RECUERDO PORQUE NO ME LO ASIGNARON NUNCA. ENTNOCES POR ESO PODRI DARSE EL CASO
+    // QUE NO TENGA RECUERDO Y POR ESO EXISTE EL ELSE A ESTO. INCLUSO SE PUEDEN HACER
+    // MAS SIGNALS QUE WAITS, ES RARO PERO LO PERMITIERON
     if(rec == NULL){
-        log_info(logger,"Recurso no encontrado");
+        log_info(logger,"Recurso no encontrado // Recuerdo no encontrado");
     }else{
+        log_info(logger,"RECUERDO ENCONTRADO Y ELIMINADO DE LA TABLA DE ASIGNADOS");
         free(rec->nombreRecurso);
     }
 
@@ -1225,9 +1280,13 @@ void liberarRecursosProceso(int pid){
         //Si habia pcb bloqueados los libero con el mismo codigo que en los signal
         //Libero PCB bloqueado
         if(recBuscado->instancias <= 0){
-        t_pcb *PCBliberado = queue_pop(recBuscado->colaBloqueo);
-        addEstadoReady(PCBliberado);
-        sem_post(&sem_ready); 
+
+        //Separo la liberacion en un hilo para que si la planificacion esta
+        // detenida se bloquee ahi
+        pthread_t liberarProceso;
+        pthread_create(&liberarProceso,NULL,liberacionProceso,recBuscado->colaBloqueo);
+        pthread_detach(liberarProceso);
+    
         }
         //logueo el resultado y me fijo si habia otro recurso mas asignado
         //en ese caso volveria a entrar al while, sino sale directamente
@@ -1237,4 +1296,25 @@ void liberarRecursosProceso(int pid){
     
     }
 
+}
+
+void liberacionProceso(void *cola){
+    //Separe en este hilo esta parte para que en caso que el semaforo este este 
+    // bloqueado porque la planificacion esta detendita, entonces no se bloqueee
+    // el hilo que estaba liberando el recurso. 
+
+    //En realidad la funcion addestadoready podria crear un hilo solo para hacer eso
+    //y asi tambien solucionariamos este problema pero con las io
+    //osea que dentro de la funcion add estado ready se cree un hilo como aca y que 
+    //tambien tenga un semaforo como aca dentro de hilo
+    
+    t_queue *colaABuscar = (t_queue *)cola;
+
+    pthread_mutex_lock(&procesosBloqueados);
+    t_pcb *PCBliberado = queue_pop(colaABuscar);
+    addEstadoReady(PCBliberado);
+    sem_post(&sem_ready);
+    pthread_mutex_unlock(&procesosBloqueados);
+
+    pthread_cancel(pthread_self());
 }

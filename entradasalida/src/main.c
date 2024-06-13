@@ -7,6 +7,7 @@ char *PORT_memoria;
 char *IP_memoria;
 char *PORT_kernel;
 char *IP_kernel;
+int tiempoUnidad;
 int main(int argc, char *argv[])
 {   
     //ARGV ES UN VECTOR D DE TODAS LAS VARIABLES DE ENTORNO, EN LA POSICION 0 ESTA
@@ -39,6 +40,7 @@ int main(int argc, char *argv[])
     IP_memoria = config_get_string_value(config, "IP_MEMORIA");
     PORT_kernel = config_get_string_value(config, "PUERTO_KERNEL");
     IP_kernel = config_get_string_value(config, "IP_KERNEL");
+    tiempoUnidad = atoi(config_get_string_value(config, "TIEMPO_UNIDAD_TRABAJO"));
    
     //ARMO PAQUETE PARA CONEXION CON KERNEL     
     buffer = create_buffer();
@@ -78,7 +80,7 @@ void interfazGenerica(){
         case TIEMPO_DORMIR:
             int tiempo = fetch_tiempoDormir(socket_kernel);
             log_info(logger, "RECIBI UN SLEEP DE %i",tiempo);
-            usleep(tiempo); //falta hacer el calculo bien
+            usleep(tiempoUnidad * tiempo); 
             log_info(logger, "TERMINE UN SLEEP DE %i",tiempo);
             enviarAvisoAKernel(socket_kernel,CONFIRMACION_SLEEP_COMPLETO);
             //aca antes pasaba que me decia algun error inesperado, no se porque
