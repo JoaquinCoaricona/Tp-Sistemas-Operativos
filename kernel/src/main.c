@@ -13,6 +13,12 @@ int quantumGlobal;
 int procesoEjectuandoActualmente;
 char *algoritmo_planificacion;
 bool planificacion_detenida;
+char **recursos;
+char **instanciasRecursos;
+t_dictionary* recursosActuales;
+t_list *recursosAsignados;
+int pidBuscadoRecurso;
+char *recursoBuscado;
 int main(int argc, char *argv[])
 {
 
@@ -56,6 +62,22 @@ int main(int argc, char *argv[])
     gradoMultiprogramacion = atoi(config_get_string_value(config, "GRADO_MULTIPROGRAMACION"));
     quantumGlobal = atoi(config_get_string_value(config, "QUANTUM"));
     algoritmo_planificacion = config_get_string_value(config, "ALGORITMO_PLANIFICACION");
+    recursos = config_get_array_value(config,"RECURSOS");
+    instanciasRecursos = config_get_array_value(config,"INSTANCIAS_RECURSOS");
+
+//-------------------------------Inicializacion Recursos------------------------------
+    recursosActuales = dictionary_create();
+    recursosAsignados = list_create();
+    int totalRecursos = string_array_size(recursos); //Esta funcion es para string pero funcion
+    //para contar cantidad de lugares dentro de vector
+    for (int i = 0; i < totalRecursos; i++){
+        t_recurso *recursoAAgregar = malloc(sizeof(t_recurso));
+        recursoAAgregar->colaBloqueo = queue_create();
+        recursoAAgregar->instancias = atoi(instanciasRecursos[i]);
+        dictionary_put(recursosActuales,recursos[i],recursoAAgregar);
+        log_info(logger,"Agrego Recurso %s con %i instancias",recursos[i],atoi(instanciasRecursos[i]));
+    }
+//------------------------------------------------------------------------------------
 
     // PRUEBAAAA
     initialize_queue_and_semaphore();
@@ -363,6 +385,12 @@ void *manage_request_from_dispatch(void *args)
             // sem_post(&sem_multiprogramacion);
             // aca el grado de multiprogramacion no cambia, porque los procesos en block tambien entratran dentro del
             // grado de multiprogramacion, solo cuando sale por exit se aumenta el grado de multiprogramacion
+            break;
+            case WAIT_SOLICITUD:
+                apropiarRecursos(server_socket);
+            break;
+            case SIGNAL_SOLICITUD:
+                liberarRecursos(server_socket);
             break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
@@ -968,3 +996,241 @@ void controlGradoMultiprogramacion(){
     }
 }
 
+void apropiarRecursos(int socket){
+    int total_size;
+    int offset = 0;
+    t_pcb *PCBrec = pcbEJECUTANDO;
+    void *buffer;
+    char *recurso;
+    buffer = fetch_buffer(&total_size, socket); //RECIBO EL BUFFER 
+
+    int length_recurso;
+    memcpy(&length_recurso,buffer + offset, sizeof(int));  //RECIBO EL LENGTH DEL RECURSO
+    offset += sizeof(int); 
+
+    recurso = malloc(length_recurso);
+    memcpy(recurso,buffer + offset, length_recurso);  //RECIBO EL LENGTH DEL RECURSO
+    offset += length_recurso; 
+
+    offset += sizeof(int); //Salteo el tamaño del pcb
+    memcpy(PCBrec,buffer + offset, sizeof(t_pcb));  
+    
+    log_info(logger,"Recurso Solicitado: %s",recurso);
+    log_info(logger, "PID RECIBIDO : %i",PCBrec->pid);
+    log_info(logger, "PC RECIBIDO : %i",PCBrec->program_counter);
+    log_info(logger, "REGISTRO AX : %i",PCBrec->registers.AX);
+    log_info(logger, "REGISTRO BX : %i",PCBrec->registers.BX);
+
+    t_recurso *recBuscado = dictionary_get(recursosActuales,recurso);
+    int paraEnviarAlgo = 1; //Porque si no envias nada queda algo en el buffer y despues llegan cosas diferentes mas adelante
+    
+    if(recBuscado == NULL){
+        t_buffer *bufferRta = create_buffer();
+	    t_packet *packetRta = create_packet(RECURSO_EXIT,bufferRta);
+	    send_packet(packetRta,socket);		//ENVIO EL PAQUETE
+        add_to_packet(packetRta,&paraEnviarAlgo, sizeof(int));
+	    destroy_packet(packetRta);
+
+        //---------------FINALIZAR EL PROCESO COMO SI FUERA UN EXIT---------------------
+            pthread_mutex_lock(&m_procesoEjectuandoActualmente);
+            procesoEjectuandoActualmente = -1;
+            pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
+
+            PCBrec->state = EXIT;
+            addEstadoExit(PCBrec);
+
+            //Aca Controlo que solamente en VRR hago destroy al t_temporal
+            if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
+            temporal_destroy(timer);
+            }
+            //Pongo a ejecutar otro proceso
+            sem_post(&short_term_scheduler_semaphore);
+            controlGradoMultiprogramacion();
+        //------------------------------------------------------------------------------
+
+
+    }
+
+    // -Primero resta la instancia
+    // -Verifica si es menor a 0
+    // -Se bloquea en caso que lo sea
+    recBuscado->instancias = recBuscado->instancias - 1; 
+
+
+    if(recBuscado->instancias < 0){
+        PCBrec->quantum = quantumGlobal;//Hago esto porque cuando se desbloquee tiene
+        // que ir a la cola ready y para que no haya problemas le reseteo el quantum
+        //Se bloquea el proceso
+        queue_push(recBuscado->colaBloqueo,PCBrec);
+	    t_buffer *bufferRta = create_buffer();
+	    t_packet *packetRta = create_packet(WAIT_BLOQUEO,bufferRta);
+        add_to_packet(packetRta,&paraEnviarAlgo, sizeof(int));
+	    send_packet(packetRta,socket);		//ENVIO EL PAQUETE
+	    destroy_packet(packetRta);
+
+        //---------------BLOUEE EL PROCESO Y MANDO OTRO A EJECUTAR---------------------
+            pthread_mutex_lock(&m_procesoEjectuandoActualmente);
+            procesoEjectuandoActualmente = -1;
+            pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
+
+            //Aca Controlo que solamente en VRR hago destroy al t_temporal
+            if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
+            temporal_destroy(timer);
+            }
+            //Pongo a ejecutar otro proceso
+            sem_post(&short_term_scheduler_semaphore);
+        //------------------------------------------------------------------------------
+
+
+    }else{
+        //No le asigne directamente char *recurso por las dudas que en los otros casos del if no lo libere
+        //Guardo el recurso en la lista de asignados
+        t_recursoUsado *asignado = malloc(sizeof(t_recursoUsado));
+        asignado->pidUsuario = PCBrec->pid;
+        asignado->nombreRecurso = malloc(length_recurso); //esa variable es de la etapa de recibir el buffer
+        memcpy(asignado->nombreRecurso,recurso,length_recurso);
+        list_add(recursosAsignados,asignado);
+
+        //Envio confirmacion que siga con el PCB
+	    t_buffer *bufferRta = create_buffer();
+	    t_packet *packetRta = create_packet(RECURSO_OK,bufferRta);
+        add_to_packet(packetRta,&paraEnviarAlgo, sizeof(int));
+	    send_packet(packetRta,socket);		//ENVIO EL PAQUETE
+	    destroy_packet(packetRta);
+    }
+
+    free(buffer);
+}
+
+void liberarRecursos(int socket){
+    int total_size;
+    int offset = 0;
+    t_pcb *PCBrec = pcbEJECUTANDO;
+    void *buffer;
+    char *recurso;
+    buffer = fetch_buffer(&total_size, socket); //RECIBO EL BUFFER 
+
+    int length_recurso;
+    memcpy(&length_recurso,buffer + offset, sizeof(int));  //RECIBO EL LENGTH DEL RECURSO
+    offset += sizeof(int); 
+
+    recurso = malloc(length_recurso);
+    memcpy(recurso,buffer + offset, length_recurso);  //RECIBO EL LENGTH DEL RECURSO
+    offset += length_recurso; 
+
+    offset += sizeof(int); //Salteo el tamaño del pcb
+    memcpy(PCBrec,buffer + offset, sizeof(t_pcb));  
+    
+    log_info(logger,"Recurso a Liberar: %s",recurso);
+    log_info(logger, "PID RECIBIDO : %i",PCBrec->pid);
+    log_info(logger, "PC RECIBIDO : %i",PCBrec->program_counter);
+    log_info(logger, "REGISTRO AX : %i",PCBrec->registers.AX);
+    log_info(logger, "REGISTRO BX : %i",PCBrec->registers.BX);
+    
+    int paraEnviarAlgo2 = 1; //Porque si no envias nada queda algo en el buffer y despues llegan cosas diferentes mas adelante
+    
+    //dictionary_destroy(recursosActuales);
+    t_recurso *recBuscado = dictionary_get(recursosActuales,recurso);
+    if(recBuscado == NULL){
+        t_buffer *bufferRta = create_buffer();
+	    t_packet *packetRta = create_packet(RECURSO_EXIT,bufferRta);
+        add_to_packet(packetRta,&paraEnviarAlgo2, sizeof(int));
+	    send_packet(packetRta,socket);		//ENVIO EL PAQUETE
+	    destroy_packet(packetRta);
+
+        //---------------FINALIZAR EL PROCESO COMO SI FUERA UN EXIT---------------------
+            pthread_mutex_lock(&m_procesoEjectuandoActualmente);
+            procesoEjectuandoActualmente = -1;
+            pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
+
+            PCBrec->state = EXIT;
+            addEstadoExit(PCBrec);
+
+            //Aca Controlo que solamente en VRR hago destroy al t_temporal
+            if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
+            temporal_destroy(timer);
+            }
+            //Pongo a ejecutar otro proceso
+            sem_post(&short_term_scheduler_semaphore);
+            controlGradoMultiprogramacion();
+        //------------------------------------------------------------------------------
+
+
+    }
+
+    recBuscado->instancias = recBuscado->instancias + 1; 
+
+    
+    //Borro el registro del recurso usado
+    recursoBuscado = recurso;//Asigno al global el que quiero buscar
+    pidBuscadoRecurso = PCBrec->pid; //Asigno al global el que quiero buscar
+    //t_recursoUsado *rec = list_find(recursosAsignados,buscarRecursoUsado);
+    t_recursoUsado *rec = list_remove_by_condition(recursosAsignados,buscarRecursoUsado);
+    
+    if(rec == NULL){
+        log_info(logger,"Recurso no encontrado");
+    }else{
+        free(rec->nombreRecurso);
+    }
+
+     //Envio confirmacion que siga con el PCB
+	t_buffer *bufferRta = create_buffer();
+	t_packet *packetRta = create_packet(RECURSO_OK,bufferRta);
+    add_to_packet(packetRta,&paraEnviarAlgo2, sizeof(int));
+	send_packet(packetRta,socket);		//ENVIO EL PAQUETE
+	destroy_packet(packetRta);
+
+    if(recBuscado->instancias <= 0){
+        t_pcb *PCBliberado = queue_pop(recBuscado->colaBloqueo);
+        addEstadoReady(PCBliberado);
+        sem_post(&sem_ready); 
+
+    }
+
+    free(buffer);
+}
+
+bool buscarRecursoUsado(void* args){
+    //Hacemos esto para cumplir con el tipo de funcion que acepta list_find
+    t_recursoUsado *recUs =(t_recursoUsado *)args;
+    
+    return ((string_equals_ignore_case(recUs->nombreRecurso,recursoBuscado)) && (recUs->pidUsuario == pidBuscadoRecurso));
+}
+
+//Esta funcion la agregue directamente en el addestadoexit para que se cumpla en todos
+//los casos que vaya algo a exit
+void liberarRecursosProceso(int pid){
+    
+    bool buscarRecursoUsadoPorPid(void* args){
+    //Hacemos esto para cumplir con el tipo de funcion que acepta list_find
+    t_recursoUsado *recUs =(t_recursoUsado *)args;
+    
+    return recUs->pidUsuario == pid;
+    }
+    //Nueva funcion bool para buscar (arriba)
+
+    //Aca hacemos el remove y si no borra nada devuelve null y no entra al bucle
+    t_recursoUsado *rec = list_remove_by_condition(recursosAsignados,buscarRecursoUsadoPorPid);
+    while(rec != NULL){
+        //SI entro aca es que el proceso tenia recursos asignados
+        //Hago los signal por la liberacion
+        //Busco el recurso y le sumo una instancia
+        t_recurso *recBuscado = dictionary_get(recursosActuales,rec->nombreRecurso);
+        recBuscado->instancias = recBuscado->instancias + 1;
+        
+        //Si habia pcb bloqueados los libero con el mismo codigo que en los signal
+        //Libero PCB bloqueado
+        if(recBuscado->instancias <= 0){
+        t_pcb *PCBliberado = queue_pop(recBuscado->colaBloqueo);
+        addEstadoReady(PCBliberado);
+        sem_post(&sem_ready); 
+        }
+        //logueo el resultado y me fijo si habia otro recurso mas asignado
+        //en ese caso volveria a entrar al while, sino sale directamente
+        log_info(logger,"Recurso %s liberado",rec->nombreRecurso);
+        free(rec->nombreRecurso);
+        rec = list_remove_by_condition(recursosAsignados,buscarRecursoUsadoPorPid);
+    
+    }
+
+}

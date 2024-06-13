@@ -854,3 +854,56 @@ void operacion_io_stdin_read(t_pcb *contexto,int socket,t_instruccion_unitaria* 
 	destroy_packet(packet_rta);
 
 }
+
+void operacion_wait(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
+	t_buffer *bufferWait;
+	t_packet *packetWait;
+	bufferWait = create_buffer();
+	packetWait = create_packet(WAIT_SOLICITUD,bufferWait);
+	add_to_packet(packetWait,instruccion->parametros[0], instruccion->parametro1_lenght); //CARGO EL NOMBRE DEL RECURSO
+	add_to_packet(packetWait,contexto,sizeof(t_pcb)); //CARGO EL PCB
+	send_packet(packetWait,socket);		//ENVIO EL PAQUETE
+	destroy_packet(packetWait);
+
+	int operation_code = fetch_codop(socket);
+
+	if((operation_code == WAIT_BLOQUEO) || (operation_code == RECURSO_EXIT)){
+		int total_size;
+		void *buffer = fetch_buffer(&total_size, socket); //RECIBO EL BUFFER 
+		free(buffer);
+		continuar_con_el_ciclo_instruccion = false;
+		pid_ejecutando = -1;
+	}else{
+		int total_size;
+		void *buffer = fetch_buffer(&total_size, socket); //RECIBO EL BUFFER 
+		free(buffer);
+	}
+	
+}
+
+void operacion_signal(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
+	t_buffer *bufferSignal;
+	t_packet *packetSignal;
+	bufferSignal = create_buffer();
+	packetSignal = create_packet(SIGNAL_SOLICITUD,bufferSignal);
+	add_to_packet(packetSignal,instruccion->parametros[0], instruccion->parametro1_lenght); //CARGO EL NOMBRE DEL RECURSO
+	add_to_packet(packetSignal,contexto,sizeof(t_pcb)); //CARGO EL PCB
+	send_packet(packetSignal,socket);		//ENVIO EL PAQUETE
+	destroy_packet(packetSignal);
+
+	int operation_code = fetch_codop(socket);
+
+	if(operation_code == RECURSO_EXIT){
+		int total_size;
+		void *buffer = fetch_buffer(&total_size, socket); //RECIBO EL BUFFER 
+		free(buffer);
+		continuar_con_el_ciclo_instruccion = false;
+		pid_ejecutando = -1;
+	}else{
+		int total_size;
+		void *buffer = fetch_buffer(&total_size, socket); //RECIBO EL BUFFER 
+		free(buffer);
+	}
+
+	
+}
