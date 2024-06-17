@@ -341,8 +341,11 @@ int solicitarMarco(int numeroPagina, int pid){
 
 }
 void agregarALaTLB(t_queue *TLB ,t_entrada_TLB *nuevaEntrada){
-	
-	if(queue_size(TLB) >= cantEntradasTLB){
+	//Agrego el distinto de cero para el caso que la cant de entradas de la tlb sea 0
+	//crei que no se podia pero lo incluyeron. Si es 0 no se tiene que agregar nada
+	//en ninguno de los dos casos. Asi las busquedas en la tlb siempre dan NULL
+	//Cambio el else que tenia por un elseif para agregar el caso de tlb cant = 0
+	if((queue_size(TLB) >= cantEntradasTLB) && (cantEntradasTLB != 0)){
 		//Aca hago lo mismo si es LRU o FIFO porque al usarlos
 		//voy acomodando en caso que sea LRU. Asi en los dos casos
 		//queda para eliminar con un pop, sea LRU o FIFO
@@ -351,7 +354,7 @@ void agregarALaTLB(t_queue *TLB ,t_entrada_TLB *nuevaEntrada){
 		queue_push(TLB,nuevaEntrada);
 		log_info(logger,"Borro una entrada de la TLB para agregar otra");
 		free(entradaAEliminar);
-	}else{
+	}else if(cantEntradasTLB != 0){
 		queue_push(TLB,nuevaEntrada);
 	}
 	
