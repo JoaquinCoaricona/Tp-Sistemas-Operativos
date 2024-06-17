@@ -166,7 +166,7 @@ void operacion_jnz(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 // RESIZE (Tamaño): Solicitará a la Memoria ajustar el tamaño del proceso al tamaño 
 // pasado por parámetro. En caso de que la respuesta de la memoria sea Out of Memory,
 // se deberá devolver el contexto de ejecución al Kernel informando de esta situación.
-void operacion_resize(t_pcb* contexto, t_instruccion_unitaria* instruccion)
+void operacion_resize(t_pcb* contexto, t_instruccion_unitaria* instruccion,int socket_kernel)
 {	
 	//Recibo el nuevo tamaño del proceso que es el unico parametro de la instruccion
 	int nuevoTamaProceso = atoi(instruccion->parametros[0]);
@@ -196,7 +196,28 @@ void operacion_resize(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 	if(operation_code == RESIZE_EXITOSO){
 		log_info(logger,"RESIZE EXITOSO");
 	}else{
-		//REZISE FALLIDO
+		continuar_con_el_ciclo_instruccion = false;
+		pid_ejecutando = -1;
+		
+		//----------Envio el PCB a Kernel-----------------------
+		t_buffer *buffer_rta;
+    	t_packet *packet_rta;
+    	buffer_rta = create_buffer();
+    	packet_rta = create_packet(OUT_MEMORY,buffer_rta);
+
+		int length_motivo = (strlen("Out of Memory") + 1);
+		//No se si va funcionar el add to packet asi, pero quizas si passarle diectamente el ""
+		//quizas devuelve el puntero a lo escrito
+		add_to_packet(packet_rta,"Out of Memory", length_motivo);
+
+    	int tamanioPCB = sizeof(t_pcb);
+    	add_to_packet(packet_rta, contexto, tamanioPCB); //CARGO EL PCB ACTUALIZADO
+	
+    	send_packet(packet_rta, socket_kernel);
+    	destroy_packet(packet_rta);
+		//--------------------------------------------------------
+
+		log_info(logger,"RESIZE FALLIDO, OUT OF MEMORY");
 	}
 }
 

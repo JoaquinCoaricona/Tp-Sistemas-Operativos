@@ -397,6 +397,21 @@ void *manage_request_from_dispatch(void *args)
             case SIGNAL_SOLICITUD:
                 liberarRecursos(server_socket);
             break;
+            case OUT_MEMORY:
+            pthread_mutex_lock(&m_procesoEjectuandoActualmente);
+            procesoEjectuandoActualmente = -1;
+            pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
+            // printf("Llego Un PCB");
+            log_info(logger, "LLEGO UN PCB POR OUT OF MEMORY");
+            fetch_pcb_actualizado(server_socket);
+            //Aca Controlo que solamente en VRR hago destroy al t_temporal
+            if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
+            temporal_destroy(timer);
+            }
+            sem_post(&short_term_scheduler_semaphore);
+            controlGradoMultiprogramacion();
+            //sem_post(&sem_multiprogramacion);
+            break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
             return;
@@ -475,7 +490,7 @@ void end_process()
 {
 }
 
-void fetch_pcb_actualizado(server_socket)
+void fetch_pcb_actualizado(int server_socket)
 {
     int total_size;
     int offset = 0;
