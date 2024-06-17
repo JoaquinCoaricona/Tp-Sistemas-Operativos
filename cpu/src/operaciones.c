@@ -53,6 +53,16 @@ void setear_registro(t_pcb *contexto, char* registro, uint32_t valor)
 		contexto->registers.DI=valor;
 		//log_info(logger, "Se setea en %s el valor: %d",registro,  contexto->registers->EDX);
 	}
+	else if(strcmp(registro,"PC")==0)
+	{
+		contexto->registers.PC=valor;
+		//Aca cambio el Program counter del pcb. El programcounter registro
+		//no lo uso nunca, por eso aca cambio el del pcb
+		//El que esta en registros solo lo toco aca pero en ningun lado mas.
+		//Lo importantes era actualizar el valor del PC del pcb que es el que se usa en el ciclo
+		contexto->program_counter = valor;
+		//log_info(logger, "Se setea en %s el valor: %d",registro,  contexto->registers->EDX);
+	}
     
 
 }
