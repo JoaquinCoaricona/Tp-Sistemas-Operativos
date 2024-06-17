@@ -42,6 +42,7 @@ int main(int argc, char *argv[])
     //el momeneto de hacer la comparacion. Quizas es porque es una variable global
     //que declaro aca y en operaciones.h pero no se porque cuando llega a la 
     //comparacion se borra. Por eso hago esto
+    //al final es porque hago destroy config mas abajo, pero lo dejo asi para no cambiar mas cosas
     tlbAlgoritmo = strdup(algoritmoTLB);
     cantEntradasTLB = atoi(config_get_string_value(config,"CANTIDAD_ENTRADAS_TLB"));
     // Conect to server
@@ -355,7 +356,7 @@ void ciclo_de_instruccion(int socket_kernel){
 			operacion_mov_in(PCBACTUAL, instruccion_ACTUAL);
 		}
         if (strcmp(instruccion_ACTUAL->opcode, "RESIZE") == 0) {
-            operacion_resize(PCBACTUAL, instruccion_ACTUAL);
+            operacion_resize(PCBACTUAL, instruccion_ACTUAL,socket_kernel);
 		}
         if (strcmp(instruccion_ACTUAL->opcode, "COPY_STRING") == 0) {
             operacion_copy_string(PCBACTUAL, instruccion_ACTUAL);
