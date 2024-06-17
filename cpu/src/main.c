@@ -12,6 +12,8 @@ int pid_a_desalojar;
 pthread_mutex_t mutex_interrupcion;
 int tamaPagina;
 t_queue* TLB;
+char *algoritmoTLB;
+int cantEntradasTLB;
 int main(int argc, char *argv[])
 {
     char *memory_PORT;
@@ -35,6 +37,13 @@ int main(int argc, char *argv[])
     interrupt_PORT = config_get_string_value(config, "PUERTO_ESCUCHA_INTERRUPT");
     memory_IP = config_get_string_value(config, "IP_MEMORIA");
     tamaPagina = atoi(config_get_string_value(config,"TAM_PAGINA"));
+    algoritmoTLB = config_get_string_value(config, "ALGORITMO_TLB");
+    //Tengo que hacer esto porque no se porque el otro char * se borra cuando llega
+    //el momeneto de hacer la comparacion. Quizas es porque es una variable global
+    //que declaro aca y en operaciones.h pero no se porque cuando llega a la 
+    //comparacion se borra. Por eso hago esto
+    tlbAlgoritmo = strdup(algoritmoTLB);
+    cantEntradasTLB = atoi(config_get_string_value(config,"CANTIDAD_ENTRADAS_TLB"));
     // Conect to server
     client_fd_memoria = create_conection(logger, memory_IP, memory_PORT);
     log_info(logger, "Conectado al servidor de memoria %s:%s", memory_IP, memory_PORT);

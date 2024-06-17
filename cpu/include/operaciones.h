@@ -10,6 +10,9 @@ extern int client_fd_memoria;
 extern int tamaPagina;
 extern bool continuar_con_el_ciclo_instruccion;
 extern int pid_ejecutando;
+extern char *algoritmoTLB;
+extern char *tlbAlgoritmo;
+extern int cantEntradasTLB;
 typedef struct {
 	int opcode_lenght;
 	char* opcode;
