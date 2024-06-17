@@ -3,6 +3,7 @@
 //Estas variables las uso en las busquedas en la TLB
 int paginaTLB = -1;
 int pidTLB = -1;
+char *tlbAlgoritmo;
 
 void setear_registro(t_pcb *contexto, char* registro, uint32_t valor)
 {
@@ -245,6 +246,24 @@ int solicitarMarco(int numeroPagina, int pid){
 		pidTLB = -1;
 		paginaTLB = -1;
 		log_info(logger,"PID: %i - TLB HIT - Pagina: %i",pid,numeroPagina);
+
+		//++++++++++++Si es LRU Actualizo la tabla+++++++++++++++++++++
+		//Hago esto porque en LRU voy a borrar el que no se usa o el que se uso 
+		//por ultima vez hace mucho tiempo. Priorizo guardar los que
+		//se uasron mas seguido.
+		//Entonces aca cuando encontre uno (osea que lo voy a usar)
+		//lo saco de la lista y le vuelvo a hacer push y asi con todos los que use
+		//entonces el que menos use va a quedar al final y lo saco con pop
+		//como si fuera fifo. Es como ir reordenando la cola con cada uso.
+		//si es fifo no hago nada porque los voy metiendo con push y al eliminar es con pop
+		//haciendo esto al sacar tambien saco con un pop solamente
+		//char *hola = algoritmoTLB;
+		if(string_equals_ignore_case(tlbAlgoritmo,"LRU")){
+			list_remove_element(TLB->elements,nuevaEntrada);
+			queue_push(TLB,nuevaEntrada);
+			log_info(logger,"Uso entrada TLB y muevo el orden de entradas");
+        }
+		//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		return nuevaEntrada->marco;
 	}
 	log_info(logger,"PID: %i - TLB MISS - Pagina: %i",pid,numeroPagina);
@@ -285,7 +304,7 @@ int solicitarMarco(int numeroPagina, int pid){
 		nuevaEntrada->pid = pid;
 		nuevaEntrada->pagina = numeroPagina;
 		nuevaEntrada->marco = marcoEncontrado;
-		queue_push(TLB,nuevaEntrada);
+		agregarALaTLB(TLB,nuevaEntrada);
 		log_info(logger, "Obtener Marco: PID: %d - OBTENER MARCO - Página: %d - Marco: %d", pid, numeroPagina, marcoEncontrado);
 
 		return marcoEncontrado;
@@ -299,6 +318,22 @@ int solicitarMarco(int numeroPagina, int pid){
 	//---------------------------------------------------------------
 
 
+}
+void agregarALaTLB(t_queue *TLB ,t_entrada_TLB *nuevaEntrada){
+	
+	if(queue_size(TLB) >= cantEntradasTLB){
+		//Aca hago lo mismo si es LRU o FIFO porque al usarlos
+		//voy acomodando en caso que sea LRU. Asi en los dos casos
+		//queda para eliminar con un pop, sea LRU o FIFO
+		t_entrada_TLB *entradaAEliminar = NULL;
+		entradaAEliminar = queue_pop(TLB);
+		queue_push(TLB,nuevaEntrada);
+		log_info(logger,"Borro una entrada de la TLB para agregar otra");
+		free(entradaAEliminar);
+	}else{
+		queue_push(TLB,nuevaEntrada);
+	}
+	
 }
 
 int traduccionLogica(int pid, int direccion_logica){
