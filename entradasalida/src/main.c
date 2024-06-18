@@ -8,6 +8,12 @@ char *IP_memoria;
 char *PORT_kernel;
 char *IP_kernel;
 int tiempoUnidad;
+char* path_base;
+int block_size;
+int block_count;
+int retraso_compactacion;
+t_dictionary* fcb_dictionary;
+
 int main(int argc, char *argv[])
 {   
     //ARGV ES UN VECTOR D DE TODAS LAS VARIABLES DE ENTORNO, EN LA POSICION 0 ESTA
@@ -41,7 +47,13 @@ int main(int argc, char *argv[])
     PORT_kernel = config_get_string_value(config, "PUERTO_KERNEL");
     IP_kernel = config_get_string_value(config, "IP_KERNEL");
     tiempoUnidad = atoi(config_get_string_value(config, "TIEMPO_UNIDAD_TRABAJO"));
-   
+    path_base = config_get_string_value(config, "PATH_BASE_DIALFS");
+    block_size = atoi(config_get_string_value(config, "BLOCK_SIZE"));
+    block_count = atoi(config_get_string_value(config, "BLOCK_COUNT"));
+    retraso_compactacion = atoi(config_get_string_value(config, "RETRASO_COMPACTACION"));
+
+    fcb_dictionary = dictionary_create();
+
     //ARMO PAQUETE PARA CONEXION CON KERNEL     
     buffer = create_buffer();
     packet = create_packet(NUEVA_INTERFAZ, buffer);
@@ -61,7 +73,10 @@ int main(int argc, char *argv[])
         interfazStdin();
     }else if(string_equals_ignore_case(tipo,"STDOUT")){
         interfazStdout();
-    }else{
+    }else if(string_equals_ignore_case(tipo,"DIALFS")){
+        interfazDialFS();
+    }
+    else{
         log_info(logger,"Error");
     }
     
@@ -397,4 +412,168 @@ void mandarAescribirEnMemoria(int dirFisica,void *contenidoAescribir, int cantid
 		log_info(logger,"Error en la escritura");
 	}
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+}
+
+void interfazDialFS(){
+    socket_memoria = create_conection(logger, IP_memoria, PORT_memoria);
+    log_info(logger, "Conectado al servidor de memoria %s:%s", IP_memoria, PORT_memoria);
+    t_buffer *buffer_handshake = create_buffer();
+    t_packet *packet_handshake = create_packet(HANDSHAKE_ENTRADA_SALIDA, buffer_handshake);
+    add_to_packet(packet_handshake, buffer_handshake->stream, buffer_handshake->size);
+    send_packet(packet_handshake,socket_memoria); 
+    log_info(logger, "Handshake enviado");   
+    destroy_packet(packet_handshake);
+
+    while (1)
+    {   
+        int operation_code = fetch_codop(socket_kernel);
+        switch (operation_code)
+        {
+        case DIALFS_CREATE:
+            usleep(tiempoUnidad);
+            fetch_nombre_archivo_y_crear_archivo(socket_kernel);
+            enviarAvisoAKernel(socket_kernel,CONFIRMACION_CREATE_ARCHIVO);
+            break;
+        case DIALFS_DELETE:
+            usleep(tiempoUnidad);
+            fetch_nombre_archivo_y_delete_archivo(socket_kernel);
+            enviarAvisoAKernel(socket_kernel,CONFIRMACION_DELETE_ARCHIVO);
+            break;
+        case DIALFS_TRUNCATE:
+            usleep(tiempoUnidad);
+
+            break;
+        case DIALFS_WRITE:
+            usleep(tiempoUnidad);
+
+            break;
+        case DIALFS_READ:
+            usleep(tiempoUnidad);
+            
+            break;
+        case -1:
+            log_error(logger, "Error al recibir el codigo de operacion");
+            close_conection(socket_kernel);
+
+            return;
+        default:
+            log_error(logger, "Algun error inesperado ");
+            close_conection(socket_kernel);
+            return;
+        }
+    }
+}
+
+t_fcb* initialize_fcb(char* nombre_archivo, char* path) {
+    t_config* config = malloc(sizeof(t_config));
+
+    config->path = strdup(path);
+    config->properties = dictionary_create();
+
+    int tamanio = block_size * block_count;
+
+    config_set_value(config, "NOMBRE", string_duplicate(nombre_archivo));
+    config_set_value(config, "TAMANIO", string_itoa(tamanio));
+    config_set_value(config, "BLOQUE_INICIAL", "");
+    config_save_in_file(config, path);
+	t_fcb* fcb = malloc(sizeof(t_fcb));
+
+    fcb->nombre = string_duplicate(config_get_string_value(config, "NOMBRE"));
+	fcb->tamanio = config_get_int_value(config, "TAMANIO");
+	fcb->bloque_inicial = config_get_int_value(config, "BLOQUE_INICIAL");
+
+	config_destroy(config);
+	return fcb;
+
+}
+
+void fetch_nombre_archivo_y_crear_archivo(int socket_kernel){
+
+    int total_size;
+    int offset = 0;
+
+    int pid;
+    char* nombre_archivo;
+    int length_nombre_archivo;
+
+    void *buffer2;
+    buffer2 = fetch_buffer(&total_size, socket_kernel);
+
+    offset += sizeof(int);
+    memcpy(&pid,buffer2 + offset, sizeof(int));
+    offset += sizeof(int);
+
+    memcpy(&length_nombre_archivo,buffer2 + offset, sizeof(int));
+    offset += sizeof(int); 
+    *nombre_archivo = malloc(length_nombre_archivo);
+    memcpy(&nombre_archivo,buffer2 + offset, length_nombre_archivo);
+    offset += length_nombre_archivo;
+
+    free(buffer2);
+    
+    log_info(logger, "PID: %i - Crear Archivo: %s", pid, nombre_archivo);
+
+    char* direccion_fcb = string_new();
+    string_append(&direccion_fcb, path_base);
+	string_append(&direccion_fcb, "/");
+	string_append(&direccion_fcb, nombre_archivo);
+
+	t_fcb* fcb = malloc(sizeof(t_fcb));
+	fcb = initialize_fcb(nombre_archivo, direccion_fcb);
+
+	dictionary_put(fcb_dictionary, nombre_archivo, fcb);
+
+    free(direccion_fcb);
+    free(fcb);
+}
+
+void fetch_nombre_archivo_y_delete_archivo(int socket_kernel){
+
+    int total_size;
+    int offset = 0;
+
+    int pid;
+    char* nombre_archivo;
+    int length_nombre_archivo;
+   
+    void *buffer2;
+    buffer2 = fetch_buffer(&total_size, socket_kernel);
+
+    offset += sizeof(int);
+    memcpy(&pid,buffer2 + offset, sizeof(int));
+    offset += sizeof(int);
+
+    memcpy(&length_nombre_archivo,buffer2 + offset, sizeof(int));
+    offset += sizeof(int); 
+    *nombre_archivo = malloc(length_nombre_archivo);
+    memcpy(&nombre_archivo,buffer2 + offset, length_nombre_archivo);
+    offset += length_nombre_archivo;
+
+    free(buffer2);
+
+    log_info(logger, "PID: %i - Eliminar Archivo: %s", pid, nombre_archivo);
+
+    char* direccion_fcb = string_new();
+    string_append(&direccion_fcb, path_base);
+	string_append(&direccion_fcb, "/");
+	string_append(&direccion_fcb, nombre_archivo);
+
+    t_fcb* fcb = malloc(sizeof(t_fcb));
+    fcb = dictionary_remove(fcb_dictionary, nombre_archivo);
+
+    if (fcb == NULL) {
+        log_error(logger, "Archivo %s no existe", nombre_archivo);
+        free(direccion_fcb);
+        free(fcb);
+        return;
+    }
+
+    if (remove(direccion_fcb) == 0) {
+        log_info(logger, "Archivo %s eliminado", nombre_archivo);
+    } else {
+        log_error(logger, "Error eliminando el archivo %s", nombre_archivo);
+    }
+
+    free(direccion_fcb);
+    free(fcb);
 }

@@ -4,6 +4,8 @@
 #include "recepcion.h"
 #include "short_term_scheduler.h"
 
+extern int cpu_dispatch_socket;
+
 
 
 void iniciar_planificacion();

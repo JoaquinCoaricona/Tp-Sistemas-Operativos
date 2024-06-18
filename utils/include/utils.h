@@ -114,6 +114,11 @@ typedef struct{
 }t_colaStdIN;    
 
 
+typedef struct {
+    t_pcb *PCB;
+    char *nombreArchivo;
+}t_colaDialFSCD;
+
 typedef struct
 {
 char *nombre;
@@ -126,6 +131,10 @@ pthread_mutex_t mutexColaIO;
 
 }t_interfaz_registrada;
 
-
+typedef struct {
+    char *nombre;
+    int tamanio;
+    int bloque_inicial;
+}t_fcb;
 
 #endif // UTILS_H

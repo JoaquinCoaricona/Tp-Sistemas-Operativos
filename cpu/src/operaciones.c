@@ -977,3 +977,45 @@ void operacion_signal(t_pcb *contexto,int socket,t_instruccion_unitaria* instruc
 
 	
 }
+
+void operacion_io_fs_create(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
+	t_buffer *buffer_rta;
+    t_packet *packet_rta;
+    buffer_rta = create_buffer();
+    packet_rta = create_packet(DIALFS_CREATE,buffer_rta);
+
+	contexto->state = BLOCKED;
+
+	add_to_packet(packet_rta,instruccion->parametros[0], instruccion->parametro1_lenght);
+	
+	char* archivo = instruccion->parametros[1];
+    add_to_packet(packet_rta,&archivo,strlen(archivo) + 1);
+
+	int tamanioPCB = sizeof(t_pcb);
+    add_to_packet(packet_rta, contexto, tamanioPCB);
+	
+	send_packet(packet_rta, socket);
+	destroy_packet(packet_rta);
+
+}
+
+void operacion_io_fs_delete(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
+	t_buffer *buffer_rta;
+    t_packet *packet_rta;
+    buffer_rta = create_buffer();
+    packet_rta = create_packet(DIALFS_DELETE,buffer_rta);
+
+	contexto->state = BLOCKED;
+
+	add_to_packet(packet_rta,instruccion->parametros[0], instruccion->parametro1_lenght);
+	
+	char* archivo = instruccion->parametros[1];
+    add_to_packet(packet_rta,&archivo,strlen(archivo) + 1);
+
+	int tamanioPCB = sizeof(t_pcb);
+    add_to_packet(packet_rta, contexto, tamanioPCB);
+	
+	send_packet(packet_rta, socket);
+	destroy_packet(packet_rta);
+
+}

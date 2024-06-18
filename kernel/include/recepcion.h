@@ -2,6 +2,7 @@
 #define RECEPCION_H_
 #include "../include/utils.h"
 #include "long_term_scheduler.h"// agrego esto porque no encuentra en Recepcion.C el PCBejecutando Global
+#include "main.h"
 
 extern t_list *listaInterfaces;
 extern t_queue* queue_ready;
@@ -20,4 +21,5 @@ t_interfaz_registrada *buscar_interfaz(char *nombreInterfaz);
 void crear_hilo_interfaz(t_interfaz_registrada *interfaz);
 void llamadasIOstdout(t_interfaz_registrada *interfaz);
 void llamadasIOstdin(t_interfaz_registrada *interfaz);
+void llamadasIOdialFS(t_interfaz_registrada *interfaz);
 #endif /* RECEPCION_H_ */
