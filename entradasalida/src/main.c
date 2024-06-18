@@ -12,8 +12,8 @@ char* path_base;
 int block_size;
 int block_count;
 int retraso_compactacion;
-int bloque_inicial = 0;
 t_dictionary* fcb_dictionary;
+t_dictionary* metadata_dictionary;
 
 int main(int argc, char *argv[])
 {   
@@ -54,6 +54,7 @@ int main(int argc, char *argv[])
     retraso_compactacion = atoi(config_get_string_value(config, "RETRASO_COMPACTACION"));
 
     fcb_dictionary = dictionary_create();
+    metadata_dictionary = dictionary_create();
 
     //ARMO PAQUETE PARA CONEXION CON KERNEL     
     buffer = create_buffer();
@@ -516,7 +517,6 @@ void fetch_nombre_archivo_y_crear_archivo(int socket_kernel){
     free(buffer2);
     
     int tamanio_archivo = block_size * block_count;
-    crear_archivo_metadata(nombre_archivo, bloque_inicial, tamanaio_archivo);
 
     log_info(logger, "PID: %i - Crear Archivo: %s", pid, nombre_archivo);
 
@@ -528,6 +528,10 @@ void fetch_nombre_archivo_y_crear_archivo(int socket_kernel){
 	t_fcb* fcb = malloc(sizeof(t_fcb));
 	fcb = initialize_fcb(nombre_archivo, direccion_fcb);
 
+    char *nombre_archivo_metadata = nombre_archivo + "_M";//_M para saber que es un archivo metadata
+    crear_archivo_metadata(nombre_archivo_metadata, fcb->bloque_inicial, tamanaio_archivo);
+
+    dictionary_put(metadata_dictionary, nombre_archivo_metadata, fcb);
 	dictionary_put(fcb_dictionary, nombre_archivo, fcb);
 
     free(direccion_fcb);
@@ -581,8 +585,26 @@ void fetch_nombre_archivo_y_delete_archivo(int socket_kernel){
         log_error(logger, "Error eliminando el archivo %s", nombre_archivo);
     }
 
+    char* nombre_archivo_metadata = nombre_archivo + "_M";//_M para saber que es un archivo metadata
+    t_fcb* fcbMetadata = malloc(sizeof(t_fcb));
+    fcbMetadata = dictionary_remove(metadata_dictionary, nombre_archivo_metadata);
+
+    if (fcbMetadata == NULL) {
+        log_error(logger, "Archivo %s no existe", nombre_archivo);
+        free(direccion_fcb);
+        free(fcbMetadata);
+        return;
+    }
+
+    if (remove(direccion_fcb) == 0) {
+        log_info(logger, "Archivo %s eliminado", nombre_archivo);
+    } else {
+        log_error(logger, "Error eliminando el archivo %s", nombre_archivo);
+    }
+
     free(direccion_fcb);
     free(fcb);
+    free(fcbMetadata);
 }
 
 void crear_bloques_dat(int block_size, int block_count) {
