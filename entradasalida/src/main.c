@@ -12,6 +12,7 @@ char* path_base;
 int block_size;
 int block_count;
 int retraso_compactacion;
+int bloque_inicial = 0;
 t_dictionary* fcb_dictionary;
 
 int main(int argc, char *argv[])
@@ -424,6 +425,9 @@ void interfazDialFS(){
     log_info(logger, "Handshake enviado");   
     destroy_packet(packet_handshake);
 
+    crear_bloques_dat(block_size, block_count);
+    crear_bitmap_dat(block_count);
+
     while (1)
     {   
         int operation_code = fetch_codop(socket_kernel);
@@ -511,6 +515,9 @@ void fetch_nombre_archivo_y_crear_archivo(int socket_kernel){
 
     free(buffer2);
     
+    int tamanio_archivo = block_size * block_count;
+    crear_archivo_metadata(nombre_archivo, bloque_inicial, tamanaio_archivo);
+
     log_info(logger, "PID: %i - Crear Archivo: %s", pid, nombre_archivo);
 
     char* direccion_fcb = string_new();
@@ -576,4 +583,51 @@ void fetch_nombre_archivo_y_delete_archivo(int socket_kernel){
 
     free(direccion_fcb);
     free(fcb);
+}
+
+void crear_bloques_dat(int block_size, int block_count) {
+    FILE *archivo = fopen("bloques.dat", "wb");
+    if(archivo == NULL) {
+        perror("Error creando bloques.dat");
+        exit(EXIT_FAILURE);
+    }
+
+    char *buffer = (char*) calloc(block_size, 1)
+    for(int i = 0; i < block_count; i++) {
+        fwrite(buffer, block_size, 1, file);
+    }
+
+    free(buffer);
+    fclose(archivo);
+}
+
+void crear_bitmap_dat(int block_count) {
+    FILE *archivo = fopen("bitmap.dat", "wb");
+    if(archivo == NULL) {
+        perror("Error creando bitmap.dat");
+        exit(EXIT_FAILURE);
+    }
+
+    int bitmap_size = (int) ceil(block_count / 8); //Bits a Byte
+    char * bitmap = (char*) calloc(bitmap_size, 1);
+    
+    fwrite(bitmap, 1, bitmap_size, file);
+
+    free(bitmap);
+    fclose(archivo);
+}
+
+void crear_archivo_metadata(const char *nombre_archivo, int bloque_inicial, int tamanaio_archivo){
+    FILE *archivo = fopen(nombre_archivo, "w");
+    if (archivo == NULL) {
+        perror("Error creando archivo metadata");
+        exit(EXIT_FAILURE);
+    }
+
+    fprintf(archivo, "BLOQUE_INICIAL=%i\n", bloque_inicial);
+    fprintf(archivo, "TAMANIO_ARCHIVO=%i\n", tamanaio_archivo);
+
+    bloque_inicial += tamanio_archivo;
+
+    fclose(archivo);
 }
