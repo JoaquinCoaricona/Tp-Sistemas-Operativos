@@ -8,6 +8,7 @@ char *IP_memoria;
 char *PORT_kernel;
 char *IP_kernel;
 int tiempoUnidad;
+t_config *config;
 int main(int argc, char *argv[])
 {   
     //ARGV ES UN VECTOR D DE TODAS LAS VARIABLES DE ENTORNO, EN LA POSICION 0 ESTA
@@ -17,12 +18,12 @@ int main(int argc, char *argv[])
     // printf("PARAMETRO: %s\n",argv[1]); // NOMBRE DE LA INTERFAZ
     // printf("PARAMETRO: %s\n",argv[2]); // CONFIG AL QUE LO CONECTO
     
-    char *nombreInterfaz = argv[1];
-    char *configRecibido = argv[2];
+    // char *nombreInterfaz = argv[1];
+    // char *configRecibido = argv[2];
 
 
-    //  char *nombreInterfaz = "nombre2";
-    //  char *configRecibido = "pantalla.config";
+    char *nombreInterfaz = "FS";
+    char *configRecibido = "filesystem.config";
 
     // ESTO ES PARA TENER LOS NOMBRE YA PUESTOS ACA Y NO ESTAR PASANDOLOS AL LLAMAR AL EXE
     //char *nombreInterfaz = "nombre1";
@@ -33,7 +34,7 @@ int main(int argc, char *argv[])
 
     logger = initialize_logger("entradasalida.log", "entradasalida", true, LOG_LEVEL_INFO);
 
-    t_config *config = initialize_config(logger, configRecibido);
+    config = initialize_config(logger, configRecibido);
 
     tipo =  config_get_string_value(config, "TIPO_INTERFAZ");
     PORT_memoria = config_get_string_value(config, "PUERTO_MEMORIA");
@@ -49,8 +50,51 @@ int main(int argc, char *argv[])
     add_to_packet(packet,tipo,strlen(tipo)+1);
 
     //INICIO CONEXION CON KERNEL
-    socket_kernel = create_conection(logger, IP_kernel, PORT_kernel);
+    //socket_kernel = create_conection(logger, IP_kernel, PORT_kernel);
     log_info(logger, "Conectado al servidor de Kernel %s:%s", IP_kernel, PORT_kernel);
+
+
+    /*Aca lo que hago es primero intentar abrir el archivo en modo r+
+    que lo que hace es abrir el archivo en modo lectura y escritura
+    pero si no existe no lo crea, pero si existe, al abrirlo no lo trunca, osea
+    no lo borra.
+    Despues en caso que el archivo no exista entra por el else y ahi se lo abre en modo
+    w+ que lo que hace es intentar abrir el archivo, si existe lo trunca, osea lo borra
+    pero aca sabemos que si llegamos a tener que intentar abrirlo asi es porque no existe
+    por eso lo puse en el else. En caso que no exista aca lo crea, por eso lo pongo en el else
+    y despues de crearlo lo abre en modo lectura y escritura
+    */
+    FILE *archivoBloques = fopen("/home/utnso/FileSystem/bloques.dat", "r+");
+    
+    if (archivoBloques != NULL){
+        log_info(logger, "El archivo ya existe y está abierto en modo lectura/escritura.");
+    }else{
+        // El archivo no existe, crearlo y abrirlo en modo lectura/escritura
+        archivoBloques = fopen("/home/utnso/FileSystem/bloques.dat", "w+");
+        
+        if (archivoBloques == NULL) {
+              log_info(logger,"Error al crear el archivo");
+              exit(EXIT_FAILURE);
+          }
+        log_info(logger, "El archivo no existia, fue creado y abierto en modo lectura/escritura.");
+    }
+
+    // truncar significa que se borra el contenido del archivo
+    // "r": Abre un archivo para lectura. El archivo debe existir.
+    // "r+": Abre un archivo para lectura y escritura. El archivo debe existir. 
+    // No trunca el archivo, es decir, no borra su contenido.
+    // "w": Abre un archivo para escritura. Si el archivo no existe, lo crea. Si
+    //  el archivo existe, lo trunca (borra su contenido).
+    // "w+": Abre un archivo para lectura y escritura. Si el archivo no existe,
+    //  lo crea. Si el archivo existe, lo trunca (borra su contenido).
+    // "a": Abre un archivo para escritura en modo adjuntar (append). Si el archivo 
+    // no existe, lo crea. Si el archivo existe, escribe al final del archivo.
+    // "a+": Abre un archivo para lectura y escritura en modo adjuntar (append). 
+    // Si el archivo no existe, lo crea. Si el archivo existe, escribe al final del archivo.
+
+
+
+
 
     //Envio paquete a kernel
     send_packet(packet, socket_kernel);
@@ -61,6 +105,8 @@ int main(int argc, char *argv[])
         interfazStdin();
     }else if(string_equals_ignore_case(tipo,"STDOUT")){
         interfazStdout();
+    }else if(string_equals_ignore_case(tipo,"FS")){
+        interfazFileSystem();
     }else{
         log_info(logger,"Error");
     }
@@ -397,4 +443,63 @@ void mandarAescribirEnMemoria(int dirFisica,void *contenidoAescribir, int cantid
 		log_info(logger,"Error en la escritura");
 	}
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+}
+
+
+void interfazFileSystem(){
+
+    // Conexion a Memoria
+    //Hago el handshake con memoria porque en este tipo de interfaz tengo que hacerlo
+    socket_memoria = create_conection(logger, IP_memoria, PORT_memoria);
+    log_info(logger, "Conectado al servidor de memoria %s:%s", IP_memoria, PORT_memoria);
+    t_buffer *buffer_handshake = create_buffer();
+    t_packet *packet_handshake = create_packet(HANDSHAKE_ENTRADA_SALIDA, buffer_handshake);
+    add_to_packet(packet_handshake, buffer_handshake->stream, buffer_handshake->size);
+    send_packet(packet_handshake,socket_memoria); 
+    log_info(logger, "Handshake enviado");   
+    destroy_packet(packet_handshake);
+
+    //Verifico si existen los archivos
+
+    int block_size = atoi(config_get_string_value(config, "BLOCK_SIZE"));
+    int block_count = atoi(config_get_string_value(config, "BLOCK_COUNT"));
+
+    // char* path = string_new();
+	// string_append(&path, PATH_BASE_DIALFS);
+
+    // FILE *archivoBloques = fopen("bloques.dat", "rw+");
+    
+    // if (archivoBitmap == NULL){
+    //     log_error(logger, "Error al abrir/crear el archivo de bloques.");
+    //    	exit(EXIT_FAILURE);
+    // }
+
+
+
+    //------------------------------------------------------------------------------
+    //LOOP INFINITO DE ESCUCHA A KERNEL
+    while (1)
+    {
+
+        int operation_code = fetch_codop(socket_kernel);
+        switch (operation_code)
+        {
+        case STDIN_LEER:
+            recibirYejecutarDireccionesFisicasSTDIN(socket_kernel);
+            enviarAvisoAKernel(socket_kernel,CONFIRMACION_STDIN);
+        break;
+        case -1:
+            log_error(logger, "Error al recibir el codigo de operacion");
+            close_conection(socket_kernel);
+
+            return;
+        default:
+            log_error(logger, "Algun error inesperado ");
+            close_conection(socket_kernel);
+            return;
+        }
+    }
+
+
+
 }
