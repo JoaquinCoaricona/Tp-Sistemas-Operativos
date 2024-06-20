@@ -50,50 +50,8 @@ int main(int argc, char *argv[])
     add_to_packet(packet,tipo,strlen(tipo)+1);
 
     //INICIO CONEXION CON KERNEL
-    //socket_kernel = create_conection(logger, IP_kernel, PORT_kernel);
+    socket_kernel = create_conection(logger, IP_kernel, PORT_kernel);
     log_info(logger, "Conectado al servidor de Kernel %s:%s", IP_kernel, PORT_kernel);
-
-
-    /*Aca lo que hago es primero intentar abrir el archivo en modo r+
-    que lo que hace es abrir el archivo en modo lectura y escritura
-    pero si no existe no lo crea, pero si existe, al abrirlo no lo trunca, osea
-    no lo borra.
-    Despues en caso que el archivo no exista entra por el else y ahi se lo abre en modo
-    w+ que lo que hace es intentar abrir el archivo, si existe lo trunca, osea lo borra
-    pero aca sabemos que si llegamos a tener que intentar abrirlo asi es porque no existe
-    por eso lo puse en el else. En caso que no exista aca lo crea, por eso lo pongo en el else
-    y despues de crearlo lo abre en modo lectura y escritura
-    */
-    FILE *archivoBloques = fopen("/home/utnso/FileSystem/bloques.dat", "r+");
-    
-    if (archivoBloques != NULL){
-        log_info(logger, "El archivo ya existe y está abierto en modo lectura/escritura.");
-    }else{
-        // El archivo no existe, crearlo y abrirlo en modo lectura/escritura
-        archivoBloques = fopen("/home/utnso/FileSystem/bloques.dat", "w+");
-        
-        if (archivoBloques == NULL) {
-              log_info(logger,"Error al crear el archivo");
-              exit(EXIT_FAILURE);
-          }
-        log_info(logger, "El archivo no existia, fue creado y abierto en modo lectura/escritura.");
-    }
-
-    // truncar significa que se borra el contenido del archivo
-    // "r": Abre un archivo para lectura. El archivo debe existir.
-    // "r+": Abre un archivo para lectura y escritura. El archivo debe existir. 
-    // No trunca el archivo, es decir, no borra su contenido.
-    // "w": Abre un archivo para escritura. Si el archivo no existe, lo crea. Si
-    //  el archivo existe, lo trunca (borra su contenido).
-    // "w+": Abre un archivo para lectura y escritura. Si el archivo no existe,
-    //  lo crea. Si el archivo existe, lo trunca (borra su contenido).
-    // "a": Abre un archivo para escritura en modo adjuntar (append). Si el archivo 
-    // no existe, lo crea. Si el archivo existe, escribe al final del archivo.
-    // "a+": Abre un archivo para lectura y escritura en modo adjuntar (append). 
-    // Si el archivo no existe, lo crea. Si el archivo existe, escribe al final del archivo.
-
-
-
 
 
     //Envio paquete a kernel
@@ -463,17 +421,90 @@ void interfazFileSystem(){
 
     int block_size = atoi(config_get_string_value(config, "BLOCK_SIZE"));
     int block_count = atoi(config_get_string_value(config, "BLOCK_COUNT"));
+    char *path = config_get_string_value(config, "PATH_BASE_DIALFS");
+    char *pathBitMap = strdup(path);
 
-    // char* path = string_new();
-	// string_append(&path, PATH_BASE_DIALFS);
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//+++++++++++++++++CREACION DEL ARCHIVO BLOQUES.DAT++++++++++++++++++++++++++++++++++++++++++++++
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    // FILE *archivoBloques = fopen("bloques.dat", "rw+");
+	string_append(&path,"bloques.dat"); 
+    /*Aca lo que hago es primero intentar abrir el archivo en modo r+
+    que lo que hace es abrir el archivo en modo lectura y escritura
+    pero si no existe no lo crea, pero si existe, al abrirlo no lo trunca, osea
+    no lo borra.
+    Despues en caso que el archivo no exista entra por el else y ahi se lo abre en modo
+    w+ que lo que hace es intentar abrir el archivo, si existe lo trunca, osea lo borra
+    pero aca sabemos que si llegamos a tener que intentar abrirlo asi es porque no existe
+    por eso lo puse en el else. En caso que no exista aca lo crea, por eso lo pongo en el else
+    y despues de crearlo lo abre en modo lectura y escritura
+    */
+    FILE *archivoBloques = fopen(path, "rb+");
     
-    // if (archivoBitmap == NULL){
-    //     log_error(logger, "Error al abrir/crear el archivo de bloques.");
-    //    	exit(EXIT_FAILURE);
-    // }
+    if (archivoBloques != NULL){
+        log_info(logger, "El archivo bloques.dat ya existe y está abierto en modo lectura/escritura.");
+    }else{
+        // El archivo no existe, crearlo y abrirlo en modo lectura/escritura
+        archivoBloques = fopen(path, "wb+");
+        
+        if (archivoBloques == NULL) {
+              log_info(logger,"Error al crear el archivo bloques.dat");
+              exit(EXIT_FAILURE);
+        }
+        //Aca obtengo el FileDescriptor porque ftruncate pide eso
+        int fdBloques = fileno(archivoBloques);
+        //El block size esta en bytes
+        ftruncate(fdBloques,(block_count * block_size));
+        log_info(logger, "El archivo bloques.dat no existia, fue creado y abierto en modo lectura/escritura.");
+    }
 
+    // truncar significa que se borra el contenido del archivo
+    // "r": Abre un archivo para lectura. El archivo debe existir.
+    // "r+": Abre un archivo para lectura y escritura. El archivo debe existir. 
+    // No trunca el archivo, es decir, no borra su contenido.
+    // "w": Abre un archivo para escritura. Si el archivo no existe, lo crea. Si
+    //  el archivo existe, lo trunca (borra su contenido).
+    // "w+": Abre un archivo para lectura y escritura. Si el archivo no existe,
+    //  lo crea. Si el archivo existe, lo trunca (borra su contenido).
+    // "a": Abre un archivo para escritura en modo adjuntar (append). Si el archivo 
+    // no existe, lo crea. Si el archivo existe, escribe al final del archivo.
+    // "a+": Abre un archivo para lectura y escritura en modo adjuntar (append). 
+    // Si el archivo no existe, lo crea. Si el archivo existe, escribe al final del archivo.
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//+++++++++++++++++CREACION DEL ARCHIVO BITMAP.DAT++++++++++++++++++++++++++++++++++++++++++++++
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    string_append(&pathBitMap,"bitmap.dat");
+    FILE *archivoBitMap = fopen(pathBitMap, "rb+");
+    
+    if (archivoBitMap != NULL){
+        log_info(logger, "El archivo BitMap.dat ya existe y está abierto en modo lectura/escritura.");
+    }else{
+        // El archivo no existe, crearlo y abrirlo en modo lectura/escritura
+        archivoBitMap = fopen(pathBitMap, "wb+");
+        
+        if (archivoBitMap == NULL) {
+              log_info(logger,"Error al crear el archivo BitMap.dat");
+              exit(EXIT_FAILURE);
+        }
+        int fdBitMap = fileno(archivoBitMap);
+        //Porque tengo que representar cada bloque con un bit, y el parametro que recibe ftruncate
+        //es en bytes. Pero por las dudas dijeron que le sume uno al resultado de la division
+        //para que no queden bits afuera
+        int tamaArchivoBitMap = (block_count / 8) + 1;
+        //El block size esta en bytes
+        ftruncate(fdBitMap,tamaArchivoBitMap);
+        log_info(logger, "El archivo BitMap.dat no existia, fue creado y abierto en modo lectura/escritura.");
+    }
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
     //------------------------------------------------------------------------------
