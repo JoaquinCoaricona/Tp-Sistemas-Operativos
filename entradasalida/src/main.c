@@ -481,7 +481,7 @@ void interfazFileSystem(){
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     string_append(&pathBitMap,"bitmap.dat");
     FILE *archivoBitMap = fopen(pathBitMap, "rb+");
-    
+
     if (archivoBitMap != NULL){
         log_info(logger, "El archivo BitMap.dat ya existe y está abierto en modo lectura/escritura.");
     }else{
@@ -502,6 +502,30 @@ void interfazFileSystem(){
         log_info(logger, "El archivo BitMap.dat no existia, fue creado y abierto en modo lectura/escritura.");
     }
 
+    //Declaro la cantidad de bits que va a tener el bitmap, por las dudas sumo 1
+    int bitmap_size = (block_count / 8) + 1;
+    //Aca asigno que en este espacio de memoria voy a tener la referencia al archivo
+    //Mmap hace que el contenido del archivo lo tengamos en memoria RAM y que si cambiiamos algo
+    //aca entonces se cambia en el archivo. Es como tener al archivo en RAM.
+    char* bitmap_data = mmap(NULL, bitmap_size, PROT_READ | PROT_WRITE, MAP_SHARED,fileno(archivoBitMap), 0);
+    
+    if (bitmap_data == MAP_FAILED) {
+        log_info(logger, "Error al mapear el archivo del bitmap a memoria");
+        exit(EXIT_FAILURE);
+    }
+
+    // Inicializar el bitarray con el bitmap mapeado
+
+    /*
+    Aca lo que se hace es inicializar el bitarray en un espacio de memoria
+    determinado, como el bitarray es una secuencia de bits aca 
+    lee lo que tenias en esa posicion de memoria, la cantidad de bytes que le pasas
+    y entonces crea el bitarray teniendo en cuenta eso. Porque lee los 1 y 0 que tenias
+    y te crea el bitarray con eso. SI ya tenias una pagina en 1 bueno pone esa posicion 
+    del bitarray en 1.
+    */
+    
+    t_bitarray *bitarray = bitarray_create_with_mode(bitmap_data, bitmap_size, LSB_FIRST);
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -515,9 +539,8 @@ void interfazFileSystem(){
         int operation_code = fetch_codop(socket_kernel);
         switch (operation_code)
         {
-        case STDIN_LEER:
-            recibirYejecutarDireccionesFisicasSTDIN(socket_kernel);
-            enviarAvisoAKernel(socket_kernel,CONFIRMACION_STDIN);
+        case:
+        
         break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion");

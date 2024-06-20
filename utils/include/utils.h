@@ -20,6 +20,7 @@
 #include <commons/collections/queue.h>
 #include <commons/collections/list.h>
 #include <commons/collections/node.h>
+#include <commons/bitarray.h>
 #include <string.h>
 #include "sockets.h"
 #include "logger.h"
