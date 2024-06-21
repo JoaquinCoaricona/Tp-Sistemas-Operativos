@@ -924,7 +924,8 @@ void operacion_io_stdin_read(t_pcb *contexto,int socket,t_instruccion_unitaria* 
 	destroy_packet(packet_rta);
 
 }
-
+// WAIT (Recurso): Esta instrucción solicita al Kernel que se asigne una
+// instancia del recurso indicado por parámetro.
 void operacion_wait(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
 	t_buffer *bufferWait;
 	t_packet *packetWait;
@@ -950,7 +951,8 @@ void operacion_wait(t_pcb *contexto,int socket,t_instruccion_unitaria* instrucci
 	}
 	
 }
-
+// SIGNAL (Recurso): Esta instrucción solicita al Kernel que se libere
+// una instancia del recurso indicado por parámetro.
 void operacion_signal(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
 	t_buffer *bufferSignal;
 	t_packet *packetSignal;
@@ -976,4 +978,45 @@ void operacion_signal(t_pcb *contexto,int socket,t_instruccion_unitaria* instruc
 	}
 
 	
+}
+// IO_FS_CREATE (Interfaz, Nombre Archivo): Esta instrucción
+// solicita al Kernel que mediante la interfaz seleccionada, se cree un
+// archivo en el FS montado en dicha interfaz.
+void operacion_io_fs_create(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
+	t_buffer *bufferCreate;
+	t_packet *packetCreate;
+	bufferCreate = create_buffer();
+	packetCreate = create_packet(CREAR_ARCHIVO,bufferCreate);
+	//CARGO EL NOMBRE DE LA INTERFAZ
+	add_to_packet(packetCreate,instruccion->parametros[0], instruccion->parametro1_lenght);
+	//CARGO EL NOMBRE DEL ARCHIVO A CREAR
+	add_to_packet(packetCreate,instruccion->parametros[1], instruccion->parametro2_lenght);
+	
+	//Bloqueado porque se va a ir a la cola de la interfaz
+	contexto->state = BLOCKED;
+	
+	add_to_packet(packetCreate,contexto,sizeof(t_pcb)); //CARGO EL PCB
+	send_packet(packetCreate,socket);		//ENVIO EL PAQUETE
+	destroy_packet(packetCreate);
+
+}
+// IO_FS_DELETE (Interfaz, Nombre Archivo): Esta instrucción solicita al
+// Kernel que mediante la interfaz seleccionada, se elimine un archivo en el
+// FS montado en dicha interfaz
+void operacion_io_fs_delete(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
+	t_buffer *bufferDelete;
+	t_packet *packetDelete;
+	bufferDelete = create_buffer();
+	packetDelete = create_packet(BORRAR_ARCHIVO,bufferDelete);
+	//CARGO EL NOMBRE DE LA INTERFAZ
+	add_to_packet(packetDelete,instruccion->parametros[0], instruccion->parametro1_lenght);
+	//CARGO EL NOMBRE DEL ARCHIVO A BORRAR
+	add_to_packet(packetDelete,instruccion->parametros[1], instruccion->parametro2_lenght);
+	
+	//Bloqueado porque se va a ir a la cola de la interfaz
+	contexto->state = BLOCKED;
+	
+	add_to_packet(packetDelete,contexto,sizeof(t_pcb)); //CARGO EL PCB
+	send_packet(packetDelete,socket);		//ENVIO EL PAQUETE
+	destroy_packet(packetDelete);
 }

@@ -304,7 +304,53 @@ t_pcb *fetch_pcb_con_STDIN(int server_socket,char **nomrebInterfaz,void **conten
     return PCBrec;
 
 }
+t_pcb *fetchPCBfileSystem(int server_socket,char **nomrebInterfaz,char **nombreArchivo){
+    
+    int total_size;
+    int offset = 0;
+    t_pcb *PCBrec = pcbEJECUTANDO;
+    pcbEJECUTANDO = NULL;
+    void *buffer;
+    int length_nombre_inter;
+    
 
+    buffer = fetch_buffer(&total_size, server_socket); //RECIBO EL BUFFER 
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++     
+                //RECIBO EL NOMBRE DE LA INTERFAZ
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+
+    memcpy(&length_nombre_inter,buffer + offset, sizeof(int));  //RECIBO EL LENGTH DEL NOMBRE  DE LA INTERFAZ
+    offset += sizeof(int); 
+    *nomrebInterfaz = malloc(length_nombre_inter);
+    memcpy(*nomrebInterfaz,buffer + offset,length_nombre_inter); //RECIBO EL NOMBRE DE LA INTERFAZ
+    offset += length_nombre_inter;
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++     
+                //RECIBO EL NOMBRE DEL ARCHIVO
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+    int length_nombre_archivo;
+    memcpy(&length_nombre_archivo,buffer + offset, sizeof(int));  //RECIBO EL LENGTH DEL NOMBRE DEL ARCHIVO
+    offset += sizeof(int); 
+    *nombreArchivo = malloc(length_nombre_archivo);
+    memcpy(*nombreArchivo,buffer + offset,length_nombre_archivo); //RECIBO EL NOMBRE DEL ARCHIVO
+    offset += length_nombre_archivo;
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++     
+                //RECIBO EL PCB
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+    offset += sizeof(int); //Salteo El tamaño del PCB
+    memcpy((PCBrec),buffer + offset, sizeof(t_pcb)); //RECIBO EL PID
+
+    log_info(logger, "SE RECIBIO UN PCB PARA IR A FS");
+    log_info(logger, "PID RECIBIDO : %i",PCBrec->pid);
+    log_info(logger, "PC RECIBIDO : %i",PCBrec->program_counter);
+    log_info(logger, "REGISTRO AX : %i",PCBrec->registers.AX);
+    log_info(logger, "REGISTRO BX : %i",PCBrec->registers.BX);
+
+    return PCBrec;
+
+}
 t_interfaz_registrada *buscar_interfaz(char *nombreInterfaz){  
     
     interfazBUSCADA = nombreInterfaz;
@@ -354,6 +400,18 @@ void cargarEnListaSTDIN(t_pcb *receptorPCB,t_interfaz_registrada *interfaz,void 
 
     pthread_mutex_lock(&(interfaz->mutexColaIO));
     queue_push(interfaz->listaProcesosEsperando, agregarACola);
+    pthread_mutex_unlock(&(interfaz->mutexColaIO));
+
+    sem_post(&(interfaz->semaforoContadorIO)); //aca solo le hago el post porque sume un pcb a la lista
+
+}
+void cargarEnListaFS(t_colaFS *aCargar,t_interfaz_registrada *interfaz){
+     
+
+    //Directamente cargo el struct colaFS
+    //Despues antes de enviar es cuando separo en casos
+    pthread_mutex_lock(&(interfaz->mutexColaIO));
+    queue_push(interfaz->listaProcesosEsperando, aCargar);
     pthread_mutex_unlock(&(interfaz->mutexColaIO));
 
     sem_post(&(interfaz->semaforoContadorIO)); //aca solo le hago el post porque sume un pcb a la lista
@@ -451,6 +509,9 @@ void crear_hilo_interfaz(t_interfaz_registrada *interfaz){
         pthread_detach(hilo_manejo_io);
     }else if(string_equals_ignore_case(interfaz->tipo,"STDIN")){
         pthread_create(&hilo_manejo_io, NULL, (void* ) llamadasIOstdin, interfaz);
+        pthread_detach(hilo_manejo_io);
+    }else if(string_equals_ignore_case(interfaz->tipo,"FS")){
+        pthread_create(&hilo_manejo_io, NULL, (void* ) llamadasFS, interfaz);
         pthread_detach(hilo_manejo_io);
     }else{
         log_info(logger,"ERROR");
@@ -610,6 +671,85 @@ void llamadasIOstdin(t_interfaz_registrada *interfaz){
         
         sem_post(&(soloUnoEnvia));
         destroy_packet(packetEscribir);
+
+    }
+}
+
+void llamadasFS(t_interfaz_registrada *interfaz){
+    
+    t_colaFS *pcbEnviado = NULL;
+    sem_t soloUnoEnvia;
+    sem_init(&(soloUnoEnvia), 0, 1); //ESTE SEMAFORO ES PARA QUE SOLO UNO HAGA EL ENVIO
+    while(1){
+        
+        t_buffer *bufferFS;
+        t_packet *packetFS;
+        
+        sem_wait(&(interfaz->semaforoContadorIO));//a este solo le hago signal cuando entra un Nuevo PCB, no al final de esto
+        sem_wait(&(soloUnoEnvia));
+        //aca el semaforo soloUnoEnvia lo que hace es bloquear que solo uno envie a IO, pero 
+        //el mutex de abajo es para que a la cola solo entre uno, ese es mas chico porque bloquea el acceso a la cola
+        //y si solamente uso soloUnoEnvia entonces me quedaria esperando el recv de la IO y no se podrian merter
+        //mas cosas a la cola y congelaria todo el kernel. Por eso uso dos, este que cube todo el envio y
+        //el mutex que una vez que saco lo que queria ya hace el unlock
+        
+        pthread_mutex_lock(&(interfaz->mutexColaIO));
+        pcbEnviado = queue_pop(interfaz->listaProcesosEsperando); //ENCAPSULO ENTRE DOS MUTEX SACAR DE LA COLA
+        pthread_mutex_unlock(&(interfaz->mutexColaIO));
+        
+        bufferFS = create_buffer();
+        if(pcbEnviado->tipoOperacion == CREAR_ARCHIVO){
+            packetFS = create_packet(CREAR_ARCHIVO,bufferFS);
+
+            int tamaNombre = strlen(pcbEnviado->nombreArchivo) + 1;
+            
+            add_to_packet(packetFS,pcbEnviado->nombreArchivo,tamaNombre);
+            add_to_packet(packetFS,&(pcbEnviado->PCB->pid), sizeof(int));
+
+            send_packet(packetFS,interfaz->socket_de_conexion);
+
+        }
+        if(pcbEnviado->tipoOperacion == BORRAR_ARCHIVO){
+            packetFS = create_packet(BORRAR_ARCHIVO,bufferFS);
+
+            int tamaNombre = strlen(pcbEnviado->nombreArchivo) + 1;
+            
+            add_to_packet(packetFS,pcbEnviado->nombreArchivo,tamaNombre);
+            add_to_packet(packetFS,&(pcbEnviado->PCB->pid), sizeof(int));
+
+            send_packet(packetFS,interfaz->socket_de_conexion);
+
+        }
+
+        int operation_code = fetch_codop(interfaz->socket_de_conexion); //aca se queda bloqueante esperando la respuesta
+    
+        int total_size;
+        //ACLARACION: es fetch_buffer de protocol.c , no es fetch pcb, solo recibe el numero que se envio para confirmar 
+        void *buffer2 = fetch_buffer(&total_size,interfaz->socket_de_conexion); // recibo porque puse un numero en el buffer
+        free(buffer2);  //para no enviarlo vacio
+        
+        if(operation_code == CONFIRMACION_CREACION){
+            log_info(logger, "CONFIRMACION CREACION ARCHIVO"); 
+        }
+        if(operation_code == CONFIRMACION_ELIMINACION){
+            log_info(logger, "CONFIRMACION ELIMINACION ARCHIVO"); 
+        }                       
+
+        if(pcbEnviado->PCB->quantum == quantumGlobal){
+            
+            log_info(logger,"Como estoy en RoundRobin lo agrego a ready directamente");
+            addEstadoReady(pcbEnviado->PCB);//meto en ready el pcb 
+            sem_post(&sem_ready); 
+        }else{
+            log_info(logger,"Como estoy en Virtual RoundRobin lo agrego a la cola prioridad");
+            addColaPrioridad(pcbEnviado->PCB);
+            sem_post(&sem_ready); 
+        }
+
+        
+        
+        sem_post(&(soloUnoEnvia));
+        destroy_packet(packetFS);
 
     }
 }
