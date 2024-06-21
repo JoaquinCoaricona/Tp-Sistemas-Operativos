@@ -13,6 +13,7 @@ char *conservadorPATH;
 t_bitarray *bitarray;
 int block_size;
 int block_count;
+int bloquesLibres;
 int main(int argc, char *argv[])
 {   
     //ARGV ES UN VECTOR D DE TODAS LAS VARIABLES DE ENTORNO, EN LA POSICION 0 ESTA
@@ -430,6 +431,8 @@ void interfazFileSystem(){
     block_count = atoi(config_get_string_value(config, "BLOCK_COUNT"));
     char *path = config_get_string_value(config, "PATH_BASE_DIALFS");
     char *pathBitMap = strdup(path);
+    //Esto es para tener un contador de cuantos bloques libres hay
+    bloquesLibres = block_count;
 
     conservadorPATH = strdup(path);
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -713,8 +716,62 @@ void truncarArchivo(int socket_kernel){
     char *pathNuevo = strdup(conservadorPATH);
     string_append(&pathNuevo,nombreArchivo);
 
-    FILE *archivo = fopen(pathNuevo, "rb+");
-    ftruncate(fileno(archivo),nuevoTamaArchivo);
+    FILE *archivo = fopen(pathNuevo, "r+");
+
+    int bloque_inicial;
+    int tama_archivo;
+
+    fscanf(archivo, "BLOQUE_INICIAL=%d\n", &bloque_inicial);
+    fscanf(archivo, "TAMANIO_ARCHIVO=%d\n", &tama_archivo);
+
+    //Mismo calculo para que se redondee al entero superior mas proximo en caso que sea con coma
+    int cantidadBloques = (tama_archivo + block_size - 1) / block_size;  
+    int nuevaCantidadBloques = (nuevoTamaArchivo + block_size - 1) / block_size;
+
+    if(cantidadBloques == nuevaCantidadBloques){
+        log_info(logger,"La nueva cantidad de bloques es igual a la actual");
+    }else if(cantidadBloques > nuevaCantidadBloques){
+        log_info(logger,"La nueva cantidad de bloques es menor a la actual");
+        //Esta funcion solo la uso aca y es para borrar los bits que tiene de mas
+        //ahora con su nuevo tamaño mas chico
+        borrarUltimosbits(bitarray,cantidadBloques,nuevaCantidadBloques,bloque_inicial);
+    }else{
+        log_info(logger,"La nueva cantidad de bloques es mayor a la actual");
+        int diferencia = nuevaCantidadBloques - cantidadBloques;
+
+        if(diferencia > bloquesLibres){
+            log_info(logger,"La cantidad de bloques libres: %d es menor a los bloques nuevos que hay que agregar: %d",bloquesLibres,diferencia);
+        }
+    
+        bool esNecesario = verificarNecesidadDeCompactar(bitarray,cantidadBloques,nuevaCantidadBloques,bloque_inicial);    
+
+        if(esNecesario){
+            log_info(logger,"Hay que compactar");
+            //compactar();
+        }else{
+            log_info(logger,"No es necesario compactar");
+            marcarBitsOcupados(bitarray,bloque_inicial,cantidadBloques,(nuevaCantidadBloques - cantidadBloques));
+        }
+
+    }
+    //Hago esto porque tengo que actualizar el valor del tamanio archivo
+    //y para no borrar solo unalinea y eso. Trunco a 0 el archivo asi se borra
+    //Todo y escribo todo de vuelta
+    // Truncar el archivo al nuevo tamaño
+    ftruncate(fileno(archivo), 0); // Trunca el archivo a 0 bytes, borrando su contenido
+
+    //Aca despues de haber truncado el archivo a 0, tengo que mover el punter
+    //Al inicio asi que con esto lo dejo en el incio para volver a escribir
+    fseek(archivo, 0, SEEK_SET);  // Posicionar el puntero al inicio del archivo
+
+    // Escribir los nuevos valores de metadata en el archivo
+    fprintf(archivo, "BLOQUE_INICIAL=%d\n", bloque_inicial);
+    fprintf(archivo, "TAMANIO_ARCHIVO=%d\n", nuevoTamaArchivo);
+
+
+    //El metadata no se trunca, solo se trunca lo que ocupa el archivo como tal
+    //En el bitmap y su contenido pero el metadata no porque ahi estan sus valores
+    //y es como su FCB
     fclose(archivo);
 
 
@@ -743,10 +800,14 @@ int buscar_bit_libre(t_bitarray *bitarray){
 }
 void marcarBitOcupado(t_bitarray *bitarray, int bit_index){
     bitarray_set_bit(bitarray, bit_index);
+    //Actualizo el contador de bloques libres
+    bloquesLibres = bloquesLibres - 1;
     log_info(logger,"El bit %i fue ocupado", bit_index);
 }
 void marcarBitLibre(t_bitarray *bitarray, int bit_index){
     bitarray_clean_bit(bitarray, bit_index);
+    //Actualizo el contador de bloques libres
+    bloquesLibres = bloquesLibres + 1;
     log_info(logger,"El bit %i fue liberado", bit_index);
 }
 void liberar_bloques(t_bitarray *bitarray, int bloque_inicial, int tama_archivo){
@@ -757,5 +818,76 @@ void liberar_bloques(t_bitarray *bitarray, int bloque_inicial, int tama_archivo)
 
     for (int i = 0; i < bloques_ocupados; i++) {
         marcarBitLibre(bitarray, bloque_inicial + i);
+    }
+}
+//Esta funcion solo se usa en caso que tengamos que achicar el archivo
+void borrarUltimosbits(t_bitarray *bitarray,int cantidadBloques,int nuevaCantidadBloques,int bloque_inicial){
+    //Aca lo que hago es calcular la diferencia entre la cantiadd de bloques actual y la nueva
+    int diferencia = cantidadBloques - nuevaCantidadBloques;
+    //Aca le resto a la cantidad de bloques la diferencia que calcule, por ejemplo
+    //si yo tenia 6 bloques y la diferencia es 2, entonces significa que ahora voy
+    //a tener 4 bloques, entonces a la cantidad de blqoues que era 6 le resto los 2 y queda
+    //4. Esto lo hice para poder usar el for con i++, sino tenia que hacer -- o algo raro
+    cantidadBloques = cantidadBloques - diferencia;
+    //Aca en el for pongo como limite <diferencia para que solo libere
+    //la cantidad de bits que vamos a achicar tomando en cuenta los bloques a borrar
+    //Y para marcar el bit especifico tomo el bloque inicial, le sumo la cantidad de bloques
+    //que esta variable ahora no tiene la cantidad de bloques origianl sino que tiene
+    //la anterior cantidad de bloques - diferencia entonces tiene la nueva cantidad de bloques
+    //porque esto solo se usa para achicar. Entonces tomando eso como base, osea 
+    //bloque_inicial + cantidadBloques que seria donde termina el archivo
+    //osea ahi seria el ultimo bloque, entonces de ahi empiezo a sumar i que va a ir
+    //aumentando marcando la diferencia, osea cuando empiece en 1 va a marcar
+    //Como libre el bit siguiente a donde termina ahora con el nuevo tamaño
+    //y asi despues el que le sigue y asi hasta marcar como libre todos los que tiene
+    //De mas ahora que achico su tamaño. Eso viene marcado por el limite que marca 
+    //la variable diferencia
+    //ACLARACION: HABIA PUESTO UN INT I = 1 Y <= PERO ESTABA MAL CALCULADO ESO Y DABA MAL
+    //AL FINAL LO BORRE PERO QUIZAS QUEDO EN ALGUN COMENTARIO, ESO ESTA MAL
+    for(int i = 0; i < diferencia;i++){
+        int bloqueBorrar =bloque_inicial + cantidadBloques + i;
+        marcarBitLibre(bitarray, bloque_inicial + cantidadBloques + i);
+    }
+}
+bool verificarNecesidadDeCompactar(t_bitarray *bitarray,int cantidadBloques,int nuevaCantidadBloques,int bloque_inicial){
+    bool esNecesario = false;
+    //En este caso la nueva cantidad de bloques es mayor a la actual, por eso
+    //vamos a comprobar que los bloques que le siguen esten libres para ver si es necesario
+    //compactar o no. Son dos condiciones en  el segundo parametro del for.
+    //La primera es que nos vamos a fijar tantos bloques delante como bloques nuevos
+    //tengamos que agregar. osea que si tengo un archivo de 8 bloques actualmente
+    //y lo voy a agrandar a 10 entonces me fijo si los proximos 2 bloques
+    //Estan libres o no, me fijo en el bitmap. Por otro lado la segunda condicion
+    //Es para que no nos pasemos de la cantidad total de bloques.
+    //porque hay casos en los que el bitarray tiene mas bits que bloques realmente
+    //Eso es por un redondeo y esas cosas que estan explicadas mas arriba.
+    //bloque_inicial + cantidadBloques + i este calculo nos dice el bloque actual 
+    //en el que estamos, por eso hago toda la suma, es para ver que no nos pasemos
+    //del bloque maximo.
+ 
+    int diferencia = nuevaCantidadBloques - cantidadBloques;
+    for(int i = 0; (i < diferencia), ((bloque_inicial + cantidadBloques + i) <= block_count);i++){
+        
+        //Si el bit esta libre entonces devuelve False 
+        //el segundo parametro es el bit especifico que quiero probar
+        //el calculo es el mismo que para comprobar que no me pase de total de bloques
+        if(bitarray_test_bit(bitarray, bloque_inicial + cantidadBloques + i)){
+            bool esNecesario = true;
+        }
+        //Si el bit esta libre entonces devuelve falso, entonces no entra al if
+        //ahora cuando un bit esta ocupado devuelve true entonces entra al if
+        //y ahi se marca el esNecesario = true, porque es necesario y ya con que
+        //uno solo lo marque queda en true.
+
+    }
+    return esNecesario;
+}
+void marcarBitsOcupados(t_bitarray *bitarray,int bloque_inicial,int cantidadBloques,int diferencia){
+    
+    //CantidadBloques es la cantidad de bloques actual
+    for(int i = 0;i < diferencia;i++){
+        //Aca en el segundo parametro estoy haciendo el mismo calculo de siempre
+        //para obtener la pagina
+        marcarBitOcupado(bitarray,(bloque_inicial + cantidadBloques + i));
     }
 }

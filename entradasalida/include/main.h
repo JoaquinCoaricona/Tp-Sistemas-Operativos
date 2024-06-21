@@ -14,11 +14,13 @@ void mandarAescribirEnMemoria(int dirFisica,void *contenidoAescribir, int cantid
 void mandarALeer(int dirFisica, int cantidadBits, int pid, void *contenido);
 void recibirYejecutarDireccionesFisicasSTDIN(int socket_kernel);
 void interfazStdin();
+bool verificarNecesidadDeCompactar(t_bitarray *bitarray,int cantidadBloques,int nuevaCantidadBloques,int bloque_inicial);
 void recibirYejecutarDireccionesFisicas(int socket_kernel);
 void interfazStdout();
 void enviarAvisoAKernel(int socket_kernel,op_code codigo);
 int fetch_tiempoDormir(int socket_kernel);
 void interfazGenerica();
-
+void borrarUltimosbits(t_bitarray *bitarray,int cantidadBloques,int nuevaCantidadBloques,int bloque_inicial);
+void marcarBitsOcupados(t_bitarray *bitarray,int bloque_inicial,int cantidadBloques,int diferencia);
 
 #endif /* MAIN_H_ */
