@@ -175,6 +175,8 @@ void *Aready(void *arg)
 
 
 void addEstadoExit(t_pcb *pcb){
+	
+	liberarRecursosProceso(pcb->pid);
     pthread_mutex_lock(&mutex_state_exit);
 	queue_push(queue_exit,pcb);
 	pthread_mutex_unlock(&mutex_state_exit);

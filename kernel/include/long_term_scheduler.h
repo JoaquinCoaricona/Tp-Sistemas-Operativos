@@ -40,6 +40,7 @@ void *Aready(void *arg);
 void addEstadoExit(t_pcb *pcb);
 void addColaPrioridad(t_pcb *pcb);
 t_pcb *obtenerSiguienteColaPrioridad();
+void liberarRecursosProceso(int pid);
 
 
 extern sem_t m_execute_process;

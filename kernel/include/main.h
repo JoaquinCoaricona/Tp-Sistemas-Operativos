@@ -8,6 +8,9 @@
 
 void iniciar_planificacion();
 void detener_planificacion();
+void liberarRecursos(int socket);
+bool buscarRecursoUsado(void* args);
+
 
 t_resource* new_resource(char* resource_name);
 
@@ -21,4 +24,15 @@ t_list* obtener_recursos_por_pid(t_dictionary **matriz,char *pid, int cantidad);
 t_resource *obtener_recurso_mediante_nombre(t_list *recursos,char *recurso_a_buscar);
 void controlGradoMultiprogramacion();
 
+typedef struct
+{
+    int instancias;
+    t_queue *colaBloqueo;
+}t_recurso;
+
+typedef struct
+{
+    char* nombreRecurso;
+    int pidUsuario;
+}t_recursoUsado;
 #endif /* MAIN_H_ */
