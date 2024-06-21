@@ -8,12 +8,8 @@ char *IP_memoria;
 char *PORT_kernel;
 char *IP_kernel;
 int tiempoUnidad;
-char* path_base;
-int block_size;
-int block_count;
-int retraso_compactacion;
-t_dictionary* fcb_dictionary;
-t_dictionary* metadata_dictionary;
+t_config* config;
+char *path_base_dialfs;
 
 int main(int argc, char *argv[])
 {   
@@ -27,7 +23,6 @@ int main(int argc, char *argv[])
     char *nombreInterfaz = argv[1];
     char *configRecibido = argv[2];
 
-
     //  char *nombreInterfaz = "nombre2";
     //  char *configRecibido = "pantalla.config";
 
@@ -39,8 +34,7 @@ int main(int argc, char *argv[])
     char *tipo;
 
     logger = initialize_logger("entradasalida.log", "entradasalida", true, LOG_LEVEL_INFO);
-
-    t_config *config = initialize_config(logger, configRecibido);
+    config = initialize_config(logger, configRecibido);
 
     tipo =  config_get_string_value(config, "TIPO_INTERFAZ");
     PORT_memoria = config_get_string_value(config, "PUERTO_MEMORIA");
@@ -48,13 +42,6 @@ int main(int argc, char *argv[])
     PORT_kernel = config_get_string_value(config, "PUERTO_KERNEL");
     IP_kernel = config_get_string_value(config, "IP_KERNEL");
     tiempoUnidad = atoi(config_get_string_value(config, "TIEMPO_UNIDAD_TRABAJO"));
-    path_base = config_get_string_value(config, "PATH_BASE_DIALFS");
-    block_size = atoi(config_get_string_value(config, "BLOCK_SIZE"));
-    block_count = atoi(config_get_string_value(config, "BLOCK_COUNT"));
-    retraso_compactacion = atoi(config_get_string_value(config, "RETRASO_COMPACTACION"));
-
-    fcb_dictionary = dictionary_create();
-    metadata_dictionary = dictionary_create();
 
     //ARMO PAQUETE PARA CONEXION CON KERNEL     
     buffer = create_buffer();
@@ -426,6 +413,11 @@ void interfazDialFS(){
     log_info(logger, "Handshake enviado");   
     destroy_packet(packet_handshake);
 
+    int block_size = atoi(config_get_string_value(config, "BLOCK_SIZE"));
+    int block_count = atoi(config_get_string_value(config, "BLOCK_COUNT"));
+    path_base_dialfs = config_get_string_value(config, "PATH_BASE_DIALFS");
+
+
     crear_bloques_dat(block_size, block_count);
     crear_bitmap_dat(block_count);
 
@@ -469,187 +461,130 @@ void interfazDialFS(){
     }
 }
 
-t_fcb* initialize_fcb(char* nombre_archivo, char* path) {
-    t_config* config = malloc(sizeof(t_config));
-
-    config->path = strdup(path);
-    config->properties = dictionary_create();
-
-    int tamanio = block_size * block_count;
-
-    config_set_value(config, "NOMBRE", string_duplicate(nombre_archivo));
-    config_set_value(config, "TAMANIO", string_itoa(tamanio));
-    config_set_value(config, "BLOQUE_INICIAL", "");
-    config_save_in_file(config, path);
-	t_fcb* fcb = malloc(sizeof(t_fcb));
-
-    fcb->nombre = string_duplicate(config_get_string_value(config, "NOMBRE"));
-	fcb->tamanio = config_get_int_value(config, "TAMANIO");
-	fcb->bloque_inicial = config_get_int_value(config, "BLOQUE_INICIAL");
-
-	config_destroy(config);
-	return fcb;
-
-}
-
 void fetch_nombre_archivo_y_crear_archivo(int socket_kernel){
 
     int total_size;
     int offset = 0;
-
     int pid;
     char* nombre_archivo;
     int length_nombre_archivo;
-
     void *buffer2;
     buffer2 = fetch_buffer(&total_size, socket_kernel);
+
+    memcpy(&length_nombre_archivo,buffer2 + offset, sizeof(int));
+    offset += sizeof(int);
+
+    nombre_archivo = malloc(length_nombre_archivo);
+    memcpy(nombre_archivo,buffer2 + offset, length_nombre_archivo);
+    offset += length_nombre_archivo; 
 
     offset += sizeof(int);
     memcpy(&pid,buffer2 + offset, sizeof(int));
     offset += sizeof(int);
 
-    memcpy(&length_nombre_archivo,buffer2 + offset, sizeof(int));
-    offset += sizeof(int); 
-    *nombre_archivo = malloc(length_nombre_archivo);
-    memcpy(&nombre_archivo,buffer2 + offset, length_nombre_archivo);
-    offset += length_nombre_archivo;
-
     free(buffer2);
-    
-    int tamanio_archivo = block_size * block_count;
 
     log_info(logger, "PID: %i - Crear Archivo: %s", pid, nombre_archivo);
 
-    char* direccion_fcb = string_new();
-    string_append(&direccion_fcb, path_base);
-	string_append(&direccion_fcb, "/");
-	string_append(&direccion_fcb, nombre_archivo);
+    char* pathCreacion = strdup(path_base_dialfs);
+    string_append(&pathCreacion,nombre_archivo);
 
-	t_fcb* fcb = malloc(sizeof(t_fcb));
-	fcb = initialize_fcb(nombre_archivo, direccion_fcb);
+    FILE *archivo = fopen(pathCreacion, "w+");
+    
+    if (archivo == NULL) {
+          log_info(logger,"Error al crear el archivo");
+          exit(EXIT_FAILURE);
+    }
 
-    char *nombre_archivo_metadata = nombre_archivo + "_M";//_M para saber que es un archivo metadata
-    crear_archivo_metadata(nombre_archivo_metadata, fcb->bloque_inicial, tamanaio_archivo);
-
-    dictionary_put(metadata_dictionary, nombre_archivo_metadata, fcb);
-	dictionary_put(fcb_dictionary, nombre_archivo, fcb);
-
-    free(direccion_fcb);
-    free(fcb);
+    fclose(archivo);
 }
 
 void fetch_nombre_archivo_y_delete_archivo(int socket_kernel){
 
     int total_size;
     int offset = 0;
-
     int pid;
     char* nombre_archivo;
     int length_nombre_archivo;
-   
     void *buffer2;
     buffer2 = fetch_buffer(&total_size, socket_kernel);
+
+    memcpy(&length_nombre_archivo,buffer2 + offset, sizeof(int));
+    offset += sizeof(int);
+
+    nombre_archivo = malloc(length_nombre_archivo);
+    memcpy(nombre_archivo,buffer2 + offset, length_nombre_archivo);
+    offset += length_nombre_archivo; 
 
     offset += sizeof(int);
     memcpy(&pid,buffer2 + offset, sizeof(int));
     offset += sizeof(int);
 
-    memcpy(&length_nombre_archivo,buffer2 + offset, sizeof(int));
-    offset += sizeof(int); 
-    *nombre_archivo = malloc(length_nombre_archivo);
-    memcpy(&nombre_archivo,buffer2 + offset, length_nombre_archivo);
-    offset += length_nombre_archivo;
-
     free(buffer2);
 
     log_info(logger, "PID: %i - Eliminar Archivo: %s", pid, nombre_archivo);
-
-    char* direccion_fcb = string_new();
-    string_append(&direccion_fcb, path_base);
-	string_append(&direccion_fcb, "/");
-	string_append(&direccion_fcb, nombre_archivo);
-
-    t_fcb* fcb = malloc(sizeof(t_fcb));
-    fcb = dictionary_remove(fcb_dictionary, nombre_archivo);
-
-    if (fcb == NULL) {
-        log_error(logger, "Archivo %s no existe", nombre_archivo);
-        free(direccion_fcb);
-        free(fcb);
-        return;
+    
+    char* pathDelete = strdup(path_base_dialfs);
+    string_append(&pathDelete,nombre_archivo);
+    
+    if (remove(pathDelete) == 0) {
+        log_info(logger,"Archivo %s borrado exitosamente", nombre_archivo);
+    }else {
+        log_info(logger,"Fallo borrar Archivo %s", nombre_archivo);
     }
 
-    if (remove(direccion_fcb) == 0) {
-        log_info(logger, "Archivo %s eliminado", nombre_archivo);
-    } else {
-        log_error(logger, "Error eliminando el archivo %s", nombre_archivo);
-    }
-
-    char* nombre_archivo_metadata = nombre_archivo + "_M";//_M para saber que es un archivo metadata
-    t_fcb* fcbMetadata = malloc(sizeof(t_fcb));
-    fcbMetadata = dictionary_remove(metadata_dictionary, nombre_archivo_metadata);
-
-    if (fcbMetadata == NULL) {
-        log_error(logger, "Archivo %s no existe", nombre_archivo);
-        free(direccion_fcb);
-        free(fcbMetadata);
-        return;
-    }
-
-    if (remove(direccion_fcb) == 0) {
-        log_info(logger, "Archivo %s eliminado", nombre_archivo);
-    } else {
-        log_error(logger, "Error eliminando el archivo %s", nombre_archivo);
-    }
-
-    free(direccion_fcb);
-    free(fcb);
-    free(fcbMetadata);
 }
 
 void crear_bloques_dat(int block_size, int block_count) {
-    FILE *archivo = fopen("bloques.dat", "wb");
-    if(archivo == NULL) {
-        perror("Error creando bloques.dat");
-        exit(EXIT_FAILURE);
+    char* path_bloques = path_base_dialfs;
+    string_append(&path_bloques,"bloques.dat");
+    
+    log_info(logger, "Creando archivo bloques.dat");
+
+    FILE *archivo = fopen(path_bloques, "rb+");
+    if(archivo != NULL) {
+        log_info(logger,"El archivo bloques.dat esta abierto ya");
+    }else {
+       archivo = fopen(path_bloques, "wb+");
+        if (archivo == NULL) {
+              log_info(logger,"Error creando el archivo bloques.dat");
+              exit(EXIT_FAILURE);
+        } 
+        int fileDescriptor = fileno(archivo);
+        ftruncate(fileDescriptor, (block_size * block_count));
+        log_info(logger,"Creado y abierto el archivo bloques.dat");
     }
 
-    char *buffer = (char*) calloc(block_size, 1)
-    for(int i = 0; i < block_count; i++) {
-        fwrite(buffer, block_size, 1, file);
-    }
-
-    free(buffer);
     fclose(archivo);
 }
 
 void crear_bitmap_dat(int block_count) {
-    FILE *archivo = fopen("bitmap.dat", "wb");
-    if(archivo == NULL) {
-        perror("Error creando bitmap.dat");
-        exit(EXIT_FAILURE);
+
+    char* path_bitmap = strdup(path_base_dialfs);
+    string_append(&path_bitmap,"bitmap.dat");
+
+    FILE *archivo = fopen(path_bitmap, "rb+");
+    if(archivo != NULL) {
+        log_info(logger,"El archivo bitmap.dat esta abierto ya");
+    }else{
+        archivo = fopen(path_bitmap, "wb+");
+        if (archivo == NULL) {
+              log_info(logger,"Error creando el archivo bitmap.dat");
+              exit(EXIT_FAILURE);
+        } 
+        int fileDescriptor = fileno(archivo);
+        int tamanioBitmap = (block_count / 8) + 1; //bits a bytes
+
+        ftruncate(fileDescriptor, tamanioBitmap);
+        log_info(logger,"Creado y abierto el archivo bitmap.dat");
+
     }
 
-    int bitmap_size = (int) ceil(block_count / 8); //Bits a Byte
-    char * bitmap = (char*) calloc(bitmap_size, 1);
+    int bitmap_size = (block_count / 8) + 1;
+    char * bitmap = mmap(NULL, bitmap_size, PROT_READ | PROT_WRITE, MAP_SHARED,fileno(archivo), 0);
     
-    fwrite(bitmap, 1, bitmap_size, file);
-
-    free(bitmap);
-    fclose(archivo);
-}
-
-void crear_archivo_metadata(const char *nombre_archivo, int bloque_inicial, int tamanaio_archivo){
-    FILE *archivo = fopen(nombre_archivo, "w");
-    if (archivo == NULL) {
-        perror("Error creando archivo metadata");
-        exit(EXIT_FAILURE);
-    }
-
-    fprintf(archivo, "BLOQUE_INICIAL=%i\n", bloque_inicial);
-    fprintf(archivo, "TAMANIO_ARCHIVO=%i\n", tamanaio_archivo);
-
-    bloque_inicial += tamanio_archivo;
+    t_bitarray *bitarray = bitarray_create_with_mode(bitmap, bitmap_size, LSB_FIRST);
 
     fclose(archivo);
+    free(bitarray);
 }

@@ -28,6 +28,7 @@
 #include <semaphore.h>
 #include "comunication.h"
 #include <commons/temporal.h>
+#include <commons/bitarray.h>
 
 // STRUCTS
 //extern t_queue *queue_instrucciones;
@@ -115,9 +116,10 @@ typedef struct{
 
 
 typedef struct {
+    op_code tipoOperacion;
     t_pcb *PCB;
     char *nombreArchivo;
-}t_colaDialFSCD;
+}t_colaDialFS;
 
 typedef struct
 {
@@ -130,11 +132,5 @@ sem_t semaforoContadorIO;
 pthread_mutex_t mutexColaIO;
 
 }t_interfaz_registrada;
-
-typedef struct {
-    char *nombre;
-    int tamanio;
-    int bloque_inicial;
-}t_fcb;
 
 #endif // UTILS_H

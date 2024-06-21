@@ -979,43 +979,40 @@ void operacion_signal(t_pcb *contexto,int socket,t_instruccion_unitaria* instruc
 }
 
 void operacion_io_fs_create(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
-	t_buffer *buffer_rta;
-    t_packet *packet_rta;
-    buffer_rta = create_buffer();
-    packet_rta = create_packet(DIALFS_CREATE,buffer_rta);
+	t_buffer *buffer;
+    t_packet *packet;
 
-	contexto->state = BLOCKED;
+    buffer = create_buffer();
+    packet = create_packet(DIALFS_CREATE,buffer);
 
-	add_to_packet(packet_rta,instruccion->parametros[0], instruccion->parametro1_lenght);
-	
-	char* archivo = instruccion->parametros[1];
-    add_to_packet(packet_rta,&archivo,strlen(archivo) + 1);
+	add_to_packet(packet,instruccion->parametros[0], instruccion->parametro1_lenght);
+	add_to_packet(packet,instruccion->parametros[1], instruccion->parametro2_lenght);
+
+	contexto -> state = BLOCKED;
 
 	int tamanioPCB = sizeof(t_pcb);
-    add_to_packet(packet_rta, contexto, tamanioPCB);
+    add_to_packet(packet, contexto, tamanioPCB);
 	
-	send_packet(packet_rta, socket);
-	destroy_packet(packet_rta);
-
+	send_packet(packet, socket);
+	destroy_packet(packet);
 }
 
 void operacion_io_fs_delete(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
-	t_buffer *buffer_rta;
-    t_packet *packet_rta;
-    buffer_rta = create_buffer();
-    packet_rta = create_packet(DIALFS_DELETE,buffer_rta);
+	t_buffer *buffer;
+    t_packet *packet;
+
+    buffer = create_buffer();
+    packet = create_packet(DIALFS_DELETE,buffer);
+
+	add_to_packet(packet,instruccion->parametros[0], instruccion->parametro1_lenght);
+	add_to_packet(packet,instruccion->parametros[1], instruccion->parametro2_lenght);
 
 	contexto->state = BLOCKED;
 
-	add_to_packet(packet_rta,instruccion->parametros[0], instruccion->parametro1_lenght);
-	
-	char* archivo = instruccion->parametros[1];
-    add_to_packet(packet_rta,&archivo,strlen(archivo) + 1);
-
 	int tamanioPCB = sizeof(t_pcb);
-    add_to_packet(packet_rta, contexto, tamanioPCB);
+    add_to_packet(packet, contexto, tamanioPCB);
 	
-	send_packet(packet_rta, socket);
-	destroy_packet(packet_rta);
+	send_packet(packet, socket);
+	destroy_packet(packet);
 
 }

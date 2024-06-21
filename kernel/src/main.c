@@ -401,9 +401,9 @@ void *manage_request_from_dispatch(void *args)
                 t_interfaz_registrada *interfazDialFSCreate = NULL;
 
                 char *nombreInterDialFSCreate = NULL;
-                char *nombre_archivo_C;
+                char *nombre_archivo_C = NULL;
 
-                receptorPCBDialFSCreate = fetch_pcb_con_DialFSCREATEYDELETE(server_socket, &nombreInterDialFSCreate,&nombre_archivo_C);
+                receptorPCBDialFSCreate = fetch_pcb_DialFSCREATEYDELETE(server_socket, &nombreInterDialFSCreate,&nombre_archivo_C);
 
                 if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
                     obtenerDatosTemporal();
@@ -415,7 +415,14 @@ void *manage_request_from_dispatch(void *args)
                 }
 
                 interfazDialFSCreate = buscar_interfaz(nombreInterDialFSCreate);
-                cargarEnListaDIALFSCREATEYDELETE(receptorPCBDialFSCreate, interfazDialFSCreate, nombre_archivo_C);
+
+                t_colaDialFS *colaDialFS = malloc(sizeof(t_colaDialFS)); 
+                colaDialFS->tipoOperacion = operation_code;
+                colaDialFS->PCB = receptorPCBDialFSCreate;
+                colaDialFS->nombreArchivo = nombre_archivo_C;
+
+                cargarEnListaDIALFSCREATEYDELETE(colaDialFS, interfazDialFSCreate);
+                
                 sem_post(&short_term_scheduler_semaphore);
 
                 break;
@@ -428,9 +435,9 @@ void *manage_request_from_dispatch(void *args)
                 t_interfaz_registrada *interfazDialFSDelete = NULL;
 
                 char *nombreInterDialFSDelete = NULL;
-                char *nombre_archivo_D;
+                char *nombre_archivo_D = NULL;
 
-                receptorPCBDialFSDelete = fetch_pcb_con_DialFSCREATEYDELETE(server_socket, &nombreInterDialFSDelete,&nombre_archivo_D);
+                receptorPCBDialFSDelete = fetch_pcb_DialFSCREATEYDELETE(server_socket, &nombreInterDialFSDelete,&nombre_archivo_D);
 
                 if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
                     obtenerDatosTemporal();
