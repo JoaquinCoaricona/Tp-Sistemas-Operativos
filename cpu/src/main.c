@@ -380,6 +380,14 @@ void ciclo_de_instruccion(int socket_kernel){
         if (strcmp(instruccion_ACTUAL->opcode, "SIGNAL") == 0){
 			operacion_signal(PCBACTUAL,socket_kernel,instruccion_ACTUAL);
         }    
+        if (strcmp(instruccion_ACTUAL->opcode, "IO_FS_CREATE") == 0){
+			operacion_io_fs_create(PCBACTUAL,socket_kernel,instruccion_ACTUAL);
+            continuar_con_el_ciclo_instruccion = false;
+        }
+        if (strcmp(instruccion_ACTUAL->opcode, "IO_FS_DELETE") == 0){
+			operacion_io_fs_delete(PCBACTUAL,socket_kernel,instruccion_ACTUAL);
+            continuar_con_el_ciclo_instruccion = false;
+        }
         if (strcmp(instruccion_ACTUAL->opcode, "EXIT") == 0) {
             
             continuar_con_el_ciclo_instruccion = false;

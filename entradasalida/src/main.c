@@ -9,6 +9,7 @@ char *PORT_kernel;
 char *IP_kernel;
 int tiempoUnidad;
 t_config *config;
+char *conservadorPATH;
 int main(int argc, char *argv[])
 {   
     //ARGV ES UN VECTOR D DE TODAS LAS VARIABLES DE ENTORNO, EN LA POSICION 0 ESTA
@@ -50,6 +51,9 @@ int main(int argc, char *argv[])
     add_to_packet(packet,tipo,strlen(tipo)+1);
 
     //INICIO CONEXION CON KERNEL
+    //Aca este socket kernel es especifico para cada interfaz, por cada instancia que levantamos
+    //al conectarse, se conecta con un socket diferente y la variable global es diferente para
+    //cada interfaz o instancia que tengo
     socket_kernel = create_conection(logger, IP_kernel, PORT_kernel);
     log_info(logger, "Conectado al servidor de Kernel %s:%s", IP_kernel, PORT_kernel);
 
@@ -424,6 +428,7 @@ void interfazFileSystem(){
     char *path = config_get_string_value(config, "PATH_BASE_DIALFS");
     char *pathBitMap = strdup(path);
 
+    conservadorPATH = strdup(path);
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++CREACION DEL ARCHIVO BLOQUES.DAT++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -539,8 +544,13 @@ void interfazFileSystem(){
         int operation_code = fetch_codop(socket_kernel);
         switch (operation_code)
         {
-        case:
-        
+        case CREAR_ARCHIVO:
+            crearArchivo(socket_kernel);
+            enviarAvisoAKernel(socket_kernel,CONFIRMACION_CREACION);
+        break;
+        case BORRAR_ARCHIVO:
+            borrarArchivo(socket_kernel);
+            enviarAvisoAKernel(socket_kernel,CONFIRMACION_ELIMINACION);
         break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion");
@@ -556,4 +566,76 @@ void interfazFileSystem(){
 
 
 
+}
+
+void crearArchivo(int socket_kernel){
+    int total_size;
+    int offset = 0;
+    int pid;
+    void *buffer2;
+  
+    buffer2 = fetch_buffer(&total_size, socket_kernel);
+    //Recibo el Length del nombre del archivo
+    int tamaNombreArchivo;
+    memcpy(&tamaNombreArchivo,buffer2 + offset, sizeof(int));
+    offset += sizeof(int);
+
+    //Recibo el nombre del archivo
+    char *nombreArchivo = malloc(tamaNombreArchivo);
+    memcpy(nombreArchivo,buffer2 + offset, tamaNombreArchivo);
+    offset += tamaNombreArchivo;
+
+    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
+
+    memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
+    offset += sizeof(int);
+
+
+    char *pathNuevo = strdup(conservadorPATH);
+    string_append(&pathNuevo,nombreArchivo);
+
+    FILE *archivoACrear = fopen(pathNuevo, "w+");
+    
+    if (archivoACrear == NULL) {
+          log_info(logger,"Error al crear el archivo BitMap.dat");
+          exit(EXIT_FAILURE);
+    }
+
+    fclose(archivoACrear);
+
+
+
+}
+
+void borrarArchivo(int socket_kernel){
+
+    int total_size;
+    int offset = 0;
+    int pid;
+    void *buffer2;
+
+    buffer2 = fetch_buffer(&total_size, socket_kernel);
+    //Recibo el Length del nombre del archivo
+    int tamaNombreArchivo;
+    memcpy(&tamaNombreArchivo,buffer2 + offset, sizeof(int));
+    offset += sizeof(int);
+
+    //Recibo el nombre del archivo
+    char *nombreArchivo = malloc(tamaNombreArchivo);
+    memcpy(nombreArchivo,buffer2 + offset, tamaNombreArchivo);
+    offset += tamaNombreArchivo;
+
+    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
+
+    memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
+    offset += sizeof(int);
+
+    char *pathNuevo = strdup(conservadorPATH);
+    string_append(&pathNuevo,nombreArchivo);
+
+    if (remove(pathNuevo) == 0) {
+        log_info(logger,"El archivo fue borrado");
+    } else {
+        log_info(logger,"Error al borrar el archivo");
+    }
 }

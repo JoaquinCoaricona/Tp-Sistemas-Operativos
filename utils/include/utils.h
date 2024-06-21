@@ -114,6 +114,12 @@ typedef struct{
     void *contenido;
 }t_colaStdIN;    
 
+typedef struct{
+    op_code tipoOperacion;
+    t_pcb *PCB;               
+    char *nombreArchivo;
+}t_colaFS;    
+
 
 typedef struct
 {

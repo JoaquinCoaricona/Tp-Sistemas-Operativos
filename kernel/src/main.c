@@ -412,6 +412,40 @@ void *manage_request_from_dispatch(void *args)
             controlGradoMultiprogramacion();
             //sem_post(&sem_multiprogramacion);
             break;
+            case BORRAR_ARCHIVO:
+            case CREAR_ARCHIVO:
+
+            pthread_mutex_lock(&m_procesoEjectuandoActualmente);
+            procesoEjectuandoActualmente = -1;
+            pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
+
+            t_pcb *receptorPCBFS = NULL;
+            t_interfaz_registrada *interfazFS = NULL;
+            char *nombreInterFS = NULL;
+            char *nombreArchivo = NULL;
+            receptorPCBFS = fetchPCBfileSystem(server_socket, &nombreInterFS,&nombreArchivo);
+            //+++++++++++CHEQUEO VRR++++++++++++++++++++++++++++++++++++++++++++
+            if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
+            obtenerDatosTemporal();
+            receptorPCBFS->quantum = receptorPCBFS->quantum - (ms_transcurridos * 1000);
+            if(receptorPCBFS->quantum < 0){
+                receptorPCBFS->quantum = quantumGlobal;
+                log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
+            }
+            }
+            //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            interfazFS = buscar_interfaz(nombreInterFS);
+            
+            //Voy a guardar en un strct los datos y un opcode para saber como enviarlo a la interfaz
+            t_colaFS *guardarFS = malloc(sizeof(t_colaFS)); 
+            //Aca pongo esto para poder usar el mismo case para borrar y para crear archivos
+            guardarFS->tipoOperacion = operation_code;
+            guardarFS->PCB = receptorPCBFS;
+            guardarFS->nombreArchivo = nombreArchivo;
+            cargarEnListaFS(guardarFS,interfazFS);
+
+            sem_post(&short_term_scheduler_semaphore);
+        break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
             return;
