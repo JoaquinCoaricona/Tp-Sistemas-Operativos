@@ -444,8 +444,22 @@ void *manage_request_from_dispatch(void *args)
             controlGradoMultiprogramacion();
             //sem_post(&sem_multiprogramacion);
             break;
+            //Aca pongo esto para que en los dos casos entre por este case
+            //osea en caso que el opcode sea BORRAR ARCHIVO O QUE EL OPCODE
+            //SEA CREAR ARCHIVO en cualquiera de los dos casos entra por aca.
+            //DESPUES GUARDO EL OPCODE EN UN CAMPO DEL STRUCT DE LA COLA FS
+            //PARA QUE DESPUES CUANDO LO CARGUE EN LA COLA SEPARO POR CASOS SI ES CREAR O 
+            //BORRAR, LO HAGO ASI PARA NO HACER OTRO CASE
             case BORRAR_ARCHIVO:
             case CREAR_ARCHIVO:
+            case TRUNCAR_ARCHIVO:
+            //Aca creo esta variable y le asigno un 0, si se pone en 1 entonces
+            //es porquehay que truncar el archivo, hago esto para no hacer otro case
+            
+            int nuevoTamaArchivo = 0;
+            if(operation_code == TRUNCAR_ARCHIVO){
+                nuevoTamaArchivo = 1;
+            }
 
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
@@ -455,7 +469,7 @@ void *manage_request_from_dispatch(void *args)
             t_interfaz_registrada *interfazFS = NULL;
             char *nombreInterFS = NULL;
             char *nombreArchivo = NULL;
-            receptorPCBFS = fetchPCBfileSystem(server_socket, &nombreInterFS,&nombreArchivo);
+            receptorPCBFS = fetchPCBfileSystem(server_socket, &nombreInterFS,&nombreArchivo,&nuevoTamaArchivo);
             //+++++++++++CHEQUEO VRR++++++++++++++++++++++++++++++++++++++++++++
             if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
             obtenerDatosTemporal();
@@ -474,6 +488,10 @@ void *manage_request_from_dispatch(void *args)
             guardarFS->tipoOperacion = operation_code;
             guardarFS->PCB = receptorPCBFS;
             guardarFS->nombreArchivo = nombreArchivo;
+            //Aca en caso que haya que truncar, cargo el nuevo tamaño en la estructura
+            if(operation_code == TRUNCAR_ARCHIVO){
+                guardarFS->nuevoTamaArchivo = nuevoTamaArchivo;
+            }
             cargarEnListaFS(guardarFS,interfazFS);
 
             sem_post(&short_term_scheduler_semaphore);

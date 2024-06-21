@@ -1020,3 +1020,27 @@ void operacion_io_fs_delete(t_pcb *contexto,int socket,t_instruccion_unitaria* i
 	send_packet(packetDelete,socket);		//ENVIO EL PAQUETE
 	destroy_packet(packetDelete);
 }
+// IO_FS_TRUNCATE (Interfaz, Nombre Archivo, Registro Tamaño): Esta instrucción
+// solicita al Kernel que mediante la interfaz seleccionada, se modifique el tamaño
+// del archivo en el FS montado en dicha interfaz, actualizando al valor que se encuentra
+// en el registro indicado por Registro Tamaño.
+void operacion_io_fs_truncate(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
+	//LEO EL NUEVO TAMAÑO DEL ARCHIVO
+	int  nuevoTamaArchivo =   obtener_valor_del_registro(instruccion->parametros[2],contexto);
+	//CREACION DE BUFFER Y PAQUETE PARA ENVIAR
+	t_buffer *bufferTruncate;
+	t_packet *packetTruncate;
+	bufferTruncate = create_buffer();
+	packetTruncate = create_packet(TRUNCAR_ARCHIVO,bufferTruncate);
+	//CARGO EL NOMBRE DE LA INTERFAZ
+	add_to_packet(packetTruncate,instruccion->parametros[0], instruccion->parametro1_lenght);
+	//CARGO EL NOMBRE DEL ARCHIVO A BORRAR
+	add_to_packet(packetTruncate,instruccion->parametros[1], instruccion->parametro2_lenght);
+	//CARGO EL NUEVO TAMAÑO DEL ARCHIVO
+	add_to_packet(packetTruncate,&nuevoTamaArchivo,sizeof(int));
+	//Bloqueado porque se va a ir a la cola de la interfaz
+	contexto->state = BLOCKED;
+	add_to_packet(packetTruncate,contexto,sizeof(t_pcb)); //CARGO EL PCB
+	send_packet(packetTruncate,socket);		//ENVIO EL PAQUETE
+	destroy_packet(packetTruncate);
+}

@@ -552,6 +552,10 @@ void interfazFileSystem(){
             borrarArchivo(socket_kernel);
             enviarAvisoAKernel(socket_kernel,CONFIRMACION_ELIMINACION);
         break;
+        case TRUNCAR_ARCHIVO:
+            truncarArchivo(socket_kernel);
+            enviarAvisoAKernel(socket_kernel,CONFIRMACION_TRUNCAR);
+        break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion");
             close_conection(socket_kernel);
@@ -638,4 +642,44 @@ void borrarArchivo(int socket_kernel){
     } else {
         log_info(logger,"Error al borrar el archivo");
     }
+}
+
+void truncarArchivo(int socket_kernel){
+
+    int total_size;
+    int offset = 0;
+    int pid;
+    int nuevoTamaArchivo;
+    void *buffer2;
+
+    buffer2 = fetch_buffer(&total_size, socket_kernel);
+    //Recibo el Length del nombre del archivo
+    int tamaNombreArchivo;
+    memcpy(&tamaNombreArchivo,buffer2 + offset, sizeof(int));
+    offset += sizeof(int);
+
+    //Recibo el nombre del archivo
+    char *nombreArchivo = malloc(tamaNombreArchivo);
+    memcpy(nombreArchivo,buffer2 + offset, tamaNombreArchivo);
+    offset += tamaNombreArchivo;
+
+    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
+
+    memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
+    offset += sizeof(int);
+
+    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
+
+    memcpy(&nuevoTamaArchivo,buffer2 + offset, sizeof(int)); //RECIBO EL NUEVO TAMAÑO DEL ARCHIVO
+    offset += sizeof(int);
+
+    char *pathNuevo = strdup(conservadorPATH);
+    string_append(&pathNuevo,nombreArchivo);
+
+    FILE *archivo = fopen(pathNuevo, "rb+");
+    ftruncate(fileno(archivo),nuevoTamaArchivo);
+    fclose(archivo);
+
+
+
 }

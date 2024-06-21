@@ -388,6 +388,10 @@ void ciclo_de_instruccion(int socket_kernel){
 			operacion_io_fs_delete(PCBACTUAL,socket_kernel,instruccion_ACTUAL);
             continuar_con_el_ciclo_instruccion = false;
         }
+        if (strcmp(instruccion_ACTUAL->opcode, "IO_FS_TRUNCATE") == 0){
+			operacion_io_fs_truncate(PCBACTUAL,socket_kernel,instruccion_ACTUAL);
+            continuar_con_el_ciclo_instruccion = false;
+        }
         if (strcmp(instruccion_ACTUAL->opcode, "EXIT") == 0) {
             
             continuar_con_el_ciclo_instruccion = false;
