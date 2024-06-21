@@ -304,7 +304,7 @@ t_pcb *fetch_pcb_con_STDIN(int server_socket,char **nomrebInterfaz,void **conten
     return PCBrec;
 
 }
-t_pcb *fetchPCBfileSystem(int server_socket,char **nomrebInterfaz,char **nombreArchivo){
+t_pcb *fetchPCBfileSystem(int server_socket,char **nomrebInterfaz,char **nombreArchivo,int *nuevoTamaArchivo){
     
     int total_size;
     int offset = 0;
@@ -335,6 +335,17 @@ t_pcb *fetchPCBfileSystem(int server_socket,char **nomrebInterfaz,char **nombreA
     *nombreArchivo = malloc(length_nombre_archivo);
     memcpy(*nombreArchivo,buffer + offset,length_nombre_archivo); //RECIBO EL NOMBRE DEL ARCHIVO
     offset += length_nombre_archivo;
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++     
+    //EN CASO QUE SEA UNA INSTRUCCION DE TRUNCAR, RECIBO EL NUEVO TAMAÑO ARCHIVO
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+   //Hago la comprobacion asi, porque cuando entro por este case hizo una comprobacion
+   //si era un truncate puso un 1, si es distinto de 1 entonces no es truncate y no hacemos 
+   // nada aca
+    if(*nuevoTamaArchivo == 1){
+        offset += sizeof(int);//Salteo el tamaño del int
+        memcpy(nuevoTamaArchivo,buffer + offset,sizeof(int)); //RECIBO EL NUEVO TAMAÑO
+        offset += sizeof(int);//Salteo el int
+    }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++     
                 //RECIBO EL PCB
@@ -720,6 +731,18 @@ void llamadasFS(t_interfaz_registrada *interfaz){
             send_packet(packetFS,interfaz->socket_de_conexion);
 
         }
+        if(pcbEnviado->tipoOperacion == TRUNCAR_ARCHIVO){
+            packetFS = create_packet(TRUNCAR_ARCHIVO,bufferFS);
+
+            int tamaNombre = strlen(pcbEnviado->nombreArchivo) + 1;
+            
+            add_to_packet(packetFS,pcbEnviado->nombreArchivo,tamaNombre);
+            add_to_packet(packetFS,&(pcbEnviado->PCB->pid), sizeof(int));
+            add_to_packet(packetFS,&(pcbEnviado->nuevoTamaArchivo), sizeof(int));
+
+            send_packet(packetFS,interfaz->socket_de_conexion);
+
+        }
 
         int operation_code = fetch_codop(interfaz->socket_de_conexion); //aca se queda bloqueante esperando la respuesta
     
@@ -733,6 +756,9 @@ void llamadasFS(t_interfaz_registrada *interfaz){
         }
         if(operation_code == CONFIRMACION_ELIMINACION){
             log_info(logger, "CONFIRMACION ELIMINACION ARCHIVO"); 
+        }
+        if(operation_code == CONFIRMACION_TRUNCAR){
+            log_info(logger, "CONFIRMACION TRUNCAMIENTO ARCHIVO"); 
         }                       
 
         if(pcbEnviado->PCB->quantum == quantumGlobal){

@@ -118,6 +118,7 @@ typedef struct{
     op_code tipoOperacion;
     t_pcb *PCB;               
     char *nombreArchivo;
+    int nuevoTamaArchivo;
 }t_colaFS;    
 
 
