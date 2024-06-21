@@ -515,6 +515,11 @@ void interfazFileSystem(){
     }
 
     //Declaro la cantidad de bits que va a tener el bitmap, por las dudas sumo 1
+    //En realidad la cantidad de bits es el block count pero el mmap solo acepta bytes
+    //Entonces por eso divido por 8, y sumo el 1 porque quizas la cifra es muy menor a 8
+    //entonces se redondearia a 0 y perderia bits quizas tenia solo una pagina y quedaria en 0
+    //por eso sumo el 1. Entonces ahora tendria bits de mas pero eso lo delimito en la
+    //funcion buscar bit libre, lo delimito con la varibale global block_count
     int bitmap_size = (block_count / 8) + 1;
     //Aca asigno que en este espacio de memoria voy a tener la referencia al archivo
     //Mmap hace que el contenido del archivo lo tengamos en memoria RAM y que si cambiiamos algo
@@ -717,9 +722,16 @@ void truncarArchivo(int socket_kernel){
 }
 
 int buscar_bit_libre(t_bitarray *bitarray){
-    int cantidadMaximaDeBits = bitarray_get_max_bit(bitarray);
+    //Aca antes usaba esto pero lo que pasa es que por ejemplo:
+    // si solo tengo un bloque, entonces eso se guardaria en un bit
+    // pero no se puede crear un archivo de un bit, minimo es un byte
+    // entonces por eso no puedo usar el getmaxbit, porque si solo tengo un bloque
+    // eso se guardaria como un byte entero, y yo tengo que usar solo la cantidad de 
+    // bloques maxima del config, entonces uso el block_count que lei del config y listo
+    // porque sino tenniendo un solo bloque, el bit maximo seria 8 porque un byte tiene 8 bits
+    // int cantidadMaximaDeBits = bitarray_get_max_bit(bitarray);
 
-    for (int i = 0; i < cantidadMaximaDeBits; i++) {
+    for (int i = 0; i < block_count; i++) {
         //Si el bit esta libre entonces devuelve False y como eso es lo que buscamos
         //entonces por eso pongo el ! para que si da false lo haga true y entre
         if (!bitarray_test_bit(bitarray, i)) {
