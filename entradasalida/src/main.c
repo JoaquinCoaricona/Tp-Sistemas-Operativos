@@ -10,6 +10,9 @@ char *IP_kernel;
 int tiempoUnidad;
 t_config *config;
 char *conservadorPATH;
+t_bitarray *bitarray;
+int block_size;
+int block_count;
 int main(int argc, char *argv[])
 {   
     //ARGV ES UN VECTOR D DE TODAS LAS VARIABLES DE ENTORNO, EN LA POSICION 0 ESTA
@@ -423,8 +426,8 @@ void interfazFileSystem(){
 
     //Verifico si existen los archivos
 
-    int block_size = atoi(config_get_string_value(config, "BLOCK_SIZE"));
-    int block_count = atoi(config_get_string_value(config, "BLOCK_COUNT"));
+    block_size = atoi(config_get_string_value(config, "BLOCK_SIZE"));
+    block_count = atoi(config_get_string_value(config, "BLOCK_COUNT"));
     char *path = config_get_string_value(config, "PATH_BASE_DIALFS");
     char *pathBitMap = strdup(path);
 
@@ -462,7 +465,11 @@ void interfazFileSystem(){
         ftruncate(fdBloques,(block_count * block_size));
         log_info(logger, "El archivo bloques.dat no existia, fue creado y abierto en modo lectura/escritura.");
     }
-
+    //Aca abro el archivo con el mmap y me traigo el contenido a este espacio void contenido bloques para operarlo en memoria
+    //y que los cambios que haga aca se vayan al archivo. El segundo parametro es la cantidad que tengo que leer del archivo parece
+    //por eso puse directamente el tamaño que le estableci con ftruncate mas arriba. Porque tengo que tener todo el contenido
+    //del archivo. Con esto seria algo parecido a memoria
+    void *contenidoBloques =  mmap(NULL,(block_count * block_size), PROT_READ | PROT_WRITE, MAP_SHARED,fileno(archivoBloques), 0);
     // truncar significa que se borra el contenido del archivo
     // "r": Abre un archivo para lectura. El archivo debe existir.
     // "r+": Abre un archivo para lectura y escritura. El archivo debe existir. 
@@ -530,7 +537,7 @@ void interfazFileSystem(){
     del bitarray en 1.
     */
     
-    t_bitarray *bitarray = bitarray_create_with_mode(bitmap_data, bitmap_size, LSB_FIRST);
+    bitarray = bitarray_create_with_mode(bitmap_data, bitmap_size, LSB_FIRST);
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -605,8 +612,17 @@ void crearArchivo(int socket_kernel){
           exit(EXIT_FAILURE);
     }
 
-    fclose(archivoACrear);
+    int bitLibre = buscar_bit_libre(bitarray);
+    marcarBitOcupado(bitarray,bitLibre);
 
+
+    // Escribir los datos en el archivo, esto es lo que aclaracron en la consigna
+    //Los archivos metadata estan para escribirles esto solamente
+    fprintf(archivoACrear, "BLOQUE_INICIAL=%d\n", bitLibre);
+    fprintf(archivoACrear, "TAMANIO_ARCHIVO=1\n");
+
+    // Cerrar el archivo
+    fclose(archivoACrear);
 
 
 }
@@ -636,6 +652,22 @@ void borrarArchivo(int socket_kernel){
 
     char *pathNuevo = strdup(conservadorPATH);
     string_append(&pathNuevo,nombreArchivo);
+    
+    FILE *archivoMetadata = fopen(pathNuevo, "r");
+    if (archivoMetadata == NULL) {
+        log_error(logger,"Error al abrir el archivo de metadata");
+        exit(EXIT_FAILURE);
+    }
+
+    int bloque_inicial;
+    int tama_archivo;
+
+    fscanf(archivoMetadata, "BLOQUE_INICIAL=%d\n", &bloque_inicial);
+    fscanf(archivoMetadata, "TAMANIO_ARCHIVO=%d\n", &tama_archivo);
+
+    fclose(archivoMetadata);
+
+    liberar_bloques(bitarray, bloque_inicial, tama_archivo);
 
     if (remove(pathNuevo) == 0) {
         log_info(logger,"El archivo fue borrado");
@@ -682,4 +714,36 @@ void truncarArchivo(int socket_kernel){
 
 
 
+}
+
+int buscar_bit_libre(t_bitarray *bitarray){
+    int cantidadMaximaDeBits = bitarray_get_max_bit(bitarray);
+
+    for (int i = 0; i < cantidadMaximaDeBits; i++) {
+        //Si el bit esta libre entonces devuelve False y como eso es lo que buscamos
+        //entonces por eso pongo el ! para que si da false lo haga true y entre
+        if (!bitarray_test_bit(bitarray, i)) {
+            return i;
+        }
+    }
+
+    return -1;  // No se encontró ningún bit libre
+}
+void marcarBitOcupado(t_bitarray *bitarray, int bit_index){
+    bitarray_set_bit(bitarray, bit_index);
+    log_info(logger,"El bit %i fue ocupado", bit_index);
+}
+void marcarBitLibre(t_bitarray *bitarray, int bit_index){
+    bitarray_clean_bit(bitarray, bit_index);
+    log_info(logger,"El bit %i fue liberado", bit_index);
+}
+void liberar_bloques(t_bitarray *bitarray, int bloque_inicial, int tama_archivo){
+    //Esta formula es para que al dividir, te asegures que siempre se redondea al 
+    //al entero superior mas proximo. Se podria hacer esto o lo que hice en memoria
+    //con ceil y con el casteo
+    int bloques_ocupados = (tama_archivo + block_size - 1) / block_size;  
+
+    for (int i = 0; i < bloques_ocupados; i++) {
+        marcarBitLibre(bitarray, bloque_inicial + i);
+    }
 }
