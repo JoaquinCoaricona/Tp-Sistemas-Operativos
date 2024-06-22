@@ -33,5 +33,6 @@ void operacion_sub(t_pcb* contexto, t_instruccion_unitaria* instruccion);
 void operacion_jnz(t_pcb* contexto, t_instruccion_unitaria* instruccion);
 void operacion_sleep(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion);
 int solicitarMarco(int numeroPagina, int pid);
+int calcularCantDirFisicas(int desplazamiento, int cantidadBytes);
 
 #endif // OPERACIONES_H_

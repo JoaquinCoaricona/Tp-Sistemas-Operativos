@@ -464,6 +464,43 @@ void *manage_request_from_dispatch(void *args)
 
             sem_post(&short_term_scheduler_semaphore);
         break;
+        case FS_READ:
+        case FS_WRITE:
+
+            pthread_mutex_lock(&m_procesoEjectuandoActualmente);
+            procesoEjectuandoActualmente = -1;
+            pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
+            void *contenidoWR = NULL;
+            t_pcb *receptorPCBFSwr = NULL;
+            t_interfaz_registrada *interfazFSwr = NULL;
+            char *nombreInterFSwr = NULL;
+            int tamaContenidowr;
+            receptorPCBFSwr = fetchPCBfileSystemWR(server_socket, &nombreInterFSwr,&contenidoWR,&tamaContenidowr);
+            //+++++++++++CHEQUEO VRR++++++++++++++++++++++++++++++++++++++++++++
+            if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
+            obtenerDatosTemporal();
+            receptorPCBFSwr->quantum = receptorPCBFSwr->quantum - (ms_transcurridos * 1000);
+            if(receptorPCBFSwr->quantum < 0){
+                receptorPCBFSwr->quantum = quantumGlobal;
+                log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
+            }
+            }
+            //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            interfazFSwr = buscar_interfaz(nombreInterFSwr);
+            
+            //Voy a guardar en un strct los datos y un opcode para saber como enviarlo a la interfaz
+            t_colaFS *guardarFSwr = malloc(sizeof(t_colaFS)); 
+            //Aca pongo esto para poder usar el mismo case para borrar y para crear archivos
+            guardarFSwr->tipoOperacion = operation_code;
+            guardarFSwr->PCB = receptorPCBFSwr;
+            guardarFSwr->contenido = contenidoWR;
+            guardarFSwr->tamaContenido = tamaContenidowr;
+            //Aca en caso que haya que truncar, cargo el nuevo tamaño en la estructura
+            
+            cargarEnListaFS(guardarFSwr,interfazFSwr);
+
+            sem_post(&short_term_scheduler_semaphore);
+        break; 
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
             return;

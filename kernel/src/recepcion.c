@@ -362,6 +362,51 @@ t_pcb *fetchPCBfileSystem(int server_socket,char **nomrebInterfaz,char **nombreA
     return PCBrec;
 
 }
+t_pcb *fetchPCBfileSystemWR(int server_socket,char **nomrebInterfaz,void **contenido,int *tamaContenidowr){
+    
+    int total_size;
+    int offset = 0;
+    t_pcb *PCBrec = pcbEJECUTANDO;
+    pcbEJECUTANDO = NULL;
+    void *buffer;
+    int length_nombre_inter;
+    
+
+    buffer = fetch_buffer(&total_size, server_socket); //RECIBO EL BUFFER 
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++     
+                //RECIBO EL NOMBRE DE LA INTERFAZ
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+
+    memcpy(&length_nombre_inter,buffer + offset, sizeof(int));  //RECIBO EL LENGTH DEL NOMBRE  DE LA INTERFAZ
+    offset += sizeof(int); 
+    *nomrebInterfaz = malloc(length_nombre_inter);
+    memcpy(*nomrebInterfaz,buffer + offset,length_nombre_inter); //RECIBO EL NOMBRE DE LA INTERFAZ
+    offset += length_nombre_inter;
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++     
+                //RECIBO EL VOID
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+    //Hago los calculos y copio el contenido del void
+    int tamaVoid = total_size - offset - sizeof(int) -sizeof(t_pcb);
+    *contenido = malloc(tamaVoid);
+    memcpy(*contenido,buffer + offset,tamaVoid);
+    offset += tamaVoid;
+    *tamaContenidowr = tamaVoid;
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++     
+                //RECIBO EL PCB
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+    offset += sizeof(int); //Salteo El tamaño del PCB
+    memcpy((PCBrec),buffer + offset, sizeof(t_pcb)); //RECIBO EL PID
+
+    log_info(logger, "SE RECIBIO UN PCB PARA IR A FS");
+    log_info(logger, "PID RECIBIDO : %i",PCBrec->pid);
+    log_info(logger, "PC RECIBIDO : %i",PCBrec->program_counter);
+    log_info(logger, "REGISTRO AX : %i",PCBrec->registers.AX);
+    log_info(logger, "REGISTRO BX : %i",PCBrec->registers.BX);
+
+    return PCBrec;
+
+}
 t_interfaz_registrada *buscar_interfaz(char *nombreInterfaz){  
     
     interfazBUSCADA = nombreInterfaz;
@@ -743,6 +788,21 @@ void llamadasFS(t_interfaz_registrada *interfaz){
             send_packet(packetFS,interfaz->socket_de_conexion);
 
         }
+        if(pcbEnviado->tipoOperacion == FS_WRITE){
+            packetFS = create_packet(FS_WRITE,bufferFS);
+
+            add_to_packet(packetFS,&(pcbEnviado->PCB->pid), sizeof(int));
+            add_to_packet(packetFS,pcbEnviado->contenido,pcbEnviado->tamaContenido);
+
+            send_packet(packetFS,interfaz->socket_de_conexion);
+        }
+        if(pcbEnviado->tipoOperacion == FS_READ){
+            packetFS = create_packet(FS_READ,bufferFS);
+            add_to_packet(packetFS,&(pcbEnviado->PCB->pid), sizeof(int));
+            add_to_packet(packetFS,pcbEnviado->contenido,pcbEnviado->tamaContenido);
+
+            send_packet(packetFS,interfaz->socket_de_conexion);
+        }
 
         int operation_code = fetch_codop(interfaz->socket_de_conexion); //aca se queda bloqueante esperando la respuesta
     
@@ -759,6 +819,12 @@ void llamadasFS(t_interfaz_registrada *interfaz){
         }
         if(operation_code == CONFIRMACION_TRUNCAR){
             log_info(logger, "CONFIRMACION TRUNCAMIENTO ARCHIVO"); 
+        }
+        if(operation_code == FS_WRITE_CONFIRMACION){
+            log_info(logger, "CONFIRMACION WRITE FS"); 
+        }
+        if(operation_code == FS_READ_CONFIRMACION){
+            log_info(logger, "CONFIRMACION READ FS"); 
         }                       
 
         if(pcbEnviado->PCB->quantum == quantumGlobal){

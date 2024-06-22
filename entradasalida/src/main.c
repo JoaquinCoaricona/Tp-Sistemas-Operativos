@@ -574,6 +574,14 @@ void interfazFileSystem(){
             truncarArchivo(socket_kernel);
             enviarAvisoAKernel(socket_kernel,CONFIRMACION_TRUNCAR);
         break;
+        case FS_WRITE:
+            writeArchivo(socket_kernel);
+            enviarAvisoAKernel(socket_kernel,FS_WRITE_CONFIRMACION);
+        break;
+        case FS_READ:
+            readArchivo(socket_kernel);
+            enviarAvisoAKernel(socket_kernel,FS_READ_CONFIRMACION);
+        break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion");
             close_conection(socket_kernel);
@@ -1128,5 +1136,72 @@ void moverArchivosParaAtras(t_bitarray *bitarray,int indice){
 
         }
     }
+    
+}
+
+void writeArchivo(int socket_kernel){
+    int total_size;
+    int offset = 0;
+    int pid;
+    int cantidadDireccionesFisicas;
+    void *buffer2;
+    int dirFisica;
+    int cantidadBytesEscribir;
+
+    buffer2 = fetch_buffer(&total_size, socket_kernel);
+    void *contenido;
+    int cantidadBytesMalloc;
+    int parteEscrita = 0;
+    char *nombreArchivo;
+
+    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
+
+    memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
+    offset += sizeof(int);
+
+    int tamaVoid;
+    memcpy(&tamaVoid,buffer2 + offset, sizeof(int)); 
+    offset += sizeof(int); //Salteo el tamaño del int tamaVoid
+
+    int lengthArchivo;
+    memcpy(&lengthArchivo,buffer2 + offset, sizeof(int)); 
+    offset += sizeof(int); 
+
+    nombreArchivo = malloc(lengthArchivo);
+    memcpy(nombreArchivo,buffer2 + offset, lengthArchivo);
+    offset += lengthArchivo; 
+}
+void readArchivo(int socket_kernel){
+    int total_size;
+    int offset = 0;
+    int pid;
+    int cantidadDireccionesFisicas;
+    void *buffer2;
+    int dirFisica;
+    int cantidadBytesEscribir;
+
+    buffer2 = fetch_buffer(&total_size, socket_kernel);
+    void *contenido;
+    int cantidadBytesMalloc;
+    int parteEscrita = 0;
+    char *nombreArchivo;
+
+    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
+
+    memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
+    offset += sizeof(int);
+
+    int tamaVoid;
+    memcpy(&tamaVoid,buffer2 + offset, sizeof(int)); 
+    offset += sizeof(int); //Salteo el tamaño del int tamaVoid
+
+    int lengthArchivo;
+    memcpy(&lengthArchivo,buffer2 + offset, sizeof(int)); 
+    offset += sizeof(int); 
+
+    nombreArchivo = malloc(lengthArchivo);
+    memcpy(nombreArchivo,buffer2 + offset, lengthArchivo);
+    offset += lengthArchivo; 
+
     
 }

@@ -1044,3 +1044,147 @@ void operacion_io_fs_truncate(t_pcb *contexto,int socket,t_instruccion_unitaria*
 	send_packet(packetTruncate,socket);		//ENVIO EL PAQUETE
 	destroy_packet(packetTruncate);
 }
+// IO_FS_WRITE (Interfaz, Nombre Archivo, Registro Dirección, Registro Tamaño,
+// Registro Puntero Archivo): Esta instrucción solicita al Kernel que mediante la
+// interfaz seleccionada, se lea desde Memoria la cantidad de bytes indicadas por el
+// Registro Tamaño a partir de la dirección lógica que se encuentra en el Registro Dirección
+// y se escriban en el archivo a partir del valor del Registro Puntero Archivo.
+void operacion_io_fs_write(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
+	
+	int registroPuntero = obtener_valor_del_registro(instruccion->parametros[4],contexto);
+	
+	t_buffer *buffer_rta;
+	t_packet *packet_rta;
+	buffer_rta = create_buffer();
+	packet_rta = create_packet(FS_WRITE,buffer_rta);
+	add_to_packet(packet_rta,instruccion->parametros[0], instruccion->parametro1_lenght); //CARGO EL NOMBRE DE LA INTERFAZ
+	add_to_packet(packet_rta,instruccion->parametros[1], instruccion->parametro2_lenght); //CARGO EL NOMBRE DEL ARCHIVO
+	add_to_packet(packet_rta,&registroPuntero,sizeof(int)); //CARGO EL REGISTRO PUNTERO
+	
+	int dirLogica = obtener_valor_del_registro(instruccion->parametros[2],contexto);
+	int cantidadBytes = obtener_valor_del_registro(instruccion->parametros[3],contexto);
+
+	int nuevoMarco;
+	int nuevaDirFisica;
+
+	int dirFisica = traduccionLogica(contexto->pid,dirLogica);
+	int desplazamiento = obtenerDesplazamiento(contexto->pid,dirLogica);
+	int numeroPagina = (int) floor(dirLogica / tamaPagina);
+	add_to_packet(packet_rta,&cantidadBytes,sizeof(int));
+
+	//Calculo y agrego la cantidad de direcciones Fisicas que voy a enviar
+	int cantidadDireccionesFisicas = calcularCantDirFisicas(desplazamiento,cantidadBytes);
+	add_to_packet(packet_rta,&cantidadDireccionesFisicas,sizeof(int));
+
+	//Esto para leer lo que resta de la primera pagina, solo en caso que se escriba mas de una pagina
+	int diferencia = tamaPagina - desplazamiento;
+
+
+	if((desplazamiento + cantidadBytes) > tamaPagina){
+		
+		add_to_packet(packet_rta,&diferencia,sizeof(int));
+		add_to_packet(packet_rta,&dirFisica,sizeof(int));
+		cantidadBytes = cantidadBytes - diferencia;
+		numeroPagina++;
+
+		while(cantidadBytes > tamaPagina){
+			nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
+			nuevaDirFisica = nuevoMarco * tamaPagina;
+			add_to_packet(packet_rta,&tamaPagina,sizeof(int));
+			add_to_packet(packet_rta,&nuevaDirFisica,sizeof(int));
+			cantidadBytes = cantidadBytes - tamaPagina;
+			numeroPagina++;
+		}
+		nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
+		nuevaDirFisica = nuevoMarco * tamaPagina;
+		add_to_packet(packet_rta,&cantidadBytes,sizeof(int));
+		add_to_packet(packet_rta,&nuevaDirFisica,sizeof(int));
+		
+		
+	}else{
+		add_to_packet(packet_rta,&cantidadBytes,sizeof(int));
+		add_to_packet(packet_rta,&dirFisica,sizeof(int));
+	}
+	
+	//Ahora agrego el PCB al paquete
+
+	contexto->state = BLOCKED;
+	int tamanioPCB = sizeof(t_pcb);
+    add_to_packet(packet_rta, contexto, tamanioPCB); //CARGO EL PCB ACTUALIZADO
+	
+	send_packet(packet_rta,socket);		//ENVIO EL PAQUETE
+	destroy_packet(packet_rta);
+}
+// IO_FS_READ (Interfaz, Nombre Archivo, Registro Dirección, Registro Tamaño,
+// Registro Puntero Archivo): Esta instrucción solicita al Kernel que mediante
+// la interfaz seleccionada, se lea desde el archivo a partir del valor del Registro
+// Puntero Archivo la cantidad de bytes indicada por Registro Tamaño y se escriban en
+// la Memoria a partir de la dirección lógica indicada en el Registro Dirección.
+void operacion_io_fs_read(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
+
+	int registroPuntero = obtener_valor_del_registro(instruccion->parametros[4],contexto);
+	
+	t_buffer *buffer_rta;
+	t_packet *packet_rta;
+	buffer_rta = create_buffer();
+	packet_rta = create_packet(FS_READ,buffer_rta);
+	add_to_packet(packet_rta,instruccion->parametros[0], instruccion->parametro1_lenght); //CARGO EL NOMBRE DE LA INTERFAZ
+	add_to_packet(packet_rta,instruccion->parametros[1], instruccion->parametro2_lenght); //CARGO EL NOMBRE DEL ARCHIVO
+	add_to_packet(packet_rta,&registroPuntero,sizeof(int)); //CARGO EL REGISTRO PUNTERO
+	
+	int dirLogica = obtener_valor_del_registro(instruccion->parametros[2],contexto);
+	int cantidadBytes = obtener_valor_del_registro(instruccion->parametros[3],contexto);
+
+	int nuevoMarco;
+	int nuevaDirFisica;
+
+	int dirFisica = traduccionLogica(contexto->pid,dirLogica);
+	int desplazamiento = obtenerDesplazamiento(contexto->pid,dirLogica);
+	int numeroPagina = (int) floor(dirLogica / tamaPagina);
+	add_to_packet(packet_rta,&cantidadBytes,sizeof(int));
+
+	//Calculo y agrego la cantidad de direcciones Fisicas que voy a enviar
+	int cantidadDireccionesFisicas = calcularCantDirFisicas(desplazamiento,cantidadBytes);
+	add_to_packet(packet_rta,&cantidadDireccionesFisicas,sizeof(int));
+
+	//Esto para leer lo que resta de la primera pagina, solo en caso que se escriba mas de una pagina
+	int diferencia = tamaPagina - desplazamiento;
+
+
+	if((desplazamiento + cantidadBytes) > tamaPagina){
+		
+		add_to_packet(packet_rta,&diferencia,sizeof(int));
+		add_to_packet(packet_rta,&dirFisica,sizeof(int));
+		cantidadBytes = cantidadBytes - diferencia;
+		numeroPagina++;
+
+		while(cantidadBytes > tamaPagina){
+			nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
+			nuevaDirFisica = nuevoMarco * tamaPagina;
+			add_to_packet(packet_rta,&tamaPagina,sizeof(int));
+			add_to_packet(packet_rta,&nuevaDirFisica,sizeof(int));
+			cantidadBytes = cantidadBytes - tamaPagina;
+			numeroPagina++;
+		}
+		nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
+		nuevaDirFisica = nuevoMarco * tamaPagina;
+		add_to_packet(packet_rta,&cantidadBytes,sizeof(int));
+		add_to_packet(packet_rta,&nuevaDirFisica,sizeof(int));
+		
+		
+	}else{
+		add_to_packet(packet_rta,&cantidadBytes,sizeof(int));
+		add_to_packet(packet_rta,&dirFisica,sizeof(int));
+	}
+	
+	//Ahora agrego el PCB al paquete
+
+	contexto->state = BLOCKED;
+	int tamanioPCB = sizeof(t_pcb);
+    add_to_packet(packet_rta, contexto, tamanioPCB); //CARGO EL PCB ACTUALIZADO
+	
+	send_packet(packet_rta,socket);		//ENVIO EL PAQUETE
+	destroy_packet(packet_rta);
+
+
+}

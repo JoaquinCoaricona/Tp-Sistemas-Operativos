@@ -14,6 +14,7 @@ t_pcb *fetch_pcb_con_sleep(int server_socket,int *tiempoDormir,char **nomrebInte
 t_pcb *fetchPCBfileSystem(int server_socket,char **nomrebInterfaz,char **nombreArchivo,int *nuevoTamaArchivo);
 t_pcb *fetch_pcb_con_STDIN(int server_socket,char **nomrebInterfaz,void **contenido,int *tamanio);
 t_pcb *fetch_pcb_con_STDOUT(int server_socket, char **nomrebInterfaz, void **contenido, int *tamanio, int *bytesMalloc);
+t_pcb *fetchPCBfileSystemWR(int server_socket,char **nomrebInterfaz,void **contenido,int *tamaContenidowr);
 void cargarEnListaSTDIN(t_pcb *receptorPCB,t_interfaz_registrada *interfaz,void **contenido,int tamanio);
 
 bool esLaInterfazBuscada(t_interfaz_registrada *recibida);

@@ -119,6 +119,8 @@ typedef struct{
     t_pcb *PCB;               
     char *nombreArchivo;
     int nuevoTamaArchivo;
+    void *contenido;
+    int tamaContenido;
 }t_colaFS;    
 
 
