@@ -14,6 +14,8 @@ t_bitarray *bitarray;
 int block_size;
 int block_count;
 int bloquesLibres;
+t_list *listaDeArchivos;
+int bloqueABuscar;
 int main(int argc, char *argv[])
 {   
     //ARGV ES UN VECTOR D DE TODAS LAS VARIABLES DE ENTORNO, EN LA POSICION 0 ESTA
@@ -36,6 +38,7 @@ int main(int argc, char *argv[])
     t_buffer *buffer;
     t_packet *packet;
     char *tipo;
+    listaDeArchivos = list_create();
 
     logger = initialize_logger("entradasalida.log", "entradasalida", true, LOG_LEVEL_INFO);
 
@@ -623,11 +626,18 @@ void crearArchivo(int socket_kernel){
     int bitLibre = buscar_bit_libre(bitarray);
     marcarBitOcupado(bitarray,bitLibre);
 
+    //Me guardo el path de archivos y los datos de tamaños y bloque inicial
+    //esto para poder usarlo para compactar
+    t_archivo *archivoAGuardar = malloc(sizeof(t_archivo));
+    archivoAGuardar->pathArchivo = strdup(pathNuevo);
+    archivoAGuardar->bloque_inicial = bitLibre;
+    archivoAGuardar->tama_archivo = 1;
+    list_add(listaDeArchivos,archivoAGuardar);
 
     // Escribir los datos en el archivo, esto es lo que aclaracron en la consigna
     //Los archivos metadata estan para escribirles esto solamente
     fprintf(archivoACrear, "BLOQUE_INICIAL=%d\n", bitLibre);
-    fprintf(archivoACrear, "TAMANIO_ARCHIVO=1\n");
+    fprintf(archivoACrear, "TAMANIO_ARCHIVO=%d\n",block_size);
 
     // Cerrar el archivo
     fclose(archivoACrear);
@@ -677,6 +687,21 @@ void borrarArchivo(int socket_kernel){
 
     liberar_bloques(bitarray, bloque_inicial, tama_archivo);
 
+    //+++++++++++Borro el archivo de la lista de archivos+++++++++++++++++++
+        //El bloque a buscar es lo que usa la funcion encontrarArchivo
+        //por eso le pongo el bloqueInicial que lei del archivo, porque es el que quiero borrar
+        bloqueABuscar = bloque_inicial;
+        t_archivo *archivoEncontrado = list_find(listaDeArchivos,encontrarArchivo);
+        if(archivoEncontrado == NULL){
+            log_info(logger,"Archivo no encontrado");
+        }else{
+            log_info(logger,"Archivo encontrado");
+            list_remove(listaDeArchivos,archivoEncontrado);
+            free(archivoEncontrado->pathArchivo);
+            free(archivoEncontrado);
+        }
+    //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
     if (remove(pathNuevo) == 0) {
         log_info(logger,"El archivo fue borrado");
     } else {
@@ -685,7 +710,8 @@ void borrarArchivo(int socket_kernel){
 }
 
 void truncarArchivo(int socket_kernel){
-
+    int nuevoBloqueInicial;
+    bool esNecesario = false; //Esto es para ver si es necesario compactar
     int total_size;
     int offset = 0;
     int pid;
@@ -735,6 +761,20 @@ void truncarArchivo(int socket_kernel){
         //Esta funcion solo la uso aca y es para borrar los bits que tiene de mas
         //ahora con su nuevo tamaño mas chico
         borrarUltimosbits(bitarray,cantidadBloques,nuevaCantidadBloques,bloque_inicial);
+        
+        //+++++++++++Actualizo la cantidad de bloques en la lista+++++++++++++++++++
+            //El bloque a buscar es lo que usa la funcion encontrarArchivo
+            //por eso le pongo el bloqueInicial que lei del archivo, porque es el que quiero buscar
+            bloqueABuscar = bloque_inicial;
+            t_archivo *archivoEncontrado = list_find(listaDeArchivos,encontrarArchivo);
+            if(archivoEncontrado == NULL){
+                log_info(logger,"Archivo no encontrado");
+            }else{
+                log_info(logger,"Actualizo la nueva cantidad de bloques");
+                archivoEncontrado->tama_archivo = nuevaCantidadBloques;
+            }
+        //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
     }else{
         log_info(logger,"La nueva cantidad de bloques es mayor a la actual");
         int diferencia = nuevaCantidadBloques - cantidadBloques;
@@ -743,14 +783,46 @@ void truncarArchivo(int socket_kernel){
             log_info(logger,"La cantidad de bloques libres: %d es menor a los bloques nuevos que hay que agregar: %d",bloquesLibres,diferencia);
         }
     
-        bool esNecesario = verificarNecesidadDeCompactar(bitarray,cantidadBloques,nuevaCantidadBloques,bloque_inicial);    
+        esNecesario = verificarNecesidadDeCompactar(bitarray,cantidadBloques,nuevaCantidadBloques,bloque_inicial);    
 
         if(esNecesario){
             log_info(logger,"Hay que compactar");
-            //compactar();
+            //Aca lo que hago es buscar el archivo por el que estamos compactando
+            //lo busco en la lista y momentaneamte le cambio el bloque inicial a -1
+            //solo para que no moleste en la funcion compactar (en la busqueda de archivos
+            //que hay que mover para atras) en el filter de la funcion
+            //mover para atras, para que no moleste ahi le pongo un -1 momentaneamente
+            bloqueABuscar = bloque_inicial;
+            t_archivo* archivoPorelQueCompactamos = list_find(listaDeArchivos,encontrarArchivo);
+            archivoPorelQueCompactamos->bloque_inicial = -1;
+            //Compacto
+            compactar(bitarray,bloque_inicial,cantidadBloques);
+            //Despues de compactar ya le pongo el valor que tenia
+            archivoPorelQueCompactamos->bloque_inicial = bloque_inicial;
+
+            nuevoBloqueInicial = buscar_bit_libre(bitarray);
+            //Ahora lo hago ocupar la nueva cantidad de bloques desde el nuevoBloqueInicial
+            ocuparBits(bitarray,nuevoBloqueInicial,nuevaCantidadBloques);
+
+            //Ahora le cargo el nuevo bloque inicial al archivo en la lista
+            archivoPorelQueCompactamos->bloque_inicial = nuevoBloqueInicial;
         }else{
             log_info(logger,"No es necesario compactar");
             marcarBitsOcupados(bitarray,bloque_inicial,cantidadBloques,(nuevaCantidadBloques - cantidadBloques));
+
+            //+++++++++++Actualizo la cantidad de bloques en la lista+++++++++++++++++++
+            //El bloque a buscar es lo que usa la funcion encontrarArchivo
+            //por eso le pongo el bloqueInicial que lei del archivo, porque es el que quiero buscar
+            bloqueABuscar = bloque_inicial;
+            t_archivo *archivoEncontrado = list_find(listaDeArchivos,encontrarArchivo);
+            if(archivoEncontrado == NULL){
+                log_info(logger,"Archivo no encontrado");
+            }else{
+                log_info(logger,"Actualizo la nueva cantidad de bloques");
+                archivoEncontrado->tama_archivo = nuevaCantidadBloques;
+            }
+            //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
         }
 
     }
@@ -765,7 +837,15 @@ void truncarArchivo(int socket_kernel){
     fseek(archivo, 0, SEEK_SET);  // Posicionar el puntero al inicio del archivo
 
     // Escribir los nuevos valores de metadata en el archivo
-    fprintf(archivo, "BLOQUE_INICIAL=%d\n", bloque_inicial);
+    //en caso que haya sido necesario compactar, el archivo tiene nuevo bloque inicial
+    //sino solamente escribimos el anterior. Uso la misma variable bool
+    //para definir en este caso
+    if(esNecesario){
+        fprintf(archivo, "BLOQUE_INICIAL=%d\n", nuevoBloqueInicial);
+    }else{
+        fprintf(archivo, "BLOQUE_INICIAL=%d\n", bloque_inicial);
+    }
+
     fprintf(archivo, "TAMANIO_ARCHIVO=%d\n", nuevoTamaArchivo);
 
 
@@ -866,19 +946,46 @@ bool verificarNecesidadDeCompactar(t_bitarray *bitarray,int cantidadBloques,int 
     //del bloque maximo.
  
     int diferencia = nuevaCantidadBloques - cantidadBloques;
-    for(int i = 0; (i < diferencia), ((bloque_inicial + cantidadBloques + i) <= block_count);i++){
+    //Creo la variable i aca porque despues del for voy a chequear si salio
+    //porque no cumplio la primer condicion o porque no cumplio la segunda
+    //si no cumplio la primera no entra por el if, pero si no cumplio la segunda
+    //es porque queria seguir buscando un bloque vacio pero se choco con 
+    //el block count es decir que no habia mas lugar para buscar
+    //porque ya iba a pasar la cantidad de bloques totales, entonces en ese caso tambien
+    //es necesario compactar porque es como que ocupo dos bloques y termino en el penultimo
+    //y quiero expandirme 2 mas, y ponele que hay espacio antes mio
+    //Pero al chequear para ver si solo puedo estirarme chequeo los que siguen, entonces
+    //chequeo el ultimo y da libre entonces no entro al if, despues cuando quiero
+    //volver a entrar al for para chquear el que sigue no cumplo la segunda condicion
+    //porque ya me estaria pasando de la cnatidad de bloques y estaria excediendo
+    //el bit array, osea que no hay mas bloques. entonces no entro al for y entonces
+    //no tengo posibilidad de marcar que es necesasrio compactar. Entonces 
+    //por eso despues, en el if me fijo si salio por la segunda condicion
+    //en ese caso marco el esNecesario = true
+    //Pongo < block count porque los bits arrancan en 0 y el block count es un contadr de bloques
+    //totales, entonces no arranca en 0
+    int i;
+    for(i = 0; (i < diferencia) && ((bloque_inicial + cantidadBloques + i) < block_count);i++){
         
         //Si el bit esta libre entonces devuelve False 
         //el segundo parametro es el bit especifico que quiero probar
         //el calculo es el mismo que para comprobar que no me pase de total de bloques
         if(bitarray_test_bit(bitarray, bloque_inicial + cantidadBloques + i)){
-            bool esNecesario = true;
+            esNecesario = true;
         }
         //Si el bit esta libre entonces devuelve falso, entonces no entra al if
         //ahora cuando un bit esta ocupado devuelve true entonces entra al if
         //y ahi se marca el esNecesario = true, porque es necesario y ya con que
         //uno solo lo marque queda en true.
 
+    }
+    //Chequeo que explico mas arriba
+    //Agrego un chequeo mas porque quizas se daba un caso borde que justo
+    //se aumentaba la diferencia o algo raro por las dudas me fijo que 
+    //realmente la suma estaba superando al block_count o igualandolo
+    //no puede igualarlo por lo que explico un poco mas arriba
+    if(i < diferencia && ((bloque_inicial + cantidadBloques + i) >= block_count)){
+        esNecesario = true;
     }
     return esNecesario;
 }
@@ -890,4 +997,136 @@ void marcarBitsOcupados(t_bitarray *bitarray,int bloque_inicial,int cantidadBloq
         //para obtener la pagina
         marcarBitOcupado(bitarray,(bloque_inicial + cantidadBloques + i));
     }
+}
+void ocuparBits(t_bitarray *bitarray,int bloque_inicial,int cantidadBits){
+    
+    //Ocupo los bits desde la posicion indicada hasta la cantidad indicada
+    for(int i = 0;i < cantidadBits;i++){
+        marcarBitOcupado(bitarray,(bloque_inicial + i));
+    }
+}
+void compactar(t_bitarray *bitarray,int bloque_inicial,int cantidadBloques){
+    //Lo primero que hago es limpiar del bitarray a el archvo actual
+    //me copio su contenido de bloques.dat, me lo guardo en algun lugar auxiliar,
+    //los bits que ocupa actualmente el archivo, los pongo en 0 en el bitarray 
+    //y ahora que los pongo en 0 paso el algoritmo, osea
+    //busco bits libres y corro todos los bloques un bit o bloque atras
+    //y dejo los libres al final. Despues ahi ya cuando tengo libre el final
+    //ahi pego todo lo que tenia en la variable auxiliar.
+    
+    //Funcion para guardar en un void* auxiliar todo el contenido
+
+    //Aca libero todos los bits, desde el bloque inicial hasta la cantiadd de bloques
+    //del archivo
+    for(int i = 0;i < cantidadBloques;i++){
+        marcarBitLibre(bitarray,(bloque_inicial + i));
+    }
+
+    for (int i = 0; i < block_count; i++) {
+        //Si el bit esta libre entonces devuelve False y como eso es lo que buscamos
+        //entonces por eso pongo el ! para que si da false lo haga true y entre
+        if (!bitarray_test_bit(bitarray, i)) {
+            log_info(logger,"Bit libre encontrado en la posicion %i",i);
+            //Aca lo que hago es que mientras ese bit devuelva falso osea que esta libre
+            //entonces con el ! lo hago true, entonces mientras ese bit este libre
+            //yo sigo haciendo lo de mover archivos para atras. si llega a entrar muchas
+            //veces eso signiicara
+            //que yo movi los archivos para atras pero que aun asi el bit ese sigue
+            //libre porque tenia bits delante que tambien estaban libres, entonces
+            //lo vuelvo a mover para atras hasta que ese bit este ocupado
+
+            //Esto podria entrar en un loop infinito si es que delante de ese bit
+            //no hay ningun archivo, entonces no vamos a estar moviendo nada para atras
+            //y nunca vamos a salir de aca porque nunca se va a ocupar ese bit
+            //entonces por eso hago el mismo filter que hago en la funcion mover archivos
+            //para atras pero lo hago aca como una comprobacion de que hay archivos delante
+            //asi de paso me ahorro entrar a la funcion en algunos casos
+            
+            bloqueABuscar = i;
+            t_list *listaFiltrada = list_filter(listaDeArchivos,encontrarArchivoFilter);
+            int cantidadArchivos = list_size(listaFiltrada);
+            
+            while((!bitarray_test_bit(bitarray, i)) && (cantidadArchivos > 0)){
+                moverArchivosParaAtras(bitarray,i);
+            }
+
+        }else{
+            log_info(logger,"Bit ocupado en la posicion %i",i);
+        }
+
+    }
+}
+//Esta es para el list find y encontrar por un bloque inicial en especifico
+bool encontrarArchivo(void *datosArchivo){
+	t_archivo *archivo = (t_archivo*) datosArchivo;
+	if (archivo == NULL) {
+		return false;
+	}
+	return archivo->bloque_inicial == bloqueABuscar;
+}
+//Esta es para el list filter y filtrar los que tienen un bloque incial mayor al bloque que busco
+bool encontrarArchivoFilter(void *datosArchivo){
+	t_archivo *archivo = (t_archivo*) datosArchivo;
+	if (archivo == NULL) {
+		return false;
+	}
+	return archivo->bloque_inicial > bloqueABuscar;
+}
+void moverArchivosParaAtras(t_bitarray *bitarray,int indice){
+    //Aca establezco que el indice que me pasaron es el bloque desde el cual voy a buscar
+    //a los archivos. Los de atras no sirven porque no los voy a mover.
+    //Muevo desde el primer espacio vacio, que es el valor de Indice
+    bloqueABuscar = indice;
+
+    t_list *listaFiltrada = list_filter(listaDeArchivos,encontrarArchivoFilter);
+    int cantidadArchivos = list_size(listaFiltrada);
+    if(cantidadArchivos == 0){
+        log_info(logger,"No hay archivos delante de esta posicion");
+    }else{
+
+        for(int i = 0;i < cantidadArchivos;i++){
+            //Aca hay que hacer lo del memcpy
+            
+            //List Get empieza en 0
+            t_archivo *archivoActual = list_get(listaFiltrada,i);
+            if(archivoActual == NULL){
+                log_info(logger,"Error en el getter");
+            }
+            //Aca abro el archivo
+            FILE *archivo = fopen(archivoActual->pathArchivo, "r+");
+            //Leo los valores actuales
+            int bloque_inicial;
+            int tama_archivo;
+
+            fscanf(archivo, "BLOQUE_INICIAL=%d\n", &bloque_inicial);
+            fscanf(archivo, "TAMANIO_ARCHIVO=%d\n", &tama_archivo);
+
+            ftruncate(fileno(archivo), 0); // Trunca el archivo a 0 bytes, borrando su contenido
+
+            //Aca despues de haber truncado el archivo a 0, tengo que mover el punter
+            //Al inicio asi que con esto lo dejo en el incio para volver a escribir
+            fseek(archivo, 0, SEEK_SET);  // Posicionar el puntero al inicio del archivo
+
+            // Escribir los nuevos valores de metadata en el archivo
+            //Aca como estoy moviendo todo para atras, solo le resto 1 al bloque inicial
+            //El tamaño sigue siendo el mismo
+            fprintf(archivo, "BLOQUE_INICIAL=%d\n", (bloque_inicial - 1) );
+            fprintf(archivo, "TAMANIO_ARCHIVO=%d\n", tama_archivo);
+            //Cierro y guardo los cambios
+            fclose(archivo);
+            //Actualizo el bloque inicial en la lista de archivos
+            archivoActual->bloque_inicial = bloque_inicial - 1;
+            //Actualizo el bitmap
+            //Primero calculo los bloques del archivo 
+            int bloques = (tama_archivo + block_size - 1) / block_size; 
+            //Aca el ultimo bloque (de antes del corrimiento) pasa a estar libre ahora
+            marcarBitLibre(bitarray,bloque_inicial - 1 + bloques);
+            //Donde inicia ahora lo marco ocupado
+            marcarBitOcupado(bitarray,bloque_inicial-1);
+
+
+
+        }
+    }
+    
 }

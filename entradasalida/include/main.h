@@ -22,5 +22,13 @@ int fetch_tiempoDormir(int socket_kernel);
 void interfazGenerica();
 void borrarUltimosbits(t_bitarray *bitarray,int cantidadBloques,int nuevaCantidadBloques,int bloque_inicial);
 void marcarBitsOcupados(t_bitarray *bitarray,int bloque_inicial,int cantidadBloques,int diferencia);
-
+bool encontrarArchivo(void *datosArchivo);
+bool encontrarArchivoFilter(void *datosArchivo);
+void ocuparBits(t_bitarray *bitarray,int bloque_inicial,int cantidadBits);
+void compactar(t_bitarray *bitarray,int bloque_inicial,int cantidadBloques);
+typedef struct{
+    char *pathArchivo;
+    int bloque_inicial;
+    int tama_archivo;
+}t_archivo;    
 #endif /* MAIN_H_ */
