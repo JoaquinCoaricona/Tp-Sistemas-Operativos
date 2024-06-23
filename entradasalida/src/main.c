@@ -494,7 +494,7 @@ void interfazFileSystem(){
 
     //Borrar esto -- Esto es para la prueba de FS para poder mandar algo a memoria directamente
     //a escribir y no tener que escribir primero el FS
-    memcpy(contenidoFS + 16,"ERROR ERROR",12);
+    memcpy(contenidoFS + 6144,"ERROR ERROR",12);
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -555,6 +555,23 @@ void interfazFileSystem(){
     */
     
     bitarray = bitarray_create_with_mode(bitmap_data, bitmap_size, LSB_FIRST);
+    // Diferencia entre MSB First y LSB First Para el Bitarray
+    // Interpretado en MSB first:
+
+    // Bit	    7	6	5	4	3	2	1	0
+    // Valor	0	1	1	1	1	1	1	1
+    // Bitmap resultante en MSB First:
+    // Bloques en uso: 7 bloques (bits 1 a 7)
+    // Bloques libres: 1 bloque (bit 0)
+
+    // Interpretación en formato LSB first
+    // En formato LSB first, los bits se interpretan desde el bit menos significativo (derecho) hacia el más significativo (izquierdo). Esto nos da el siguiente orden:
+
+    // 11111110
+
+    // Bitmap resultante:
+    // Bit	    7	6	5	4	3	2	1	0
+    // Valor	1	1	1	1	1	1	1	0
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -851,6 +868,15 @@ void truncarArchivo(int socket_kernel){
             bloqueABuscar = bloque_inicial;
             t_archivo* archivoPorelQueCompactamos = list_find(listaDeArchivos,encontrarArchivo);
             archivoPorelQueCompactamos->bloque_inicial = -1;
+            //Antes de compactar me guardo una copia del contenido de los bloques 
+            //del archivo, el malloc es la cantidad de bloques por el tamaño
+            //de un bloque, que me da el total en bytes. Y esa misma cantidad de bytes
+            //es la que copio en el memcpy
+            void *copiaContenidoBloques = malloc(cantidadBloques * block_size);
+            //El segundo parametro marca el inicio, el 0 es contenidoFS y le sumo
+            //el desplzamiento, que es el bloque inicial por el tamaño de cada bloque para llegar
+            //al 0 del bloque (y del archivo) y desde ahi copiar
+            memcpy(copiaContenidoBloques,contenidoFS + (bloque_inicial * block_size),cantidadBloques * block_size);
             //Compacto, ACLARACION SOBRE LA COMPACTACION MAS ARRIBA
             compactar(bitarray,bloque_inicial,cantidadBloques);
             //Tiempo de espera despues de la compactacion -- Esto lo pedia la consigna
@@ -864,6 +890,13 @@ void truncarArchivo(int socket_kernel){
 
             //Ahora le cargo el nuevo bloque inicial al archivo en la lista
             archivoPorelQueCompactamos->bloque_inicial = nuevoBloqueInicial;
+
+            //Ahora que ya compacte y que tengo un nuevo Bloque inicial, copio lo que tenia y lo pongo
+            //desde el nuevo bloque inicial en adelante
+            //Hago el mismo calculo pero ahora cambia el orden de los paraemtros en el memcpy
+            memcpy(contenidoFS + (nuevoBloqueInicial * block_size),copiaContenidoBloques,cantidadBloques * block_size);
+            //Libero el void* que use para la copia
+            free(copiaContenidoBloques);
         }else{
             log_info(logger,"No es necesario compactar");
             marcarBitsOcupados(bitarray,bloque_inicial,cantidadBloques,(nuevaCantidadBloques - cantidadBloques));
@@ -1140,6 +1173,15 @@ void moverArchivosParaAtras(t_bitarray *bitarray,int indice){
     bloqueABuscar = indice;
 
     t_list *listaFiltrada = list_filter(listaDeArchivos,encontrarArchivoFilter);
+    //Aca podria llegar a tener un problema segun el orden de listfilter
+    //porque si al filtrar, a los ultimos que encuentra los pone en las primeras
+    //posiciones entonces al sacar el indice 0 quizas saco el archivo que esta mas 
+    //al final en el bitarray y al moverlo para atras pisaria el contenido de los que
+    //estan antes y todavia no movi. Creo que no pasa pero 
+    //en ese caso habria que cambiar el orden en que accedemos por indice a la lista
+    //en el list get
+    //AL FINAL NO PASA, LO HACE EN EL ORDEN QUE FUNCIONA, PERO PODRIA HABER PASADO
+    //POR LAS DUDAS LO DEJO. QUIZAS LO GUARDABA EN OTRO ORDEN Y HUBIERA ARRUINADO TODO
     int cantidadArchivos = list_size(listaFiltrada);
     if(cantidadArchivos == 0){
         log_info(logger,"No hay archivos delante de esta posicion");
@@ -1184,7 +1226,18 @@ void moverArchivosParaAtras(t_bitarray *bitarray,int indice){
             marcarBitLibre(bitarray,bloque_inicial - 1 + bloques);
             //Donde inicia ahora lo marco ocupado
             marcarBitOcupado(bitarray,bloque_inicial-1);
-
+            //Muevo el los bytes en el archuv bloques.dat modificado el void *contenido
+            //que obtuve con el mmap
+            void *copiaContenido = malloc(bloques * block_size);
+            //Esto es como lo que hago para guardar el contenido en la funcion que llama a esta
+            memcpy(copiaContenido,contenidoFS + (bloque_inicial * block_size) ,bloques * block_size);
+            //Aca copio desde el void* para copiar y lo pego en el contenidoFS pero desde
+            //un bloque antes de donde estaba al principio, es moverlo un bloque para atras
+            //solo inverti los parametros y le reste uno al bloque inicial, la cantiad 
+            //de bytes a copiar es la misma
+            memcpy(contenidoFS + ((bloque_inicial - 1)* block_size),copiaContenido,bloques * block_size);
+            //Libero el void* auxiliar
+            free(copiaContenido);
 
 
         }
