@@ -27,6 +27,8 @@ bool encontrarArchivoFilter(void *datosArchivo);
 void ocuparBits(t_bitarray *bitarray,int bloque_inicial,int cantidadBits);
 void compactar(t_bitarray *bitarray,int bloque_inicial,int cantidadBloques);
 void moverArchivosParaAtras(t_bitarray *bitarray,int indice);
+void readArchivo(int socket_kernel);
+void writeArchivo(int socket_kernel);
 typedef struct{
     char *pathArchivo;
     int bloque_inicial;

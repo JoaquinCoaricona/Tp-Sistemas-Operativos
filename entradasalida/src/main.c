@@ -16,6 +16,8 @@ int block_count;
 int bloquesLibres;
 t_list *listaDeArchivos;
 int bloqueABuscar;
+void *contenidoFS;
+int tiempoRetrasoCompactacion;
 int main(int argc, char *argv[])
 {   
     //ARGV ES UN VECTOR D DE TODAS LAS VARIABLES DE ENTORNO, EN LA POSICION 0 ESTA
@@ -429,7 +431,8 @@ void interfazFileSystem(){
     destroy_packet(packet_handshake);
 
     //Verifico si existen los archivos
-
+    //Aclaracion: existe la funcion config_get_int. Se podria haber usado en lugar de los atoi
+    tiempoRetrasoCompactacion = atoi(config_get_string_value(config, "RETRASO_COMPACTACION"));
     block_size = atoi(config_get_string_value(config, "BLOCK_SIZE"));
     block_count = atoi(config_get_string_value(config, "BLOCK_COUNT"));
     char *path = config_get_string_value(config, "PATH_BASE_DIALFS");
@@ -475,7 +478,7 @@ void interfazFileSystem(){
     //y que los cambios que haga aca se vayan al archivo. El segundo parametro es la cantidad que tengo que leer del archivo parece
     //por eso puse directamente el tamaño que le estableci con ftruncate mas arriba. Porque tengo que tener todo el contenido
     //del archivo. Con esto seria algo parecido a memoria
-    void *contenidoBloques =  mmap(NULL,(block_count * block_size), PROT_READ | PROT_WRITE, MAP_SHARED,fileno(archivoBloques), 0);
+    contenidoFS =  mmap(NULL,(block_count * block_size), PROT_READ | PROT_WRITE, MAP_SHARED,fileno(archivoBloques), 0);
     // truncar significa que se borra el contenido del archivo
     // "r": Abre un archivo para lectura. El archivo debe existir.
     // "r+": Abre un archivo para lectura y escritura. El archivo debe existir. 
@@ -489,6 +492,9 @@ void interfazFileSystem(){
     // "a+": Abre un archivo para lectura y escritura en modo adjuntar (append). 
     // Si el archivo no existe, lo crea. Si el archivo existe, escribe al final del archivo.
 
+    //Borrar esto -- Esto es para la prueba de FS para poder mandar algo a memoria directamente
+    //a escribir y no tener que escribir primero el FS
+    memcpy(contenidoFS + 16,"ERROR ERROR",12);
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -499,7 +505,7 @@ void interfazFileSystem(){
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     string_append(&pathBitMap,"bitmap.dat");
     FILE *archivoBitMap = fopen(pathBitMap, "rb+");
-
+    //Esto deberia funcionar con open seguro 
     if (archivoBitMap != NULL){
         log_info(logger, "El archivo BitMap.dat ya existe y está abierto en modo lectura/escritura.");
     }else{
@@ -585,7 +591,6 @@ void interfazFileSystem(){
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion");
             close_conection(socket_kernel);
-
             return;
         default:
             log_error(logger, "Algun error inesperado ");
@@ -639,13 +644,17 @@ void crearArchivo(int socket_kernel){
     t_archivo *archivoAGuardar = malloc(sizeof(t_archivo));
     archivoAGuardar->pathArchivo = strdup(pathNuevo);
     archivoAGuardar->bloque_inicial = bitLibre;
+    //Aca pongo tamaarchivo pero esta en cantidad de bloques, no en bytes
+    //Este campo dentro de la lista no lo uso nunca creo
+    //pero igual hay que aclarar que dice tamaarchivo 
+    //pero el tamaño no esta en bytes, esta en bloques
     archivoAGuardar->tama_archivo = 1;
     list_add(listaDeArchivos,archivoAGuardar);
 
     // Escribir los datos en el archivo, esto es lo que aclaracron en la consigna
     //Los archivos metadata estan para escribirles esto solamente
     fprintf(archivoACrear, "BLOQUE_INICIAL=%d\n", bitLibre);
-    fprintf(archivoACrear, "TAMANIO_ARCHIVO=%d\n",block_size);
+    fprintf(archivoACrear, "TAMANIO_ARCHIVO=0\n");
 
     // Cerrar el archivo
     fclose(archivoACrear);
@@ -779,6 +788,9 @@ void truncarArchivo(int socket_kernel){
                 log_info(logger,"Archivo no encontrado");
             }else{
                 log_info(logger,"Actualizo la nueva cantidad de bloques");
+                //Este campo dentro de la lista no lo uso nunca creo
+                //pero igual hay que aclarar que dice tamaarchivo 
+                //pero el tamaño no esta en bytes, esta en bloques
                 archivoEncontrado->tama_archivo = nuevaCantidadBloques;
             }
         //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -790,7 +802,43 @@ void truncarArchivo(int socket_kernel){
         if(diferencia > bloquesLibres){
             log_info(logger,"La cantidad de bloques libres: %d es menor a los bloques nuevos que hay que agregar: %d",bloquesLibres,diferencia);
         }
-    
+        //Esto lo hago porque cuando creamos un archivo tenemos que poner que su tamaño es
+        //0 y asignarle un bit inicial que lo marcamos como ocupado. Pero cuando
+        //hacemos el calculo de cantidad de bloques nos da 0 y eso cambia 
+        //todos los calculos de la funcion verificar necesidad compactar
+        //Porque ahi se suma la cantidad de bloques para poder ver el siguiente bloque al ultimo
+        //osea ver despues de donde termina, entonces como suma 0 se fija el bloque actual 
+        //y como es el primero esta ocupado y marca que hay que compactar cuando no hay que hacerlo
+        //entonces por eso hago esto solo en este caso para que funcione poqrue 
+        //cuando pense esto tomaba como que el calculo me daba 1 porque crei que guardabamos el
+        //tamaño del archivo igual a un bloque entonces esto no pasaba porque la cantidad
+        //al ser nuevo era 1 y no 0
+        //Este cambio funciona, pero hace algo raro, vuelve a marcar un bit
+        //que esta ocupado como ocupado de vuelta, por lo que explique mas arriba
+        //osea cuando se da el caso de hacer el primer truncate pasa esto. Debuggeando se ve
+        //despues en la lista le asigna el nuevo tamaño igual al tamaño que ya tenia
+        //hace cosas raras pero funciona y es coherente, no rompe ni desconfigura nada
+        //Pero tuve que hacer esto porque en la consigna no aclaraba como guardarlo
+        //y cuando lo dijeron ya lo habia implementado y la forma en que lo habia
+        //pensado no servia entonces por eso hubo que hacer esto
+        if(cantidadBloques == 0){
+            cantidadBloques = 1;
+        }
+        //ACLARACION SOBRE LA COMPACTACION
+        //la compactacion aca lo que hace es buscar un bit (o bloque )libre y en caso que
+        //haya archivos o bits ocupados mas adelante de ese bit entonces
+        //mueve todo un bloque para atras. Y asi hasta que ese bit que estaba libre
+        //este ocupado. Puede ser que yo tengo un archivo que ocupa 50 bloques
+        //lo trunco a 2 bloques y quizas tenia un archivo en el bloque 51. Entonces
+        //voy al compactar muevo 48 veces todo hasta cubrir cerrar el hueco.
+        //Una version que hubiera sido mejor, hubiese sido una funcion que busque los 
+        //huecos y que por ejemplo si encuentra un bit libre se fije cuantos bits
+        //libres tiene delante hasta el proximo archivo. En el ejemplo 
+        //hubiera contado los 48 y hacia el movimiento de 48 bloques para atras,
+        //osea movia todo para atras 48 bloques de una y no uno por uno 
+        //como lo hago yo. Pero era mas complicada y como no controlan la eficiencia
+        //con esta funciona, pero no es la mejor. Esa implementacion hubiese sido 
+        //mucho mejor
         esNecesario = verificarNecesidadDeCompactar(bitarray,cantidadBloques,nuevaCantidadBloques,bloque_inicial);    
 
         if(esNecesario){
@@ -803,8 +851,10 @@ void truncarArchivo(int socket_kernel){
             bloqueABuscar = bloque_inicial;
             t_archivo* archivoPorelQueCompactamos = list_find(listaDeArchivos,encontrarArchivo);
             archivoPorelQueCompactamos->bloque_inicial = -1;
-            //Compacto
+            //Compacto, ACLARACION SOBRE LA COMPACTACION MAS ARRIBA
             compactar(bitarray,bloque_inicial,cantidadBloques);
+            //Tiempo de espera despues de la compactacion -- Esto lo pedia la consigna
+            usleep(tiempoRetrasoCompactacion);
             //Despues de compactar ya le pongo el valor que tenia
             archivoPorelQueCompactamos->bloque_inicial = bloque_inicial;
 
@@ -827,6 +877,9 @@ void truncarArchivo(int socket_kernel){
                 log_info(logger,"Archivo no encontrado");
             }else{
                 log_info(logger,"Actualizo la nueva cantidad de bloques");
+                //Este campo dentro de la lista no lo uso nunca creo
+                //pero igual hay que aclarar que dice tamaarchivo 
+                //pero el tamaño no esta en bytes, esta en bloques
                 archivoEncontrado->tama_archivo = nuevaCantidadBloques;
             }
             //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1145,13 +1198,13 @@ void writeArchivo(int socket_kernel){
     int pid;
     int cantidadDireccionesFisicas;
     void *buffer2;
+    int registroPuntero;
     int dirFisica;
-    int cantidadBytesEscribir;
+    int cantidadBytesLeer;
 
     buffer2 = fetch_buffer(&total_size, socket_kernel);
-    void *contenido;
     int cantidadBytesMalloc;
-    int parteEscrita = 0;
+    int desplazamientoParteLeida = 0;
     char *nombreArchivo;
 
     offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
@@ -1170,6 +1223,101 @@ void writeArchivo(int socket_kernel){
     nombreArchivo = malloc(lengthArchivo);
     memcpy(nombreArchivo,buffer2 + offset, lengthArchivo);
     offset += lengthArchivo; 
+
+
+    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
+    memcpy(&registroPuntero,buffer2 + offset, sizeof(int)); //RECIBO EL REGISTRO PUNTERO
+    offset += sizeof(int);
+    
+    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
+    memcpy(&cantidadBytesMalloc,buffer2 + offset, sizeof(int)); //RECIBO LA CANTIDAD DE BYTES MALLOC
+    offset += sizeof(int);
+
+    offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT DIR FISICAS;
+    memcpy(&cantidadDireccionesFisicas,buffer2 + offset, sizeof(int)); //Recibo cantidad dir Fisicas
+    offset += sizeof(int);
+
+    log_info(logger,"Cantidad Direcciones fisicas %i",cantidadDireccionesFisicas);
+
+    //+++++++++++++++Abro el archivo y leo los datos+++++++++++++++++++++++
+    char *pathWrite = strdup(conservadorPATH);
+    string_append(&pathWrite,nombreArchivo);
+
+    FILE *archivo = fopen(pathWrite, "r+");
+
+    int bloque_inicial;
+    int tama_archivo;
+
+    fscanf(archivo, "BLOQUE_INICIAL=%d\n", &bloque_inicial);
+    fscanf(archivo, "TAMANIO_ARCHIVO=%d\n", &tama_archivo);
+
+    fclose(archivo);
+    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+        
+    //Con esto calculo donde empezaria el archivo en terminos de bytes
+    //Desde donde empieza el void * que tiene almacendo bloques.dat con mmap
+    //ese seria el 0 y le tengo que sumar esto para saber donde empieza 
+    //el contenido de archivo
+    int posicionInicioArchivo = bloque_inicial * block_size;
+
+    //Tomo el contenidoFS que es donde empieza el void* que hice con el mmap
+    //para tener el contenido de archivo en RAM. Eso lo hice al abrir bloques.dat
+    //Despues le sumo la posicion donde arranca el archivo que calcule con su bloque inicial
+    //Y despues le sumo el desplazamiento dentro del archivo que viene
+    //Dado por registroPuntero
+    void *punteroADondeTengoQueEscribirLoQueLeoDeMemoria = contenidoFS + posicionInicioArchivo + registroPuntero;
+
+
+    for(int i = 0; i < cantidadDireccionesFisicas; i++){
+        offset += sizeof(int); //Aca salteo el tamaño del int cantidadBytesLee
+        memcpy(&cantidadBytesLeer,buffer2 + offset, sizeof(int)); 
+        offset += sizeof(int);
+        offset += sizeof(int);//Aca salteo el tamaño del int dirfisica
+        memcpy(&dirFisica,buffer2 + offset, sizeof(int)); 
+        offset += sizeof(int);
+        mandarALeer(dirFisica,cantidadBytesLeer,pid,punteroADondeTengoQueEscribirLoQueLeoDeMemoria + desplazamientoParteLeida);
+        desplazamientoParteLeida = desplazamientoParteLeida + cantidadBytesLeer;
+    }
+    //Esto no lo puedo hacer aca porque aca estamos trabajando sobre el void que nos da
+    //el mmap, entonces no puedo modificarlo asi nomas como estaba haciendo 
+    //con el casteo y despues poniendo el barra 0 porque estoy tocando 
+    //la zona de memoria void* del mmap entonces estoy tocando el contenido del
+    //archivo bloques.dat Para imprimir esto en el log y ver si esta bien tengo que hacerlo
+    //de otra forma. Copiando el contenido a otro espacio que reserve solo para loggear
+    //IMPLEMENTACION QUE NO FUNCIONA PORQUE MODIFICA EL ESPACIO VOID* DEL MMAP
+    //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    // //Aca creo el char* cadena para poder loggear lo que escribi en el puntero void*
+    // //Que es lo que lei de memoria (para comprobar que salio bien)
+    // char *cadena = (char *)punteroADondeTengoQueEscribirLoQueLeoDeMemoria;
+    // //Lo pongo asi porque aca no tengo un void *conteido con su malloc
+    // //Sino que estoy leyendo directamente del archivo
+    // int tama = strlen(cadena);
+    // cadena[cantidadBytesMalloc] = '\0'; // Asegúrate de que el string esté terminado en '\0'
+
+    // log_info(logger,"%s",cadena);
+
+    // free(buffer2);
+    //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    //COMPROBACION DE QUE TODO HAYA SALIDO BIEN (IMPLEMENTACION QUE FUNCIONA)
+    //podria hacer un void* pero como creo que solo van a usarlo para string lo hago asi
+    //El + 1 lo pongo para poner un barra 0 al final para poder imprimirlo como string
+    //Hago esto porque quizas el contenido no termina con un barra 0 entonces
+    //tengo que ponerlo para poder imprimirlo como un string
+    char *reservaParaLoggear = malloc(cantidadBytesMalloc + 1);
+    //Copio el contenido justo, copio desde el void* del mmap osea desde el contenido
+    //directo del archivo y lo guardo en la reserva que hice para loggear
+    memcpy(reservaParaLoggear,punteroADondeTengoQueEscribirLoQueLeoDeMemoria,cantidadBytesMalloc);
+    //Establezco el ultimo bytes con el barra 0 para poder loggearlo con %s
+    reservaParaLoggear[cantidadBytesMalloc] = '\0';
+    //Loggeo
+    log_info(logger,"%s",reservaParaLoggear);
+    //Libero la memoria que solo pedi para loggear que todo haya salido bien
+    free(reservaParaLoggear);
+
+    
+
 }
 void readArchivo(int socket_kernel){
     int total_size;
@@ -1181,10 +1329,11 @@ void readArchivo(int socket_kernel){
     int cantidadBytesEscribir;
 
     buffer2 = fetch_buffer(&total_size, socket_kernel);
-    void *contenido;
-    int cantidadBytesMalloc;
+
     int parteEscrita = 0;
     char *nombreArchivo;
+    int registroPuntero;
+    int limiteAEscribir;
 
     offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
 
@@ -1203,5 +1352,63 @@ void readArchivo(int socket_kernel){
     memcpy(nombreArchivo,buffer2 + offset, lengthArchivo);
     offset += lengthArchivo; 
 
+    offset += sizeof(int); //Salteo el tamaño del INT
+    memcpy(&registroPuntero,buffer2 + offset,sizeof(int)); //Recibo el registro Puntero
+    offset += sizeof(int);
+
+    offset += sizeof(int); //Salteo el tamaño del INT
+    memcpy(&limiteAEscribir,buffer2 + offset,sizeof(int));//Recibo la cantidad de bytes a escribir en memoria
+    offset += sizeof(int);
+
+    offset += sizeof(int); //Salteo el tamaño del INT
+    memcpy(&cantidadDireccionesFisicas,buffer2 + offset,sizeof(int));//Recibo la cant Dir fisicas
+    offset += sizeof(int);
+
+
+    char *pathRead = strdup(conservadorPATH);
+    string_append(&pathRead,nombreArchivo);
+
+    FILE *archivo = fopen(pathRead, "r+");
+
+    int bloque_inicial;
+    int tama_archivo;
+
+    fscanf(archivo, "BLOQUE_INICIAL=%d\n", &bloque_inicial);
+    fscanf(archivo, "TAMANIO_ARCHIVO=%d\n", &tama_archivo);
+
+    fclose(archivo);
     
+    //Con esto calculo donde empezaria el archivo en terminos de bytes
+    //Desde donde empieza el void * que tiene almacendo bloques.dat con mmap
+    //ese seria el 0 y le tengo que sumar esto para saber donde empieza 
+    //el contenido de archivo
+    int posicionInicioArchivo = bloque_inicial * block_size;
+
+
+    //Tomo el contenidoFS que es donde empieza el void* que hice con el mmap
+    //para tener el contenido de archivo en RAM
+    //Despues le sumo la posicion donde arranca el archivo que calcule con su bloque inicial
+    //Y despues le sumo el desplazamiento dentro del archivo que viene
+    //Dado por registroPuntero
+    void *punteroALeerParaEscribirEnMemoria = contenidoFS + posicionInicioArchivo + registroPuntero;
+
+    while((cantidadDireccionesFisicas > 0) && (parteEscrita < limiteAEscribir)){
+        offset += sizeof(int);//Salteo el tamaño del int
+        memcpy(&cantidadBytesEscribir,buffer2 + offset, sizeof(int)); 
+        offset += sizeof(int);
+        offset += sizeof(int);//Salteo el tamaño del int
+        memcpy(&dirFisica,buffer2 + offset, sizeof(int)); 
+        offset += sizeof(int);        
+        mandarAescribirEnMemoria(dirFisica,punteroALeerParaEscribirEnMemoria + parteEscrita,cantidadBytesEscribir,pid);
+        
+        //Log para controlar que escribi bien
+        char *contenidoEscrito = malloc(cantidadBytesEscribir + 1);
+        contenidoEscrito[cantidadBytesEscribir] = '\0'; // Asegúrate de que el string esté terminado en '\0'
+        memcpy(contenidoEscrito,punteroALeerParaEscribirEnMemoria + parteEscrita, cantidadBytesEscribir); 
+        log_info(logger,"%s",contenidoEscrito);
+        free(contenidoEscrito);
+        //Actualizo la variable desplazamiento sumandole lo que acabo de escribir en memoria
+        parteEscrita = parteEscrita + cantidadBytesEscribir;
+    }
+
 }

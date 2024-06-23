@@ -462,7 +462,9 @@ void cargarEnListaSTDIN(t_pcb *receptorPCB,t_interfaz_registrada *interfaz,void 
 
 }
 void cargarEnListaFS(t_colaFS *aCargar,t_interfaz_registrada *interfaz){
-     
+     //la cola tiene el mismo tipo de dato, osea es una cola de todos
+     //esos structs, pero dependiendo el opcode hay campos que lleno y otros que no
+     //pero puedo hacer eso porque meti todos los campos en el mismo struct y guardo el opcode
 
     //Directamente cargo el struct colaFS
     //Despues antes de enviar es cuando separo en casos
@@ -752,7 +754,13 @@ void llamadasFS(t_interfaz_registrada *interfaz){
         pthread_mutex_lock(&(interfaz->mutexColaIO));
         pcbEnviado = queue_pop(interfaz->listaProcesosEsperando); //ENCAPSULO ENTRE DOS MUTEX SACAR DE LA COLA
         pthread_mutex_unlock(&(interfaz->mutexColaIO));
-        
+        //Aca este struct t_colaFS que es el tipo de puntero pcbEnviado, tiene varios
+        //campos, pero yo guardo el struct en la cola, entonces 
+        //en la cola guardo varios structy y no hay diferencia entre los tipos
+        //de datos de la cola porque son todos el mismo struct, pero
+        //como me guardo el opcode entonces aca filtro y voy mandando 
+        //diferentes campos segundo el opcode. No todos
+        //los cmpos estan llenos, solo los necesarios para ese case
         bufferFS = create_buffer();
         if(pcbEnviado->tipoOperacion == CREAR_ARCHIVO){
             packetFS = create_packet(CREAR_ARCHIVO,bufferFS);

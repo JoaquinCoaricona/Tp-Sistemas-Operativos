@@ -52,6 +52,11 @@ int main(int argc, char *argv[])
 
     //Reserva Espacio Usuario
     espacioUsuario = malloc(memoriaTotal);
+    //BORRAR ESTO, esto era para probar el FS para leer sin escribir en memoria
+    //igualmente habia que hacer el resize pero escribiamos esto aca directamente sin mandarlo por
+    //instrucion o interfaz
+    //  int tot = strlen("HOLA COMO ESTASX"); 
+    //  memcpy(espacioUsuario,"HOLA COMO ESTASX",tot);
 
     //Asigno la memoria total a la variable memoriaDisponible
     memoriaDisponible = memoriaTotal;

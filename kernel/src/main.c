@@ -461,9 +461,15 @@ void *manage_request_from_dispatch(void *args)
                 guardarFS->nuevoTamaArchivo = nuevoTamaArchivo;
             }
             cargarEnListaFS(guardarFS,interfazFS);
-
+            //Pude usar el mismo case y el mismo struct porque me guardo el opcode
+            //entonces dependiendo el opcode hay campos que uso y otros que no
+            //hay casos en los que tiene campos que no usa pero tampoco
+            //los necesita y eso lo distingo por el opcode
             sem_post(&short_term_scheduler_semaphore);
         break;
+        //Esto lo hago para que en los dos case entren por aca y no repetir codigo
+        //como uso el mismo struct y estas instrucciones tienen los mismos parametros
+        //las puedo poner juntas
         case FS_READ:
         case FS_WRITE:
 
@@ -495,7 +501,10 @@ void *manage_request_from_dispatch(void *args)
             guardarFSwr->PCB = receptorPCBFSwr;
             guardarFSwr->contenido = contenidoWR;
             guardarFSwr->tamaContenido = tamaContenidowr;
-            //Aca en caso que haya que truncar, cargo el nuevo tamaño en la estructura
+            //uso el mismo struct, solo que aca relleno algunos campos que en el otro case
+            //no rellenaba, en la cola no hay problemas porque son todos los mismos
+            //tipos de datos y con el opcode me guardo el tipo de operacion
+            //y filtro que campos rellenar dependiendo el opcode
             
             cargarEnListaFS(guardarFSwr,interfazFSwr);
 
