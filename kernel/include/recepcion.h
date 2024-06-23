@@ -2,7 +2,6 @@
 #define RECEPCION_H_
 #include "../include/utils.h"
 #include "long_term_scheduler.h"// agrego esto porque no encuentra en Recepcion.C el PCBejecutando Global
-#include "main.h"
 
 extern t_list *listaInterfaces;
 extern t_queue* queue_ready;

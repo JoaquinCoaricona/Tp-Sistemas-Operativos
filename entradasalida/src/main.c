@@ -10,7 +10,13 @@ char *IP_kernel;
 int tiempoUnidad;
 t_config* config;
 char *path_base_dialfs;
-
+int block_size;
+int block_count;
+t_bitarray *bitarray;
+FILE *archivoBloque;
+FILE *archivoBitmap;
+int bloques_size;
+t_dictionary* metadata_dictionary;
 int main(int argc, char *argv[])
 {   
     //ARGV ES UN VECTOR D DE TODAS LAS VARIABLES DE ENTORNO, EN LA POSICION 0 ESTA
@@ -413,10 +419,11 @@ void interfazDialFS(){
     log_info(logger, "Handshake enviado");   
     destroy_packet(packet_handshake);
 
-    int block_size = atoi(config_get_string_value(config, "BLOCK_SIZE"));
-    int block_count = atoi(config_get_string_value(config, "BLOCK_COUNT"));
+    block_size = atoi(config_get_string_value(config, "BLOCK_SIZE"));
+    block_count = atoi(config_get_string_value(config, "BLOCK_COUNT"));
     path_base_dialfs = config_get_string_value(config, "PATH_BASE_DIALFS");
 
+    metadata_dictionary = dictionary_create();
 
     crear_bloques_dat(block_size, block_count);
     crear_bitmap_dat(block_count);
@@ -428,40 +435,46 @@ void interfazDialFS(){
         {
         case DIALFS_CREATE:
             usleep(tiempoUnidad);
-            fetch_nombre_archivo_y_crear_archivo(socket_kernel);
+            crear_archivos(socket_kernel);
             enviarAvisoAKernel(socket_kernel,CONFIRMACION_CREATE_ARCHIVO);
+            cerrar_archivo_y_bitarray();
             break;
         case DIALFS_DELETE:
             usleep(tiempoUnidad);
-            fetch_nombre_archivo_y_delete_archivo(socket_kernel);
+            delete_archivos(socket_kernel);
             enviarAvisoAKernel(socket_kernel,CONFIRMACION_DELETE_ARCHIVO);
+            cerrar_archivo_y_bitarray();
             break;
         case DIALFS_TRUNCATE:
             usleep(tiempoUnidad);
 
+            cerrar_archivo_y_bitarray();
             break;
         case DIALFS_WRITE:
             usleep(tiempoUnidad);
 
+            cerrar_archivo_y_bitarray();
             break;
         case DIALFS_READ:
             usleep(tiempoUnidad);
             
+            cerrar_archivo_y_bitarray();
             break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion");
             close_conection(socket_kernel);
-
+            cerrar_archivo_y_bitarray();
             return;
         default:
             log_error(logger, "Algun error inesperado ");
             close_conection(socket_kernel);
+            cerrar_archivo_y_bitarray();
             return;
         }
     }
 }
 
-void fetch_nombre_archivo_y_crear_archivo(int socket_kernel){
+void crear_archivos(int socket_kernel){
 
     int total_size;
     int offset = 0;
@@ -484,22 +497,80 @@ void fetch_nombre_archivo_y_crear_archivo(int socket_kernel){
 
     free(buffer2);
 
+    //Estoy buscando el primer bit libre pero como el posicion de bit esta relacionado conelposicion de block son mismo 
+    int bloque_libre = primer_bit_libre(bitarray);
+    if(bloque_libre == -1){
+        log_info(logger, "Bloques.dat esta lleno y sin bloques disponible\n");
+        return;
+    }
+
+    actualizar_bitmap(bloque_libre, true);
+
     log_info(logger, "PID: %i - Crear Archivo: %s", pid, nombre_archivo);
 
     char* pathCreacion = strdup(path_base_dialfs);
     string_append(&pathCreacion,nombre_archivo);
 
     FILE *archivo = fopen(pathCreacion, "w+");
-    
+        
     if (archivo == NULL) {
-          log_info(logger,"Error al crear el archivo");
-          exit(EXIT_FAILURE);
+        log_info(logger,"Error al crear el archivo");
+        exit(EXIT_FAILURE);
     }
 
+    fseek(archivo, 0, SEEK_END);
+    long tamano_archivo = ftell(archivo);
+    fseek(archivo, 0, SEEK_SET);
+
+    char *buffer = (char *)malloc(tamano_archivo + 1);
+    if (buffer == NULL) {
+        fclose(archivo);
+        perror("Error creando buffer");
+        exit(EXIT_FAILURE);
+    }
+
+    size_t bytes_leido = fread(buffer, 1, tamano_archivo, archivo);
+    if (bytes_leido != tamano_archivo) {
+        fclose(archivo);
+        free(buffer);
+        perror("Error en leer el archivo");
+        exit(EXIT_FAILURE);
+    }
+
+    buffer[tamano_archivo] = '\0';
+
+    fwrite(buffer, 1, tamano_archivo, archivoBloque);
+
+    t_metadata *metadata = malloc(sizeof(t_metadata));
+    if(metadata == NULL) {
+        perror("Error creando el struct metadata");
+        return;
+    }
+
+    strncpy(metadata->nombre_archivo, nombre_archivo, length_nombre_archivo);
+    metadata->tamano = 0;
+    metadata->bloque_inicial = bloque_libre;
+
+    dictionary_put(metadata_dictionary, nombre_archivo, metadata);
+
+    char* nombre_archivo_metadata = malloc(strlen(nombre_archivo) + 6); 
+    snprintf(nombre_archivo_metadata, strlen(nombre_archivo) + 6, "%s_meta", nombre_archivo);
+
+    FILE *archivo_metadata = fopen(nombre_archivo_metadata, "w+");
+    if (!archivo_metadata) {
+        log_info(logger, "Error creando archivo metadata");
+        exit(EXIT_FAILURE);
+    }
+
+    fprintf(archivo_metadata, "BLOQUE_INICIAL: %i\n TAMANO: %i\n", metadata->bloque_inicial, metadata->tamanao);
+    
+    bitarray_clean_bit(bitarray, bloque_libre);
+
+    fclose(archivo_metadata);
     fclose(archivo);
 }
 
-void fetch_nombre_archivo_y_delete_archivo(int socket_kernel){
+void delete_archivos(int socket_kernel){
 
     int total_size;
     int offset = 0;
@@ -533,6 +604,7 @@ void fetch_nombre_archivo_y_delete_archivo(int socket_kernel){
         log_info(logger,"Fallo borrar Archivo %s", nombre_archivo);
     }
 
+    //FALTA IMPLEMENTACION DE DELETE
 }
 
 void crear_bloques_dat(int block_size, int block_count) {
@@ -541,21 +613,26 @@ void crear_bloques_dat(int block_size, int block_count) {
     
     log_info(logger, "Creando archivo bloques.dat");
 
-    FILE *archivo = fopen(path_bloques, "rb+");
-    if(archivo != NULL) {
+    archivoBloque = fopen(path_bloques, "rb+");
+    if(archivoBloque != NULL) {
         log_info(logger,"El archivo bloques.dat esta abierto ya");
     }else {
-       archivo = fopen(path_bloques, "wb+");
-        if (archivo == NULL) {
+       archivoBloque = fopen(path_bloques, "wb+");
+        if (archivoBloque == NULL) {
               log_info(logger,"Error creando el archivo bloques.dat");
               exit(EXIT_FAILURE);
         } 
-        int fileDescriptor = fileno(archivo);
+        int fileDescriptor = fileno(archivoBloque);
         ftruncate(fileDescriptor, (block_size * block_count));
         log_info(logger,"Creado y abierto el archivo bloques.dat");
     }
 
-    fclose(archivo);
+    bloques_size = (block_count * block_size) + 1;
+    void *bloques = mmap(NULL, bloques_size, PROT_READ | PROT_WRITE, MAP_SHARED, fileno(archivoBloques), 0);
+    if (bloques == MAP_FAILED) {
+        perror("Error mapeando bloques");
+        exit(EXIT_FAILURE);
+    }
 }
 
 void crear_bitmap_dat(int block_count) {
@@ -563,16 +640,18 @@ void crear_bitmap_dat(int block_count) {
     char* path_bitmap = strdup(path_base_dialfs);
     string_append(&path_bitmap,"bitmap.dat");
 
-    FILE *archivo = fopen(path_bitmap, "rb+");
-    if(archivo != NULL) {
+    log_info(logger, "Creando archivo bitmap.dat");
+
+    archivoBitmap = fopen(path_bitmap, "rb+");
+    if(archivoBitmap != NULL) {
         log_info(logger,"El archivo bitmap.dat esta abierto ya");
     }else{
-        archivo = fopen(path_bitmap, "wb+");
-        if (archivo == NULL) {
+        archivoBitmap = fopen(path_bitmap, "wb+");
+        if (archivoBitmap == NULL) {
               log_info(logger,"Error creando el archivo bitmap.dat");
               exit(EXIT_FAILURE);
         } 
-        int fileDescriptor = fileno(archivo);
+        int fileDescriptor = fileno(archivoBitmap);
         int tamanioBitmap = (block_count / 8) + 1; //bits a bytes
 
         ftruncate(fileDescriptor, tamanioBitmap);
@@ -582,9 +661,26 @@ void crear_bitmap_dat(int block_count) {
 
     int bitmap_size = (block_count / 8) + 1;
     char * bitmap = mmap(NULL, bitmap_size, PROT_READ | PROT_WRITE, MAP_SHARED,fileno(archivo), 0);
-    
-    t_bitarray *bitarray = bitarray_create_with_mode(bitmap, bitmap_size, LSB_FIRST);
+    if (bitmap == MAP_FAILED) {
+        perror("Error mappeando bitmap");
+        exit(EXIT_FAILURE);
+    }
 
-    fclose(archivo);
+    bitarray = bitarray_create_with_mode(bitmap, bitmap_size, LSB_FIRST);
+}
+
+void cerrar_archivo_y_bitarray() {
+    fclose(archivoBloque);
+    fclose(archivoBitmap);
     free(bitarray);
+}
+
+int primer_bit_libre(t_bitarray *bitarray) {
+
+    for(int i = 0; i < block_count; i++) {
+        if(!bitarray_test_bit(bitarray, i)) {
+            return i;
+        }
+    }
+    return -1;
 }
