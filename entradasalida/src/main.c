@@ -27,12 +27,12 @@ int main(int argc, char *argv[])
     // printf("PARAMETRO: %s\n",argv[1]); // NOMBRE DE LA INTERFAZ
     // printf("PARAMETRO: %s\n",argv[2]); // CONFIG AL QUE LO CONECTO
     
-    // char *nombreInterfaz = argv[1];
-    // char *configRecibido = argv[2];
+    char *nombreInterfaz = argv[1];
+    char *configRecibido = argv[2];
 
 
-    char *nombreInterfaz = "FS";
-    char *configRecibido = "filesystem.config";
+    // char *nombreInterfaz = "FS";
+    // char *configRecibido = "filesystem.config";
 
     // ESTO ES PARA TENER LOS NOMBRE YA PUESTOS ACA Y NO ESTAR PASANDOLOS AL LLAMAR AL EXE
     //char *nombreInterfaz = "nombre1";
@@ -588,22 +588,27 @@ void interfazFileSystem(){
         case CREAR_ARCHIVO:
             crearArchivo(socket_kernel);
             enviarAvisoAKernel(socket_kernel,CONFIRMACION_CREACION);
+            usleep(tiempoUnidad * 1000); //Tiempo de demora por cada operacion
         break;
         case BORRAR_ARCHIVO:
             borrarArchivo(socket_kernel);
             enviarAvisoAKernel(socket_kernel,CONFIRMACION_ELIMINACION);
+            usleep(tiempoUnidad * 1000);
         break;
         case TRUNCAR_ARCHIVO:
             truncarArchivo(socket_kernel);
             enviarAvisoAKernel(socket_kernel,CONFIRMACION_TRUNCAR);
+            usleep(tiempoUnidad * 1000);
         break;
         case FS_WRITE:
             writeArchivo(socket_kernel);
             enviarAvisoAKernel(socket_kernel,FS_WRITE_CONFIRMACION);
+            usleep(tiempoUnidad * 1000);
         break;
         case FS_READ:
             readArchivo(socket_kernel);
             enviarAvisoAKernel(socket_kernel,FS_READ_CONFIRMACION);
+            usleep(tiempoUnidad * 1000);
         break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion");
