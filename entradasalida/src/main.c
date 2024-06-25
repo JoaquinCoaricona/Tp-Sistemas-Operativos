@@ -494,7 +494,7 @@ void interfazFileSystem(){
 
     //Borrar esto -- Esto es para la prueba de FS para poder mandar algo a memoria directamente
     //a escribir y no tener que escribir primero el FS
-    memcpy(contenidoFS + 6144,"ERROR ERROR",12);
+    memcpy(contenidoFS + 1024,"ERROR ERROR",12);
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1221,7 +1221,40 @@ void moverArchivosParaAtras(t_bitarray *bitarray,int indice){
             archivoActual->bloque_inicial = bloque_inicial - 1;
             //Actualizo el bitmap
             //Primero calculo los bloques del archivo 
-            int bloques = (tama_archivo + block_size - 1) / block_size; 
+            int bloques = (tama_archivo + block_size - 1) / block_size;
+            /*ARREGLO: ACA HAGO ESTO (ME REFIERO AL IF DE ABAJO) PORQUE FALLABA EN ESTE CASO:
+            CREO 3 ARCHIVOS, Y COMO CREE LOS 3 Y NO LOS TRUNQUE, SOLO LOS CREE ENTONCES
+            OCUPAN UN BLOQUE CADA UNO, Y QUIERO TRUNCAR EL DEL MEDIO EN 2 (PUEDEN SER MAS ES SOLO
+            UN EJEMPLO) ENTONCES EL TECER ARCHIVO TENDRIA QUE MOVERSE A LA POSICION DEL SEGUNDO ARCHIVO
+            Y EL SEGUNDO ARCHIVO A LA POSICION DEL TERCERO Y EXPANDIRSE AHI
+            PERO COMO EN EL TAMAÑO ARCHIVO DICE QUE OCUPAN 0 BLOQUES
+            ENTONCES AL LEER ESO DEL ARCHIVO ACA FALLABA, PORQUE EN EL CALCULO DE LOS BLOQUES
+            TODO EMPIEZA POR EL TAMA_ARCHIVO Y SI ESO ES 0 ENTONCES LA VARIABLE BLOQUES DA 0
+            Y YA EMPIEZA CON ERRORES AL MARCAR EL BITMAP PORQUE COMO SE ESTA SUMANDO UN 0 ENTONCES
+            SE LIBERAN BLOQUES INCORRECTOS, SE LIBERABA UNO QUE YA HABIA SIDO LIBERADO OSEA EN EL EJE PLO
+            SE ESTABA LIBERANDO DE VUELTA EL BLOQUE DONDE ESTABA EL SEGUNDO ARCHIVO, QUE LO LIBERAMOS ANTES DE LA
+            COMPACTACION (PERO ESO LO LIBERO ANTES POR UN TEMA DEL ALGORITMO POR EL FILTER QUE HACEMOS
+            PARA QUE NO INTERFIERA EN EL FILTER EL ARCHIVO POR EL CUAL ESTAMOS COMPACTANDO). ENTONCES SE MARCABA
+            COMO LIBRE ALGO QUE YA ESTABA LIRE, DESPUES HABIA OTRO PROBLEMA EN EL MALLOC PORQUE COMO USA LA 
+            VARIABLE BLOQUES Y COMO ERA 0 ENTONCES SE HACE UN MALLOC DE 0 DESPUES TAMBIEN EN EL MEMCPY
+            HAY ERRORES PORQUE LA CANTIDAD A COPIAR SERIA 0 PORQUE BLOQUES VALE 0 Y EN EL TERCER PARAMETRO
+            LA MULTIPLICACION DA 0 Y ENTONCES NO SE COPIARIA NADA.
+            LO SOLUCIONAMOS IGUAL QUE SOLUCIONAMOS EL ERROR DE CANTIDAD DE BLOQUES MAS ARRIBA, 
+            EN CASO QUE SEA 0 LO CAMBIAMOS A 1. PORQUE EL UNICO CASO EN EL QUE PODRIA SER 0 ES
+            CUANDO RECIEN ESTA CREADO, EL TAMAÑO ES 0 PERO REALMENTE ESTA OCUPANDO 1 ENTONCES
+            HACEMOS ESTO PARA QUE NO HAYA PROBLEMAS Y SOLO PARA ESE CASO. CON ESTE ARREGLO FUNCIONA
+            
+            ESTA PARTE DE LA CONSIGNA NO TIENE SENTIDO PORQUE DIJERON QUE APENAS ESTE CREADO EL ARCHIVO
+            SE LE ASIGNA UN BLOQUE PERO TENEMOS QUE MARCAR QUE SU TAMAÑO ES 0. ENTONCES HAY UNA 
+            "CONTRADICCION" PORQUE REALMENTE ESTA OCUPANDO UN BLOQUE, ENTONCES PORQUE EL TAMAÑO SERIA 0
+            SI REALLMENTE SE ESTA OCUPANDO UN BLOQUE. QUIZAS DEBERIAMOS ASIGNARLE UN BLOQUE CUANDO LO TRUNQUEMOS
+            Y CAMBIE DE 0, PERO BUENO ESTO GENERO UN MOTON DE ERRORES QUE TENEMOS QUE SOLUCIONARLO DE ESTA FORMA
+            QUE NO ESTA TAN BUENA PERO QUIZAS SEA LA UNICA. LO PROBE TAMBIEN CON EL CONTENIDO QUE SE COPIA
+            OSEA PARA VER SI SE DESPLZA BIEN EL CONTENIDO CON LOS MEMCPY Y FUNCIONA
+            */
+            if(bloques == 0){
+                bloques = 1;
+            }
             //Aca el ultimo bloque (de antes del corrimiento) pasa a estar libre ahora
             marcarBitLibre(bitarray,bloque_inicial - 1 + bloques);
             //Donde inicia ahora lo marco ocupado
