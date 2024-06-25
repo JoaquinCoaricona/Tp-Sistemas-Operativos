@@ -20,6 +20,8 @@ t_list *recursosAsignados;
 int pidBuscadoRecurso;
 char *recursoBuscado;
 int totalRecursos;
+char *buscarInterfazYaRegistrada;
+bool yaEstaRegistrada;
 int main(int argc, char *argv[])
 {
 
@@ -178,8 +180,27 @@ void *manage_request_from_input_output(void *args)
         {
         case NUEVA_INTERFAZ:
             t_interfaz_registrada *recibida = NULL;
+            //La pongo en falso para que se pueda hacer la busqueda y si se encuentra devuelva true
+            //por las dudas que haya estado en otro valor o se ponga en true por no inicializarla
+            yaEstaRegistrada = false;
+            //Tengo que hacer una comprobacion porque puede ser que la interfaz se haya desconectado
+            //y se este volviendo a conectar, entonces en ese caso solo tendria que actualizar el socket
+            //porque por como esta hecha la funcion, cuando manda las cosas desde el hilo de la interfaz
+            //al mandarlas busca el socket en la estructura, si lo actualizamos ya se cambia automaticamente
+            //en la funcion y se puede mandar bien sin tener que ceerrar el hilo y volver a crear otro
+            //Esto sirve para las interfaces FS que se levantaban y cerraban para probar la persistencia
+            //de los datos
+            //Dentro de la funcion recibir interfaz se hace la prueba con el list find
             recibida = recibir_interfaz(client_socket);
-            crear_hilo_interfaz(recibida); // ESTA EN RECEPCION.C CREO EL HILO
+            //si ya esta registrada liber la memoria de lo que devolvi porque como ya estaba registrada
+            //devuelvo el struct vacio solo con el nombre cargado y como no le voy a armar un hilo
+            //entonces ese strcut no sirve y lo libero
+            if(yaEstaRegistrada){
+                log_info(logger,"La interfaz ya estaba registrada, no creo hilo");
+                free(recibida);
+            }else{
+                crear_hilo_interfaz(recibida); // ESTA EN RECEPCION.C CREO EL HILO
+            }
             break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
@@ -865,6 +886,29 @@ t_interfaz_registrada *recibir_interfaz(int client_socket)
     // por eso aca va sin el &
     offset += strlen_nombre;
 
+    //Aca empiezo la busqueda para ver si ya tengo la interfaz registrada
+    //Cargo en la variable global el nombre de la interfaz que llego
+    buscarInterfazYaRegistrada = interfazNueva->nombre;
+    //Uso la funcion bool que cree y busco en la lista de interfaces a ver si alguna
+    //coincide con el nombre
+    t_interfaz_registrada *intBuscada = list_find(listaInterfaces,BuscarinterfazYaRegistrada);
+    //En caso que esto devuelva algo, osea que no devuelva null, actualizo el socket que tenia cargado
+    //y por como esta implemendatado el hilo que manda las cosas a la interfaz con esto ya es suficiente
+    //y manda bien las cosas. No es necesario cerrar ese hilo y levantar otro
+    if(intBuscada != NULL){
+        //actualizo el socket
+        intBuscada->socket_de_conexion = client_socket;
+        log_info(logger,"Actualizo socket de la interfaz");
+        //marco el true en la variable global para loggear bien y entrar por el if al volver a la funcion
+        //que llamo a esta
+        yaEstaRegistrada = true;
+        //como voy a hacer el return antes llegar al final de esta funcion, libero el buffer aca
+        free(buffer);
+        //la estoy devolviendo incompleta porque no me interesa recibir el resto porque ya la tengo registrada
+        return interfazNueva;   
+    }
+
+
     memcpy(&strlen_nombre, buffer + offset, sizeof(int)); // RECIBO EL TAMAÑO DEL TIPO INTERFAZ
     offset += sizeof(int);
 
@@ -1474,3 +1518,11 @@ void listarRecursos(){
                 
 }
 }
+//Funcion para buscar si una interfaz ya la tengo registrada y solo tengo que actualizar 
+//su socket porque se desconecto y ahora se esta volviendo a conectar
+bool BuscarinterfazYaRegistrada(void* interfazPrueba){
+    t_interfaz_registrada *interfaz =(t_interfaz_registrada *) interfazPrueba;
+    //Comparo el nombre de la que estoy probando con la de la variable global que cargue antes de hacer el listfind
+    return string_equals_ignore_case(interfaz->nombre,buscarInterfazYaRegistrada);
+}
+

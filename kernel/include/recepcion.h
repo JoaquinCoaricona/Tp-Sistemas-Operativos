@@ -5,6 +5,7 @@
 
 extern t_list *listaInterfaces;
 extern t_queue* queue_ready;
+extern char *buscarInterfazYaRegistrada;
 
 extern t_log *logger;
 extern sem_t procesosEsperandoIO;
