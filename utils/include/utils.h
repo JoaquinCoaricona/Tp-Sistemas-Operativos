@@ -29,6 +29,7 @@
 #include <semaphore.h>
 #include "comunication.h"
 #include <commons/temporal.h>
+#include <dirent.h> //Para poder buscar archivos en el directorio en FS
 
 // STRUCTS
 //extern t_queue *queue_instrucciones;

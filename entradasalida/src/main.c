@@ -31,8 +31,8 @@ int main(int argc, char *argv[])
     char *configRecibido = argv[2];
 
 
-    // char *nombreInterfaz = "FS";
-    // char *configRecibido = "filesystem.config";
+    //char *nombreInterfaz = "FS";
+    //char *configRecibido = "filesystem.config";
 
     // ESTO ES PARA TENER LOS NOMBRE YA PUESTOS ACA Y NO ESTAR PASANDOLOS AL LLAMAR AL EXE
     //char *nombreInterfaz = "nombre1";
@@ -576,9 +576,130 @@ void interfazFileSystem(){
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+//+++++++++++++++++++CARGO LA LISTA DE ARCHIVOS EN CASO QUE YA HAYA ARCHIVOS CREADOS+++++++++++++
+    //Hacemos esto para cargar la lista de archivos que usamos en la compactaacion
+    //Porque cada vez que creo un archivo lo guardo en la lissta de archivos
+    //pero si por ejemplo yo tengo un proceso que crea los archivos por
+    //ejemplo crea 5, entonces se guardan los 5. Pero si por ejemplo bajan la interfaz FS
+    //pierdo la lista y si depsues la vuelven a levantar y quieren compactar
+    //entonces no puedo hacer nada porque perdi la lista y no puedo
+    //compactar, por eso cada vez que levantamos la interfaz buscamos los archivos que exitan
+    //excepcto bitmap y bloques. Leemos los que encontramos y guardamos la lista
+    //para que no haya problemas
+    
+    // struct dirent {
+    // ino_t          d_ino;       /* Número de inodo */
+    // off_t          d_off;       /* Desplazamiento hasta la próxima `dirent` */
+    // unsigned short d_reclen;    /* Longitud de este registro */
+    // unsigned char  d_type;      /* Tipo de archivo */
+    // char           d_name[256]; /* Nombre del archivo */
+    // };
 
-    //------------------------------------------------------------------------------
-    //LOOP INFINITO DE ESCUCHA A KERNEL
+    struct dirent *entry;
+    
+    // La función opendir abre el directorio especificado
+    // por conservadorPATH y devuelve un puntero a DIR, que es una estructura que representa
+    // el directorio abierto.
+    DIR *dp = opendir(conservadorPATH);
+
+    if (dp == NULL) {
+        log_error(logger,"Error al abrir el directorio");
+        return;
+    }
+
+// La función readdir lee la siguiente entrada en el directorio dp y
+// devuelve un puntero a una estructura dirent que contiene información sobre
+// esa entrada. Si no hay más entradas, readdir devuelve NULL.
+    while ((entry = readdir(dp))) {
+
+        // entry->d_type: Verifica si la entrada es un archivo regular (DT_REG).
+        // entry->d_name: Contiene el nombre del archivo.
+        // Compara este nombre con "bloques.dat" y "bitmap.dat", y si no coincide
+        // con ninguno de estos, construye la ruta completa al archivo y llama a
+        // leer_archivo para leer su contenido.
+        //Este log era para chequear que archivos abria porque quizas tenia 4 archivos
+        //pero hasta aca llegaba 6 veces como si tendria otros archivos. Eso era porque
+        //habria algunos archivos ocultos. Pero del if de mas abajo no pasaba
+        //porque ahi filtramos lo que son archivos regulares asi que de ahi no pasa
+        //osea que no llega a la parte donde abrimos los archivos pero era raro
+        //log_info(logger,"Nombre de entrada: %s, Tipo: %d", entry->d_name, entry->d_type);
+        
+        //  los archivos . (directorio actual) y .. (directorio padre) no llegarían a la
+        //  parte donde intentas abrir y procesar archivos, incluso si no se agrega el filtro
+        //  adicional. Esto se debe a que readdir está devolviendo el tipo DT_DIR para estos
+        //  directorios especiales, y tu código actual está filtrando explícitamente solo los
+        //  archivos regulares (DT_REG).
+
+        // Por lo tanto, en tu implementación actual, los archivos . y .. se omitirán
+        // automáticamente porque no cumplen con la condición entry->d_type == DT_REG.
+
+        if (entry->d_type == DT_REG) { // Verifica si es un archivo regular
+            
+            if (strcmp(entry->d_name, "bloques.dat") != 0 && strcmp(entry->d_name, "bitmap.dat") != 0) {
+                
+                //Armo el path para abrir el archivo
+                char *pathLeer = strdup(conservadorPATH);
+                //A la ruta del directorio agrego el nombre del archivo
+                string_append(&pathLeer,entry->d_name);
+                //Abro el archivo y me fijo si abrio bien
+                FILE *archivoLeer = fopen(pathLeer, "r");
+                if (archivoLeer == NULL) {
+                    log_error(logger,"Error al abrir el archivo %s metadata",entry->d_name);
+                    exit(EXIT_FAILURE);
+                }
+
+                int bloque_inicial;
+                int tama_archivo;
+                //Leo del archivo los datos especificos y lo cierro
+                fscanf(archivoLeer, "BLOQUE_INICIAL=%d\n", &bloque_inicial);
+                fscanf(archivoLeer, "TAMANIO_ARCHIVO=%d\n", &tama_archivo);
+                fclose(archivoLeer);
+                
+
+                //Me guardo el path de archivos y los datos de tamaños y bloque inicial
+                //esto para poder usarlo para compactar
+                t_archivo *archivoAGuardar = malloc(sizeof(t_archivo));
+                //Por las dudas hago el strdup y libero el original
+                archivoAGuardar->pathArchivo = strdup(pathLeer);
+                //Guardo el bloque inicial que lei
+                archivoAGuardar->bloque_inicial = bloque_inicial;
+                //Aca pongo tamaarchivo pero esta en cantidad de bloques, no en bytes
+                //Este campo dentro de la lista no lo uso nunca creo
+                //pero igual hay que aclarar que dice tamaarchivo 
+                //pero el tamaño no esta en bytes, esta en bloques
+
+                //Hago la conversion a bloques
+                int cant_bloq = (tama_archivo + block_size - 1) / block_size;
+
+                //No uso este dato, pero por las dudas, como al crear un archivo
+                // tamaño dijeron que tenemos que ponerle un 0 pero en realidad ocupa
+                //1 bloque (Porque apenas se crea le asignamos uno), en la compactacion
+                //se toma como lo que ocupa de verdad, osea un bloque por eso hago esto
+                if(cant_bloq == 0){
+                    cant_bloq = 1;
+                    log_info(logger,"Cambio de cantidad bloques 0 -> 1");
+                }
+                //guardo la cantidad de bloques
+                archivoAGuardar->tama_archivo = cant_bloq;
+                //Guardo en la lista los datos del metadata
+                list_add(listaDeArchivos,archivoAGuardar);
+                //Libero el path original que tenia porque guarde un strdup
+                free(pathLeer);
+
+            }
+        }
+    }
+
+    closedir(dp);
+
+
+
+
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//----------------------------------------------------------------------------------------------
+//LOOP INFINITO DE ESCUCHA A KERNEL
     while (1)
     {
 
