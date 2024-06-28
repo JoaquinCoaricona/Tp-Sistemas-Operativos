@@ -19,6 +19,7 @@
 #include <readline/readline.h>
 #include <commons/collections/queue.h>
 #include <commons/collections/list.h>
+#include <commons/bitarray.h>
 #include <string.h>
 #include "sockets.h"
 #include "logger.h"
@@ -28,7 +29,6 @@
 #include <semaphore.h>
 #include "comunication.h"
 #include <commons/temporal.h>
-#include <commons/bitarray.h>
 
 // STRUCTS
 //extern t_queue *queue_instrucciones;
@@ -113,14 +113,7 @@ typedef struct{
     int cantidadBytes;
     void *contenido;
 }t_colaStdIN;    
-
-
-typedef struct {
-    op_code tipoOperacion;
-    t_pcb *PCB;
-    char *nombreArchivo;
-}t_colaDialFS;
-
+  
 typedef struct
 {
 char *nombre;
@@ -132,5 +125,18 @@ sem_t semaforoContadorIO;
 pthread_mutex_t mutexColaIO;
 
 }t_interfaz_registrada;
+
+typedef struct{
+    t_pcb *PCB; 
+    op_code tipoOperacion;            
+    char *nombreArchivo;
+    int tamanoNuevo;
+}t_colaDialFS;  
+
+
+
+
+
+
 
 #endif // UTILS_H

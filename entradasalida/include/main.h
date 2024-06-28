@@ -2,13 +2,10 @@
 #define MAIN_H_
 
 #include "../include/utils.h"
-#include <sys/mman.h>
+#include <sys/mman.h> 
+#include <stdbool.h>
 
-typedef struct {
-    char* nombre_archivo;
-    int bloque_inicial;
-    int tamano;
-}t_metadata;
-
+bool existe_espacio_para_agrandar(t_bitarray *bitarray, int bloque_final, int cantidad_bloques_agrandar);
+char* list_get_first(t_list *list);
 
 #endif /* MAIN_H_ */

@@ -924,7 +924,8 @@ void operacion_io_stdin_read(t_pcb *contexto,int socket,t_instruccion_unitaria* 
 	destroy_packet(packet_rta);
 
 }
-
+// WAIT (Recurso): Esta instrucción solicita al Kernel que se asigne una
+// instancia del recurso indicado por parámetro.
 void operacion_wait(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
 	t_buffer *bufferWait;
 	t_packet *packetWait;
@@ -950,7 +951,8 @@ void operacion_wait(t_pcb *contexto,int socket,t_instruccion_unitaria* instrucci
 	}
 	
 }
-
+// SIGNAL (Recurso): Esta instrucción solicita al Kernel que se libere
+// una instancia del recurso indicado por parámetro.
 void operacion_signal(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
 	t_buffer *bufferSignal;
 	t_packet *packetSignal;
@@ -980,39 +982,213 @@ void operacion_signal(t_pcb *contexto,int socket,t_instruccion_unitaria* instruc
 
 void operacion_io_fs_create(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
 	t_buffer *buffer;
-    t_packet *packet;
+	t_packet *packet;
+	buffer = create_buffer();
+	packet = create_packet(DIALFS_CREATE,buffer);
 
-    buffer = create_buffer();
-    packet = create_packet(DIALFS_CREATE,buffer);
-
+	//Nombre de Interfaz (DIALFS)
 	add_to_packet(packet,instruccion->parametros[0], instruccion->parametro1_lenght);
+
+	//Nombre de Archivo
 	add_to_packet(packet,instruccion->parametros[1], instruccion->parametro2_lenght);
-
-	contexto -> state = BLOCKED;
-
-	int tamanioPCB = sizeof(t_pcb);
-    add_to_packet(packet, contexto, tamanioPCB);
 	
-	send_packet(packet, socket);
+	contexto->state = BLOCKED;
+	
+	//PCB
+	add_to_packet(packet,contexto,sizeof(t_pcb)); 
+
+	send_packet(packet,socket);		
 	destroy_packet(packet);
 }
 
 void operacion_io_fs_delete(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
 	t_buffer *buffer;
-    t_packet *packet;
+	t_packet *packet;
+	buffer = create_buffer();
+	packet = create_packet(DIALFS_DELETE,buffer);
 
-    buffer = create_buffer();
-    packet = create_packet(DIALFS_DELETE,buffer);
-
+	//Nombre de Interfaz (DIALFS)
 	add_to_packet(packet,instruccion->parametros[0], instruccion->parametro1_lenght);
+
+	//Nombre de Archivo
 	add_to_packet(packet,instruccion->parametros[1], instruccion->parametro2_lenght);
 
 	contexto->state = BLOCKED;
 
-	int tamanioPCB = sizeof(t_pcb);
-    add_to_packet(packet, contexto, tamanioPCB);
-	
-	send_packet(packet, socket);
-	destroy_packet(packet);
+	//PCB
+	add_to_packet(packet,contexto,sizeof(t_pcb));
 
+	send_packet(packet,socket);
+	destroy_packet(packet);
+}
+
+void operacion_io_fs_truncate(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
+	t_buffer *buffer;
+	t_packet *packet;
+	buffer = create_buffer();
+	packet = create_packet(DIALFS_TRUNCATE,buffer);
+
+	int tamanoNuevo = obtener_valor_del_registro(instruccion->parametros[2],contexto);
+
+	//Nombre de Interfaz (DIALFS)
+	add_to_packet(packet,instruccion->parametros[0], instruccion->parametro1_lenght);
+
+	//Nombre de Archivo
+	add_to_packet(packet,instruccion->parametros[1], instruccion->parametro2_lenght);
+
+	//Tamano Nuevo
+	add_to_packet(packet,&tamanoNuevo,sizeof(int));
+
+	contexto->state = BLOCKED;
+
+	//PCB
+	add_to_packet(packet,contexto,sizeof(t_pcb));
+
+	send_packet(packet,socket);	
+	destroy_packet(packet);
+}
+
+//Es literalmente mismo que lo de STDIN READ solo que mas de eso manda el nombre de archivo y registro puntero archivo tmb
+void operacion_io_fs_read(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
+	t_buffer *buffer;
+	t_packet *packet;
+	buffer = create_buffer();
+	packet = create_packet(DIALFS_READ,buffer);
+
+	int registroPunteroArchivo = obtener_valor_del_registro(instruccion->parametros[4],contexto);
+
+	//Nombre de Interfaz (DIALFS)
+	add_to_packet(packet,instruccion->parametros[0], instruccion->parametro1_lenght); 
+
+	//Nombre de Archivo
+	add_to_packet(packet,instruccion->parametros[1], instruccion->parametro2_lenght); 
+	
+	//Registro Puntero Archivo
+	add_to_packet(packet,&registroPunteroArchivo,sizeof(int)); 
+	
+	int dirLogica = obtener_valor_del_registro(instruccion->parametros[2],contexto);
+	int cantidadBytes = obtener_valor_del_registro(instruccion->parametros[3],contexto);
+
+	int nuevoMarco;
+	int nuevaDirFisica;
+
+	int dirFisica = traduccionLogica(contexto->pid,dirLogica);
+	int desplazamiento = obtenerDesplazamiento(contexto->pid,dirLogica);
+	int numeroPagina = (int) floor(dirLogica / tamaPagina);
+	add_to_packet(packet,&cantidadBytes,sizeof(int));
+
+	//Calculo y agrego la cantidad de direcciones Fisicas que voy a enviar
+	int cantidadDireccionesFisicas = calcularCantDirFisicas(desplazamiento,cantidadBytes);
+	add_to_packet(packet,&cantidadDireccionesFisicas,sizeof(int));
+
+	//Esto para leer lo que resta de la primera pagina, solo en caso que se escriba mas de una pagina
+	int diferencia = tamaPagina - desplazamiento;
+
+
+	if((desplazamiento + cantidadBytes) > tamaPagina){
+		
+		add_to_packet(packet,&diferencia,sizeof(int));
+		add_to_packet(packet,&dirFisica,sizeof(int));
+		cantidadBytes = cantidadBytes - diferencia;
+		numeroPagina++;
+
+		while(cantidadBytes > tamaPagina){
+			nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
+			nuevaDirFisica = nuevoMarco * tamaPagina;
+			add_to_packet(packet,&tamaPagina,sizeof(int));
+			add_to_packet(packet,&nuevaDirFisica,sizeof(int));
+			cantidadBytes = cantidadBytes - tamaPagina;
+			numeroPagina++;
+		}
+		nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
+		nuevaDirFisica = nuevoMarco * tamaPagina;
+		add_to_packet(packet,&cantidadBytes,sizeof(int));
+		add_to_packet(packet,&nuevaDirFisica,sizeof(int));
+		
+		
+	}else{
+		add_to_packet(packet,&cantidadBytes,sizeof(int));
+		add_to_packet(packet,&dirFisica,sizeof(int));
+	}
+	
+	//Ahora agrego el PCB al paquete
+
+	contexto->state = BLOCKED;
+	int tamanioPCB = sizeof(t_pcb);
+    add_to_packet(packet, contexto, tamanioPCB); //CARGO EL PCB ACTUALIZADO
+	
+	send_packet(packet,socket);		//ENVIO EL PAQUETE
+	destroy_packet(packet);
+}
+
+//Es literalmente mismo que lo de STDOUT WRITE solo que mas de eso manda el nombre de archivo y registro puntero archivo tmb
+void operacion_io_fs_write(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){	
+	t_buffer *buffer;
+	t_packet *packet;
+	buffer = create_buffer();
+	packet = create_packet(DIALFS_WRITE,buffer);
+	
+	int registroPunteroArchivo = obtener_valor_del_registro(instruccion->parametros[4],contexto);
+
+	//Nombre de Interfaz (DIALFS)
+	add_to_packet(packet,instruccion->parametros[0], instruccion->parametro1_lenght); 
+
+	//Nombre de Archivo
+	add_to_packet(packet,instruccion->parametros[1], instruccion->parametro2_lenght); 
+
+	//Registro Puntero Archivo
+	add_to_packet(packet,&registroPunteroArchivo,sizeof(int));
+	
+	int dirLogica = obtener_valor_del_registro(instruccion->parametros[2],contexto);
+	int cantidadBytes = obtener_valor_del_registro(instruccion->parametros[3],contexto);
+
+	int nuevoMarco;
+	int nuevaDirFisica;
+
+	int dirFisica = traduccionLogica(contexto->pid,dirLogica);
+	int desplazamiento = obtenerDesplazamiento(contexto->pid,dirLogica);
+	int numeroPagina = (int) floor(dirLogica / tamaPagina);
+	add_to_packet(packet,&cantidadBytes,sizeof(int));
+
+	//Calculo y agrego la cantidad de direcciones Fisicas que voy a enviar
+	int cantidadDireccionesFisicas = calcularCantDirFisicas(desplazamiento,cantidadBytes);
+	add_to_packet(packet,&cantidadDireccionesFisicas,sizeof(int));
+
+	//Esto para leer lo que resta de la primera pagina, solo en caso que se escriba mas de una pagina
+	int diferencia = tamaPagina - desplazamiento;
+
+	if((desplazamiento + cantidadBytes) > tamaPagina){
+		
+		add_to_packet(packet,&diferencia,sizeof(int));
+		add_to_packet(packet,&dirFisica,sizeof(int));
+		cantidadBytes = cantidadBytes - diferencia;
+		numeroPagina++;
+
+		while(cantidadBytes > tamaPagina){
+			nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
+			nuevaDirFisica = nuevoMarco * tamaPagina;
+			add_to_packet(packet,&tamaPagina,sizeof(int));
+			add_to_packet(packet,&nuevaDirFisica,sizeof(int));
+			cantidadBytes = cantidadBytes - tamaPagina;
+			numeroPagina++;
+		}
+		nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
+		nuevaDirFisica = nuevoMarco * tamaPagina;
+		add_to_packet(packet,&cantidadBytes,sizeof(int));
+		add_to_packet(packet,&nuevaDirFisica,sizeof(int));
+		
+		
+	}else{
+		add_to_packet(packet,&cantidadBytes,sizeof(int));
+		add_to_packet(packet,&dirFisica,sizeof(int));
+	}
+	
+	//Ahora agrego el PCB al paquete
+
+	contexto->state = BLOCKED;
+	int tamanioPCB = sizeof(t_pcb);
+    add_to_packet(packet, contexto, tamanioPCB); //CARGO EL PCB ACTUALIZADO
+	
+	send_packet(packet,socket);		//ENVIO EL PAQUETE
+	destroy_packet(packet);
 }

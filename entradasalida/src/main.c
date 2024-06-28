@@ -8,15 +8,26 @@ char *IP_memoria;
 char *PORT_kernel;
 char *IP_kernel;
 int tiempoUnidad;
-t_config* config;
-char *path_base_dialfs;
+t_config *config;
+
 int block_size;
 int block_count;
+char* path_base_dialfs;
+int retraso_compactacion;
+
+char* path_archivo_comun;
+char* path_bitmap;
+char* path_bloques;
+
+int bloques_libres;
+void *bloques_map;
+char* bitmap_map;
 t_bitarray *bitarray;
-FILE *archivoBloque;
-FILE *archivoBitmap;
-int bloques_size;
-t_dictionary* metadata_dictionary;
+
+t_list *lista_archivos;
+
+char* nombre_archivo_a_buscar;
+
 int main(int argc, char *argv[])
 {   
     //ARGV ES UN VECTOR D DE TODAS LAS VARIABLES DE ENTORNO, EN LA POSICION 0 ESTA
@@ -25,12 +36,9 @@ int main(int argc, char *argv[])
     //printf("PARAMETRO: %s\n",argv[0]);  //./bin/entradasalida
     // printf("PARAMETRO: %s\n",argv[1]); // NOMBRE DE LA INTERFAZ
     // printf("PARAMETRO: %s\n",argv[2]); // CONFIG AL QUE LO CONECTO
-    
+  
     char *nombreInterfaz = argv[1];
     char *configRecibido = argv[2];
-
-    //  char *nombreInterfaz = "nombre2";
-    //  char *configRecibido = "pantalla.config";
 
     // ESTO ES PARA TENER LOS NOMBRE YA PUESTOS ACA Y NO ESTAR PASANDOLOS AL LLAMAR AL EXE
     //char *nombreInterfaz = "nombre1";
@@ -40,6 +48,7 @@ int main(int argc, char *argv[])
     char *tipo;
 
     logger = initialize_logger("entradasalida.log", "entradasalida", true, LOG_LEVEL_INFO);
+
     config = initialize_config(logger, configRecibido);
 
     tipo =  config_get_string_value(config, "TIPO_INTERFAZ");
@@ -48,7 +57,7 @@ int main(int argc, char *argv[])
     PORT_kernel = config_get_string_value(config, "PUERTO_KERNEL");
     IP_kernel = config_get_string_value(config, "IP_KERNEL");
     tiempoUnidad = atoi(config_get_string_value(config, "TIEMPO_UNIDAD_TRABAJO"));
-
+   
     //ARMO PAQUETE PARA CONEXION CON KERNEL     
     buffer = create_buffer();
     packet = create_packet(NUEVA_INTERFAZ, buffer);
@@ -56,8 +65,12 @@ int main(int argc, char *argv[])
     add_to_packet(packet,tipo,strlen(tipo)+1);
 
     //INICIO CONEXION CON KERNEL
+    //Aca este socket kernel es especifico para cada interfaz, por cada instancia que levantamos
+    //al conectarse, se conecta con un socket diferente y la variable global es diferente para
+    //cada interfaz o instancia que tengo
     socket_kernel = create_conection(logger, IP_kernel, PORT_kernel);
     log_info(logger, "Conectado al servidor de Kernel %s:%s", IP_kernel, PORT_kernel);
+
 
     //Envio paquete a kernel
     send_packet(packet, socket_kernel);
@@ -70,8 +83,7 @@ int main(int argc, char *argv[])
         interfazStdout();
     }else if(string_equals_ignore_case(tipo,"DIALFS")){
         interfazDialFS();
-    }
-    else{
+    }else{
         log_info(logger,"Error");
     }
     
@@ -410,277 +422,838 @@ void mandarAescribirEnMemoria(int dirFisica,void *contenidoAescribir, int cantid
 }
 
 void interfazDialFS(){
+
+    //Conexion a memoria 
     socket_memoria = create_conection(logger, IP_memoria, PORT_memoria);
     log_info(logger, "Conectado al servidor de memoria %s:%s", IP_memoria, PORT_memoria);
+
     t_buffer *buffer_handshake = create_buffer();
     t_packet *packet_handshake = create_packet(HANDSHAKE_ENTRADA_SALIDA, buffer_handshake);
+
     add_to_packet(packet_handshake, buffer_handshake->stream, buffer_handshake->size);
+
     send_packet(packet_handshake,socket_memoria); 
+
     log_info(logger, "Handshake enviado");   
+
     destroy_packet(packet_handshake);
 
+    //Guardar los balores de Config a su variable respectables
     block_size = atoi(config_get_string_value(config, "BLOCK_SIZE"));
     block_count = atoi(config_get_string_value(config, "BLOCK_COUNT"));
     path_base_dialfs = config_get_string_value(config, "PATH_BASE_DIALFS");
+    retraso_compactacion = atoi(config_get_string_value(config, "RETRASO_COMPACTACION"));
 
-    metadata_dictionary = dictionary_create();
+    //Path para cada tipo (Archivos normal, Bitmap, Bloques) de Archivos 
+    path_archivo_comun;
+    asprintf(&path_archivo_comun, "%s/", path_base_dialfs);
 
-    crear_bloques_dat(block_size, block_count);
-    crear_bitmap_dat(block_count);
+    path_bloques;
+    asprintf(&path_bloques, "%s/bloques.dat", path_base_dialfs);
 
+    path_bitmap;
+    asprintf(&path_bitmap, "%s/bitmap.dat", path_base_dialfs);
+
+    //Cantidad de bloques libre en el archivo bloques.dat
+    bloques_libres = block_count;
+
+    //Crear o Abrir, en caso de existir, Archivo bloques.dat
+    crear_archivo_bloques();
+
+    //Crear o Abrir, en caso de existir, Archivo bitmap.dat
+    crear_archivo_bitmap();
+
+    /*Crear la lista donde voy a poner los archivos
+    Necesita para compactar*/
+    lista_archivos = list_create();
+
+    //Agregar nombre de todos los archivos que estan en este directorio
+    agregar_a_lista_archivos(path_archivo_comun, lista_archivos);
+
+    //Loop infinito de escucha a KERNEL
     while (1)
-    {   
+    {
         int operation_code = fetch_codop(socket_kernel);
         switch (operation_code)
         {
         case DIALFS_CREATE:
-            usleep(tiempoUnidad);
-            crear_archivos(socket_kernel);
-            enviarAvisoAKernel(socket_kernel,CONFIRMACION_CREATE_ARCHIVO);
-            cerrar_archivo_y_bitarray();
+            usleep(tiempoUnidad * 1000);
+            crear_archivo(socket_kernel);
+            enviarAvisoAKernel(socket_kernel,CONFIRMACION_DIALFS_CREATE);
             break;
         case DIALFS_DELETE:
-            usleep(tiempoUnidad);
-            delete_archivos(socket_kernel);
-            enviarAvisoAKernel(socket_kernel,CONFIRMACION_DELETE_ARCHIVO);
-            cerrar_archivo_y_bitarray();
+            usleep(tiempoUnidad * 1000);
+            borrar_archivo(socket_kernel);
+            enviarAvisoAKernel(socket_kernel,CONFIRMACION_DIALFS_DELETE);
             break;
         case DIALFS_TRUNCATE:
-            usleep(tiempoUnidad);
-
-            cerrar_archivo_y_bitarray();
-            break;
-        case DIALFS_WRITE:
-            usleep(tiempoUnidad);
-
-            cerrar_archivo_y_bitarray();
+            usleep(tiempoUnidad * 1000);
+            truncar_archivo(socket_kernel);
+            enviarAvisoAKernel(socket_kernel,CONFIRMACION_DIALFS_TRUNCATE);
             break;
         case DIALFS_READ:
-            usleep(tiempoUnidad);
-            
-            cerrar_archivo_y_bitarray();
+            usleep(tiempoUnidad * 1000);
+
+            enviarAvisoAKernel(socket_kernel,CONFIRMACION_DIALFS_READ);
+            break;
+        case DIALFS_WRITE:
+            usleep(tiempoUnidad * 1000);
+
+            enviarAvisoAKernel(socket_kernel,CONFIRMACION_DIALFS_WRITE);
             break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion");
             close_conection(socket_kernel);
-            cerrar_archivo_y_bitarray();
             return;
         default:
-            log_error(logger, "Algun error inesperado ");
+            log_error(logger, "Algun error inesperado");
             close_conection(socket_kernel);
-            cerrar_archivo_y_bitarray();
             return;
         }
     }
 }
 
-void crear_archivos(int socket_kernel){
+void crear_archivo_bloques(){
+    //length de archivo bloques.dat
+    int length_archivo = block_count * block_size;
 
+    FILE *archivo = fopen(path_bloques, "rb+");
+    if (archivo == NULL){
+        archivo = fopen(path_bloques, "wb+");
+        
+        //Si todavia no existe el archivo hay problema por lo que tira un EXIT_FAILURE
+        if (archivo == NULL) {
+            log_info(logger,"Error creando archivo bloques.dat");
+            exit(EXIT_FAILURE);
+        }
+
+        //File Descriptor
+        int file_descriptor = fileno(archivo);
+
+        ftruncate(file_descriptor,length_archivo);
+
+        log_info(logger, "Archivo de bloques creado y abierto");
+    }else{
+        log_info(logger, "Archivo de bloques abierto");
+    }
+
+    //Mapear bloques.dat a memoria
+    bloques_map =  mmap(NULL,length_archivo, PROT_READ | PROT_WRITE, MAP_SHARED, fileno(archivo), 0);
+    if (bloques_map == MAP_FAILED) {
+        perror("Error mapeando bloques.dat");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void crear_archivo_bitmap(){
+    //length de archivo bloques.dat
+    int length_archivo = (block_count / 8) + 1;
+
+    FILE *archivo = fopen(path_bitmap, "rb+");
+    if (archivo == NULL){
+        archivo = fopen(path_bitmap, "wb+");
+        
+        //Si todavia no existe el archivo hay problema por lo que tira un EXIT_FAILURE
+        if (archivo == NULL) {
+            log_info(logger,"Error creando archivo bitmap.dat");
+            exit(EXIT_FAILURE);
+        }
+
+        //File Descriptor
+        int file_descriptor = fileno(archivo);
+
+        ftruncate(file_descriptor,length_archivo);
+
+        log_info(logger, "Archivo de bitmap creado y abierto");
+    }else{
+        log_info(logger, "Archivo de bitmap abierto");
+    }
+
+    //Mapear bitmap.dat a memoria
+    bitmap_map = mmap(NULL, length_archivo, PROT_READ | PROT_WRITE, MAP_SHARED, fileno(archivo), 0);
+    if (bitmap_map == MAP_FAILED) {
+        log_info(logger, "Error mapeando bitmap.dat");
+        exit(EXIT_FAILURE);
+    }
+    
+    //Creacion de un bitarray
+    bitarray = bitarray_create_with_mode(bitmap_map, length_archivo, LSB_FIRST);
+}
+
+void crear_archivo(int socket_kernel){
     int total_size;
     int offset = 0;
     int pid;
-    char* nombre_archivo;
-    int length_nombre_archivo;
+    char *nombre_archivo;
+    int tamano_nombre_archivo;
+    char* path_archivo;
+    bool yaExiste = false;
+
     void *buffer2;
     buffer2 = fetch_buffer(&total_size, socket_kernel);
 
-    memcpy(&length_nombre_archivo,buffer2 + offset, sizeof(int));
+    //Tamano de Nombre de Archivo
+    memcpy(&tamano_nombre_archivo,buffer2 + offset, sizeof(int));
     offset += sizeof(int);
 
-    nombre_archivo = malloc(length_nombre_archivo);
-    memcpy(nombre_archivo,buffer2 + offset, length_nombre_archivo);
-    offset += length_nombre_archivo; 
+    //Nombre de Archivo
+    nombre_archivo = malloc(tamano_nombre_archivo);
+    memcpy(nombre_archivo,buffer2 + offset, tamano_nombre_archivo);
+    offset += tamano_nombre_archivo;
 
+    //Saltar tamano de PID que no es necesario
     offset += sizeof(int);
+
+    //PID
     memcpy(&pid,buffer2 + offset, sizeof(int));
-    offset += sizeof(int);
 
-    free(buffer2);
+    //Solo en caso donde la lista no contiene este archivo agregar a lista
 
-    //Estoy buscando el primer bit libre pero como el posicion de bit esta relacionado conelposicion de block son mismo 
-    int bloque_libre = primer_bit_libre(bitarray);
-    if(bloque_libre == -1){
-        log_info(logger, "Bloques.dat esta lleno y sin bloques disponible\n");
-        return;
+    //Necesito para buscar_de_lista
+    nombre_archivo_a_buscar = nombre_archivo;
+    char* nombre_archivo_a_crear = list_find(lista_archivos, buscar_de_lista);
+
+    if(nombre_archivo_a_crear == NULL) {
+        //necesita para compactar 
+        //Agregar nombre es suficiente pq despues hay que abrir el archivo de metadata
+        list_add(lista_archivos,nombre_archivo_a_crear);
+    }else{
+        yaExiste = true;
     }
 
-    actualizar_bitmap(bloque_libre, true);
+    //Path de archivo a Crear
+    asprintf(&path_archivo, "%s/%s", path_archivo_comun, nombre_archivo);
 
-    log_info(logger, "PID: %i - Crear Archivo: %s", pid, nombre_archivo);
-
-    char* pathCreacion = strdup(path_base_dialfs);
-    string_append(&pathCreacion,nombre_archivo);
-
-    FILE *archivo = fopen(pathCreacion, "w+");
-        
+    //Crear archivo
+    FILE *archivo = fopen(path_archivo, "w+");
     if (archivo == NULL) {
-        log_info(logger,"Error al crear el archivo");
+        log_info(logger,"Error creando el archivo");
         exit(EXIT_FAILURE);
     }
 
-    fseek(archivo, 0, SEEK_END);
-    long tamano_archivo = ftell(archivo);
-    fseek(archivo, 0, SEEK_SET);
+    //Nombre de Archivo Metadata
+    char* nombre_archivo_metadata;
+    asprintf(&nombre_archivo_metadata, "meta_%s", nombre_archivo);
 
-    char *buffer = (char *)malloc(tamano_archivo + 1);
-    if (buffer == NULL) {
-        fclose(archivo);
-        perror("Error creando buffer");
+    //Path de Archivo de Metadata a crear
+    char* path_archivo_metadata;
+    asprintf(&path_archivo_metadata, "%s/%s", path_archivo_comun, nombre_archivo_metadata);
+
+    //Crear archivo metadata
+    FILE *archivo_metadata = fopen(path_archivo_metadata, "w+");
+    if (archivo_metadata == NULL) {
+        log_info(logger,"Error creando el archivo");
         exit(EXIT_FAILURE);
     }
 
-    size_t bytes_leido = fread(buffer, 1, tamano_archivo, archivo);
-    if (bytes_leido != tamano_archivo) {
-        fclose(archivo);
-        free(buffer);
-        perror("Error en leer el archivo");
-        exit(EXIT_FAILURE);
+    //Solo en casos donde archivo fue creada y no abierta
+
+    if(!yaExiste) {
+        /*Como crear_archivo solo crea un archivo sin ningun contexto no tiene sentido guardarlo en bloques.dat ya que no va a 
+        guardar nada y no cambiara el bloques.dat. Solo dejar ocupado un bit en bitmap.dat es suficiente */
+
+        //Buscar el primer bit libre desde bitarray
+        int bit_libre = primer_bit_libre(bitarray);
+
+        //Ocupar dicho bit 
+        bitarray_set_bit(bitarray, bit_libre);
+
+        //Disminuir bloques_libres solo por 1 ya que durante creacion el archivo ocupa un bit solo
+        bloques_libres = bloques_libres - 1;
+
+        //Escribir en archivo metadata el bloque inicial y tamano 
+        fprintf(archivo_metadata, "BLOQUE_INICIAL=%i\n", bit_libre);
+        fprintf(archivo_metadata, "TAMANIO_ARCHIVO=0\n");
     }
-
-    buffer[tamano_archivo] = '\0';
-
-    fwrite(buffer, 1, tamano_archivo, archivoBloque);
-
-    t_metadata *metadata = malloc(sizeof(t_metadata));
-    if(metadata == NULL) {
-        perror("Error creando el struct metadata");
-        return;
-    }
-
-    strncpy(metadata->nombre_archivo, nombre_archivo, length_nombre_archivo);
-    metadata->tamano = 0;
-    metadata->bloque_inicial = bloque_libre;
-
-    dictionary_put(metadata_dictionary, nombre_archivo, metadata);
-
-    char* nombre_archivo_metadata = malloc(strlen(nombre_archivo) + 6); 
-    snprintf(nombre_archivo_metadata, strlen(nombre_archivo) + 6, "%s_meta", nombre_archivo);
-
-    FILE *archivo_metadata = fopen(nombre_archivo_metadata, "w+");
-    if (!archivo_metadata) {
-        log_info(logger, "Error creando archivo metadata");
-        exit(EXIT_FAILURE);
-    }
-
-    fprintf(archivo_metadata, "BLOQUE_INICIAL: %i\n TAMANO: %i\n", metadata->bloque_inicial, metadata->tamanao);
-    
-    bitarray_clean_bit(bitarray, bloque_libre);
 
     fclose(archivo_metadata);
     fclose(archivo);
 }
 
-void delete_archivos(int socket_kernel){
+
+int primer_bit_libre(t_bitarray *bitarray){
+    //Desde el primer bit hace un check de si esta ocupado o no (Si es 1) y solo en caso no ocupado retorna el primer bit libre
+    for (int i = 0; i < block_count; i++) {
+        if (!bitarray_test_bit(bitarray, i)) {
+            return i;
+        }
+    }
+
+    return -1; 
+}
+
+void borrar_archivo(int socket_kernel){
+    int total_size;
+    int offset = 0;
+    int pid;
+    char *nombre_archivo;
+    int tamano_nombre_archivo;
+    int bloque_inicial;
+    int tamano;
+
+    void *buffer2;
+    buffer2 = fetch_buffer(&total_size, socket_kernel);
+
+    //Tamano de Nombre de Archivo
+    memcpy(&tamano_nombre_archivo,buffer2 + offset, sizeof(int));
+    offset += sizeof(int);
+
+    //Nombre de Archivo
+    nombre_archivo = malloc(tamano_nombre_archivo);
+    memcpy(nombre_archivo,buffer2 + offset, tamano_nombre_archivo);
+    offset += tamano_nombre_archivo;
+
+    //Saltar tamano de PID que no es necesario
+    offset += sizeof(int);
+
+    //PID
+    memcpy(&pid,buffer2 + offset, sizeof(int));
+    
+    //Necesito para buscar_de_lista
+    nombre_archivo_a_buscar = nombre_archivo;
+
+    //necesita para compactar 
+    //Busco el nombre de archivo desde la lista y borro dicho nombre
+    char* nombre_archivo_a_borrar = list_find(lista_archivos, nombre_archivo);
+    list_remove(lista_archivos,nombre_archivo_a_borrar);
+
+    /*Aca estoy haciendo esto para dejar path_archivo_comun para una path usados por multiples diferentes archivos
+    mientras que path_archivo y path_archivo_metadata van a ser path especifica para este archivo */
+    char* path_archivo = path_archivo_comun;
+
+    //Path de archivo a Borrar
+    asprintf(&path_archivo, "%s/%s", path_archivo_comun, nombre_archivo);
+
+    //Nombre de Archivo Metadata
+    char* nombre_archivo_metadata;
+    asprintf(&nombre_archivo_metadata, "meta_%s", nombre_archivo);
+
+    //Path de Archivo de Metadata
+    char* path_archivo_metadata;
+    asprintf(&path_archivo_metadata, "%s/%s", path_archivo_comun, nombre_archivo_metadata);
+
+    //Abrir archivo metadata para leer el bloque inicial y tamano 
+    FILE *archivo_metadata = fopen(path_archivo_metadata, "r");
+    if (archivo_metadata == NULL) {
+        log_info(logger,"Error abriendo el archivo");
+        exit(EXIT_FAILURE);
+    }
+
+    //Leer y guardar Bloque Inicial
+    fscanf(archivo_metadata, "BLOQUE_INICIAL=%i\n", &bloque_inicial);
+
+    //Leer y guardar Tamano 
+    fscanf(archivo_metadata, "TAMANIO_ARCHIVO=%i\n", &tamano);
+
+    fclose(archivo_metadata);
+
+    //Liberar los bloques que ocupaba el archivo desde bitrray 
+    hacer_libre_bloques(bitarray, bloque_inicial, tamano);
+
+    //Liberar los bloques ocupados en bloques.dat
+    liberar_bloques(bloque_inicial, tamano);
+
+    //Borrar el Archivo
+    if(remove(path_archivo) == 0) {
+        log_info(logger,"Archivo %s borrado", nombre_archivo);
+    } else {
+        log_info(logger,"Error borrando el archivo");
+    }
+
+    //Borrar el Archivo de Metadata asociado
+    if(remove(path_archivo_metadata) == 0) {
+        log_info(logger,"Archivo de metadata %s borrado", nombre_archivo_metadata);
+    } else {
+        log_info(logger,"Error borrando el archivo metadata");
+    }
+}
+
+//Necesito para list_find
+bool buscar_de_lista(void *nombre_archivo){
+	char *archivo_name = (char*) nombre_archivo;
+
+	return nombre_archivo == nombre_archivo_a_buscar;
+}
+
+//Liberar bloques en bitmap.dat
+void hacer_libre_bloques(t_bitarray *bitarray, int bloque_inicial, int tamano){
+    //Calcular el cantidad de bloques ocupados para el archivo
+    int bloques_ocupados = (tamano + block_size - 1) / block_size;  
+
+    int bloque_mas_alta_ocupado = bloques_ocupados + bloque_inicial;
+
+    for (int i = bloque_inicial; i < bloque_mas_alta_ocupado; i++) {
+        bitarray_clean_bit(bitarray, i);
+
+        //Sumar bloques_libres cada vez que libera un bit
+        bloques_libres = bloques_libres + 1;
+    }
+}
+
+//Liberar bloques en bloques.dat
+void liberar_bloques(int bloque_inicial, int tamano) {
+    //Como necesito una tipo size_t para munmap cambio a size_t
+    size_t bloque_inicial2 = (size_t)bloque_inicial;
+    size_t tamano2 = (size_t)tamano;
+    size_t block_size2 = (size_t)block_size;
+
+    /*Calculo el cantidad de bloques_ocupados para liberar
+    -1 existe para casos cunado por ejemplo tamano es 100 y block_size es 100.
+    Entonces bloques_ocupados debe ser 1 pero retornara un 2, por lo que hiso un -1*/
+    size_t bloques_ocupados = (tamano2 + block_size2 - 1) / block_size2;  
+
+    /*Aca estoy haciendo esto para que puedo liberar en unidad de bloques. osea si por ejemplo el tamano
+    a liberar es 550 mientras que el block_size es 100, entonces bloques ocupados te devuelve un 6 que sera 
+    la cantidad de bloques a liberar. Despues multiplico eso a block_size de nuevo para saber el tamano_de 6 bloques no de 5
+    ni 5.5*/
+    size_t tamano_a_liberar = bloques_ocupados * block_size2;
+
+    /*Tengo que saber el tamano de bloques hasta el bloque_inicial para usar en el addr*/
+    size_t tamano_hasta_bloque_inicial = bloque_inicial2 * block_size2;
+
+    //Sumar posicion de inicio de blouqes.dat mas el espacio ocupado hasta bloque inicial
+    char *addr = bloques_map + tamano_hasta_bloque_inicial;
+
+    //Si tamano_a_liberar = 0 significa que no ocupaba bloques en bloques.dat por lo que no es necesario el munmap
+    if(tamano_a_liberar != 0) {
+        //Unmap desde bloque inicial por su tamano
+        if (munmap(addr, tamano_a_liberar) == -1) {
+            perror("Error unmapping");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    log_info(logger, "Liberar bloques exitoso");
+}
+
+void truncar_archivo(int socket_kernel){
 
     int total_size;
     int offset = 0;
     int pid;
-    char* nombre_archivo;
-    int length_nombre_archivo;
+    char *nombre_archivo;
+    int tamano_nombre_archivo;
+    int tamano_nuevo;
+    int bloque_inicial;
+    int tamano;
+
     void *buffer2;
     buffer2 = fetch_buffer(&total_size, socket_kernel);
 
-    memcpy(&length_nombre_archivo,buffer2 + offset, sizeof(int));
+    //Tamano de Nombre de Archivo
+    memcpy(&tamano_nombre_archivo,buffer2 + offset, sizeof(int));
     offset += sizeof(int);
 
-    nombre_archivo = malloc(length_nombre_archivo);
-    memcpy(nombre_archivo,buffer2 + offset, length_nombre_archivo);
-    offset += length_nombre_archivo; 
+    //Nombre de Archivo
+    nombre_archivo = malloc(tamano_nombre_archivo);
+    memcpy(nombre_archivo,buffer2 + offset, tamano_nombre_archivo);
+    offset += tamano_nombre_archivo;
 
+    //Saltar tamano de PID que no es necesario
     offset += sizeof(int);
+
+    //PID
     memcpy(&pid,buffer2 + offset, sizeof(int));
     offset += sizeof(int);
 
-    free(buffer2);
+    //Saltar el tamano de tamano_nuevo que no es necesario
+    offset += sizeof(int);
 
-    log_info(logger, "PID: %i - Eliminar Archivo: %s", pid, nombre_archivo);
-    
-    char* pathDelete = strdup(path_base_dialfs);
-    string_append(&pathDelete,nombre_archivo);
-    
-    if (remove(pathDelete) == 0) {
-        log_info(logger,"Archivo %s borrado exitosamente", nombre_archivo);
-    }else {
-        log_info(logger,"Fallo borrar Archivo %s", nombre_archivo);
-    }
+    //Tamano Nuevo de archivo a truncar
+    memcpy(&tamano_nuevo,buffer2 + offset, sizeof(int));
 
-    //FALTA IMPLEMENTACION DE DELETE
-}
+    //No es necesario abrir el archivo ya que solo necesita la informacion de bloque_inicial y tamano que esta escrito en el archivo metadata
 
-void crear_bloques_dat(int block_size, int block_count) {
-    char* path_bloques = path_base_dialfs;
-    string_append(&path_bloques,"bloques.dat");
-    
-    log_info(logger, "Creando archivo bloques.dat");
+    //Nombre de Archivo Metadata
+    char* nombre_archivo_metadata;
+    asprintf(&nombre_archivo_metadata, "meta_%s", nombre_archivo);
 
-    archivoBloque = fopen(path_bloques, "rb+");
-    if(archivoBloque != NULL) {
-        log_info(logger,"El archivo bloques.dat esta abierto ya");
-    }else {
-       archivoBloque = fopen(path_bloques, "wb+");
-        if (archivoBloque == NULL) {
-              log_info(logger,"Error creando el archivo bloques.dat");
-              exit(EXIT_FAILURE);
-        } 
-        int fileDescriptor = fileno(archivoBloque);
-        ftruncate(fileDescriptor, (block_size * block_count));
-        log_info(logger,"Creado y abierto el archivo bloques.dat");
-    }
+    //Path de Archivo de Metadata a crear
+    char* path_archivo_metadata;
+    asprintf(&path_archivo_metadata, "%s/%s", path_archivo_comun, nombre_archivo_metadata);
 
-    bloques_size = (block_count * block_size) + 1;
-    void *bloques = mmap(NULL, bloques_size, PROT_READ | PROT_WRITE, MAP_SHARED, fileno(archivoBloques), 0);
-    if (bloques == MAP_FAILED) {
-        perror("Error mapeando bloques");
+    //Abrir archivo metadata
+    FILE *archivo_metadata = fopen(path_archivo_metadata, "r+");
+    if (archivo_metadata == NULL) {
+        log_info(logger,"Error abriendo el archivo para truncar");
         exit(EXIT_FAILURE);
     }
-}
 
-void crear_bitmap_dat(int block_count) {
+    //Guardar el bloque_inicial
+    fscanf(archivo_metadata, "BLOQUE_INICIAL=%i\n", &bloque_inicial);
 
-    char* path_bitmap = strdup(path_base_dialfs);
-    string_append(&path_bitmap,"bitmap.dat");
+    //Guardar el tamano
+    fscanf(archivo_metadata, "TAMANIO_ARCHIVO=%i\n", &tamano);
 
-    log_info(logger, "Creando archivo bitmap.dat");
+    //Tengo a este dos variables para casos donde tengo que actualizar el archivo de metadata de nuevo por no poder truncar por falta de espacio
+    int bloque_inicial_truncate_fail = bloque_inicial;
+    int tamano_truncate_fail = tamano;
 
-    archivoBitmap = fopen(path_bitmap, "rb+");
-    if(archivoBitmap != NULL) {
-        log_info(logger,"El archivo bitmap.dat esta abierto ya");
+    /*Diferencia entre tamano anterior de archivo y tamano nuevo de archivo.
+    Si diferencia_tamano > 0 significa que tamano_nuevo es mayor que tamano anterior 
+    Y si diferencia_tamano < 0 significa que tamano_nuevo es menor que tamano anterior
+    Y si diferencia_tamano = 0 significa que tamano_nuevo es igual que tamano anterior*/
+    int diferencia_tamano = tamano_nuevo - tamano;
+
+    //Cantidad de bloques a agrandar 
+    /*Como ya sabemos que diferencia_tamano es mayor que 0, no va a existir casos donde 
+    cantidad_bloques_agrandar es un valor negativo*/
+    int cantidad_bloques_agrandar = (diferencia_tamano * block_size - 1) / block_size;
+
+    //Cantidad de bloque que ocupaba anteriormente de agrandar
+    int cantidad_de_bloque_ultimo_anteriormente = (tamano * block_size - 1) / block_size;
+
+    //Lo que usa despues para agrandar el archivo
+    int bloque_final;
+
+    //Achicar el archivo
+    //Como es achicar, no hay necesidad de organizar el bloqus.dat ni bitmap.dat
+    if(diferencia_tamano < 0){
+        log_info(logger,"Tamano nuevo a truncar el archivo menor que lo de tamano actual de archivo.");
+
+        //Pasar la diferencia desde negativo a positivo para usar en 
+        int diferencia_tamano_positivo = diferencia_tamano * (-1);
+
+        //Esto es la cantidad de bloques que ocupa 
+        int bloques_para_tamano_nuevo = (tamano_nuevo + block_size - 1) / block_size;
+
+        //Aqui el primer bloque a borrar sera el bloque_inicial donde esta dado por el metadata mas el bloques_para_tamano_nuevo.
+        int bloque_inicial_a_borrar = bloque_inicial + bloques_para_tamano_nuevo;
+
+        /*Liberar el bitarray desde el bloque_inicial_a_borrar calculado el tamano de diferencia_tamano_positivo
+        Libera en el bitmap.dat*/
+        hacer_libre_bloques(bitarray, bloque_inicial_a_borrar, diferencia_tamano_positivo);
+
+        //Libera el bloques.dat
+        liberar_bloques(bloque_inicial_a_borrar, diferencia_tamano_positivo);
+    }
+    //Agrandar el archivo
+    else if(diferencia_tamano > 0){
+        log_info(logger,"Tamano nuevo a truncar el archivo mayor que lo de tamano actual de archivo.");
+
+        //Aqui el primer bloque a agrandar sera el bloque_inicial donde esta dado por el metadata mas el cantidad_de_bloque_ultimo_anteriormente.
+        bloque_final = bloque_inicial + cantidad_de_bloque_ultimo_anteriormente;
+
+        //Primero verifico si puedo truncar desde donde estaba el archivo anteriormente
+        if(existe_espacio_para_agrandar(bitarray, bloque_final, cantidad_bloques_agrandar)){
+            
+            //Actualizar archivo metadata tamano
+            //Mover el puntero de archivo al inicio de tamano para cambiar el valor de tamano en el archivo metadata
+            fseek(archivo_metadata, ftell(archivo_metadata) - strlen("TAMANIO_ARCHIVO=%i\n"), SEEK_SET);
+
+            //Actualizar tamano archivo a tamano_nuevo
+            fprintf(archivo_metadata, "TAMANIO_ARCHIVO=%i\n", tamano_nuevo);
+
+            //Ocupar bits continuo adicional en bitmap.dat
+            for(int i = 0; i < cantidad_bloques_agrandar; i++) {
+                //El + 1 en el fin es pq no tengo que ocupar el bloque_final pq si va a estar ocupado siempre  
+                bitarray_set_bit(bitarray, bloque_final + i + 1);
+                
+                //Disminuir bloques_libres por 1
+                bloques_libres = bloques_libres - 1;
+            }
+
+            /*No es necesario actualizar el bloques.dat ya que si se agranda el archivo pero no es que su contenido cambia. 
+            Por lo que ocupar bits en bitmap.dat es suficiente*/
+        }
+        //No hay suficiente espacio continuo asi que verifico si hay despues de compactar el bloques.dat y bitmap.dat
+        else{
+            //Compactar el bloques.dat y bitmap.dat en formato 0011101010 a 1111100000 para tener maxima espacio continuo libre
+            /*Seleccionar el bloques donde esta el archivo y mandalo mas frente
+            Si fue 11 111(Archivo a agrandar) 1 00000 moverlo a 111 111(Archivo a agrandar) 00000*/
+            compactar(bitarray, nombre_archivo);
+
+            //Despues de compactar hay que esperar por un tiempo determinado por retraso_compactacion.
+            //Multiplico por 1000 para microsegundos
+            usleep(retraso_compactacion * 1000);
+
+            //Puntero a parte inicial del archivo
+            rewind(archivo_metadata);
+
+            //Guardar el bloque_inicial encontrado despues de compactar
+            fscanf(archivo_metadata, "BLOQUE_INICIAL=%i\n", &bloque_inicial);
+
+            //No es necesario actualizar el tamano ya que solo bloque_inicial cambia cuando compacta
+
+            //Como cambio el bloque_inicial tengo que actualizar bloque_final tambien
+            bloque_final = bloque_inicial + cantidad_de_bloque_ultimo_anteriormente;
+
+            //Verificar si hay suficiente espacio con existe_espacio_para_agrandar()
+            if(existe_espacio_para_agrandar(bitarray, bloque_final, cantidad_bloques_agrandar)){
+                
+                //Actualizar archivo metadata tamano
+                //Mover el puntero de archivo al inicio de tamano para cambiar el valor de tamano en el archivo metadata
+                fseek(archivo_metadata, ftell(archivo_metadata) - strlen("TAMANIO_ARCHIVO=%i\n"), SEEK_SET);
+
+                //Actualizar tamano archivo a tamano_nuevo
+                fprintf(archivo_metadata, "TAMANIO_ARCHIVO=%i\n", tamano_nuevo);
+
+                //Ocupar bits continuo adicional en bitmap.dat
+                for(int i = 0; i < cantidad_bloques_agrandar; i++) {
+                    //El + 1 en el fin es pq no tengo que ocupar el bloque_final pq si va a estar ocupado siempre  
+                    bitarray_set_bit(bitarray, bloque_final + i + 1);
+                    
+                    //Disminuir bloques_libres por 1
+                    bloques_libres = bloques_libres - 1;
+                }
+
+                /*No es necesario actualizar el bloques.dat ya que si se agranda el archivo pero no es que su contenido cambia. 
+                Por lo que ocupar bits en bitmap.dat es suficiente*/
+            }
+            /*En caso que no hay suficiente espacio sigfnifica que no puede por lo que logeo en logger y vuelve a cambiar los 
+            valores de bloque_inicial y tamano escrito en el archivo de metadata*/            
+            else{
+                log_info(logger, "No existe bloques suficiente para agrandar. Truncate Fail");
+
+                //Como no podia truncar entonces actualizo el archivo de metadata para que tiene los datos antes de truncar
+                //Puntero a parte inicial del archivo
+                rewind(archivo_metadata);
+
+                //Actualizar tamano archivo a tamano_nuevo
+                fprintf(archivo_metadata, "BLOQUE_INICIAL=%i\n", bloque_inicial_truncate_fail);
+
+                //Actualizar tamano archivo a tamano_nuevo
+                fprintf(archivo_metadata, "TAMANIO_ARCHIVO=%i\n", tamano_truncate_fail);
+            }
+        }
     }else{
-        archivoBitmap = fopen(path_bitmap, "wb+");
-        if (archivoBitmap == NULL) {
-              log_info(logger,"Error creando el archivo bitmap.dat");
-              exit(EXIT_FAILURE);
-        } 
-        int fileDescriptor = fileno(archivoBitmap);
-        int tamanioBitmap = (block_count / 8) + 1; //bits a bytes
-
-        ftruncate(fileDescriptor, tamanioBitmap);
-        log_info(logger,"Creado y abierto el archivo bitmap.dat");
-
+        /*diferencia_tamano = 0
+        Aqui no tengo que hacer nada ya que ni voy a achicar y agrandar el archivo a tamano nuevo*/
+        log_info(logger,"No hay cambio al Archivo ya que su tamano actual y tamano nuevo son mismo");
     }
 
-    int bitmap_size = (block_count / 8) + 1;
-    char * bitmap = mmap(NULL, bitmap_size, PROT_READ | PROT_WRITE, MAP_SHARED,fileno(archivo), 0);
-    if (bitmap == MAP_FAILED) {
-        perror("Error mappeando bitmap");
-        exit(EXIT_FAILURE);
-    }
-
-    bitarray = bitarray_create_with_mode(bitmap, bitmap_size, LSB_FIRST);
+    fclose(archivo_metadata);
 }
 
-void cerrar_archivo_y_bitarray() {
-    fclose(archivoBloque);
-    fclose(archivoBitmap);
-    free(bitarray);
-}
-
-int primer_bit_libre(t_bitarray *bitarray) {
-
-    for(int i = 0; i < block_count; i++) {
-        if(!bitarray_test_bit(bitarray, i)) {
-            return i;
+//Verificar en el bitmap.dat si existe suficiente espacio continuo para agrandar desde el posicion que esta 
+bool existe_espacio_para_agrandar(t_bitarray *bitarray, int bloque_final, int cantidad_bloques_agrandar){
+    
+    for(int i = 0; i < cantidad_bloques_agrandar; i++) {
+        //El + 1 en el fin es pq no tengo que verificar si esta ocupado el bloque_final pq si va a estar ocupado siempre  
+        if(bitarray_test_bit(bitarray, bloque_final + i + 1)){
+            return false;
         }
     }
-    return -1;
+    return true;
+}
+
+/*Compactar el bitarray y bloques_map y tener en cuenta dejar el archivo buscado en bloque_inicial con su tamano al fin.
+Si fue 00 11 0 111(Archivo a agrandar) 1 00 moverlo a 111 111(Archivo a agrandar) 00000*/
+void compactar(t_bitarray *bitarray, char* nombre_archivo_a_truncar){
+    /*Estoy borrando el archivo a truncar desde lista primero para trabajr con los archivos
+    que no son los que van a ir a fin de secuencia 1 11 11 000*/
+    list_remove(lista_archivos,nombre_archivo_a_truncar);
+
+    char* nombre_archivo;
+    char* nombre_archivo_metadata;
+    char* nombre_archivo_metadata_a_truncar;
+    char* path_archivo;
+    char* path_archivo_a_truncar;
+    char* path_archivo_metadata;
+    char* path_archivo_metadata_a_truncar;
+    
+    int bloque_inicial = 0;
+    int tamano;
+    int bloques_ocupados;
+    int cantidad_archivos_en_lista = list_size(lista_archivos);
+    int cant_archivos_leidos = 0;
+    int tamano_a_saltar = 0;
+
+    int bloque_fin_ocupado;
+    int tamano_bloques_ocupados;
+
+    t_list* lista_temp = list_create();
+
+    //liberar todos los bits en bitarray que voy a reocuparlo con metadata nuevo
+    hacer_libre_bloques(bitarray, 0, block_size * block_count);
+
+    //Actualizar todos los archivos de metadata para usarlo despues en posicionar el bitmap.dat y bloques.dat
+    while(cantidad_archivos_en_lista > cant_archivos_leidos){
+        nombre_archivo = list_get_first(lista_archivos);
+
+        //Nombre de Archivo Metadata
+        asprintf(&nombre_archivo_metadata, "meta_%s", nombre_archivo);
+
+        //Path de Archivo de Metadata
+        asprintf(&path_archivo_metadata, "%s/%s", path_archivo_comun, nombre_archivo_metadata);
+
+        //Abrir archivo metadata para leer el bloque inicial y tamano 
+        FILE *archivo_metadata = fopen(path_archivo_metadata, "r");
+        if (archivo_metadata == NULL) {
+            log_info(logger,"Error abriendo el archivo");
+            exit(EXIT_FAILURE);
+        }
+
+        //Leer y guardar Bloque Inicial
+        fprintf(archivo_metadata, "BLOQUE_INICIAL=%i\n", &bloque_inicial);
+
+        //Leer tamano
+        fscanf(archivo_metadata, "TAMANIO_ARCHIVO=%i\n", &tamano);
+
+        fclose(archivo_metadata);
+
+        //Buscar cantidad de bloques ocupados por el archivo
+        bloques_ocupados = (tamano + block_size - 1) / block_size; 
+
+        bloque_fin_ocupado = bloque_inicial + bloques_ocupados;
+
+        //Necesito este tamano para actualizar bloques.dat
+        tamano_bloques_ocupados = bloques_ocupados * block_size;
+
+        //Ocupar bits en bitarray
+        for(int i = bloque_inicial; i < bloque_fin_ocupado; i++){
+            bitarray_set_bit(bitarray, i);
+        }
+
+        //Path de archivo a abrir
+        asprintf(&path_archivo, "%s/%s", path_archivo_comun, nombre_archivo);
+
+        //Abrir el archivo para guardar su contenido a un buffer que va a usar para bloques_map
+        FILE *archivo = fopen(path_archivo, "r");
+        if (archivo == NULL) {
+            log_info(logger,"Error abriendo el archivo");
+            exit(EXIT_FAILURE);
+        }  
+
+        //Crear un buffer para guardar el contenido de archivo
+        char* buffer = (char*) malloc(tamano_bloques_ocupados);
+        if (buffer == NULL) {
+            perror("Error asignando memoria a buffer");
+            fclose(archivo);
+            exit(EXIT_FAILURE);
+        }
+
+        //Guardar contenido de archivo al buffer
+        fread(buffer, 1, tamano_bloques_ocupados, archivo);
+
+        fclose(archivo);
+
+        //Copiar datos a bloques_map
+        memcpy(bloques_map + tamano_a_saltar, buffer, tamano_bloques_ocupados);
+
+        free(buffer);
+
+        //Actualizar tamano_a_saltar para proxima escritura a bloques.dat
+        tamano_a_saltar += tamano_bloques_ocupados;
+
+        //actualiza el bloque_inicial para ponerlo a siguiente archivo
+        bloque_inicial += bloques_ocupados;
+
+        //Agregar en lista_temp y borrar de la lista principal ya que hizo lo que tengo que a este archivo
+        //Despues se agrega de nuevo hasi que no hay problema
+        list_add(lista_temp, nombre_archivo);
+        list_remove(lista_archivos,nombre_archivo);
+
+        cant_archivos_leidos++;
+
+        //Para proxima loop hago null dichos variables
+        nombre_archivo_metadata = NULL;
+        path_archivo_metadata = NULL;
+        path_archivo = NULL;
+    }
+
+    //Aca estoy haciendo esto para archivo que tengo que truncar
+
+    //Nombre de Archivo Metadata
+    asprintf(&nombre_archivo_metadata_a_truncar, "meta_%s", nombre_archivo_a_truncar);
+
+    //Path de Archivo de Metadata
+    asprintf(&path_archivo_metadata_a_truncar, "%s/%s", path_archivo_comun, nombre_archivo_metadata_a_truncar);
+
+    //Abrir archivo metadata para leer el bloque inicial y tamano 
+    FILE *archivo_metadata_a_truncar = fopen(path_archivo_metadata_a_truncar, "r");
+    if (archivo_metadata_a_truncar == NULL) {
+        log_info(logger,"Error abriendo el archivo");
+        exit(EXIT_FAILURE);
+    }
+
+    //Leer y guardar Bloque Inicial
+    fprintf(archivo_metadata_a_truncar, "BLOQUE_INICIAL=%i\n", &bloque_inicial);
+
+    //Leer tamano
+    fscanf(archivo_metadata_a_truncar, "TAMANIO_ARCHIVO=%i\n", &tamano);
+
+    fclose(archivo_metadata_a_truncar);
+
+    //Buscar cantidad de bloques ocupados por el archivo
+    bloques_ocupados = (tamano + block_size - 1) / block_size; 
+
+    bloque_fin_ocupado = bloque_inicial + bloques_ocupados;
+
+    //Necesito este tamano para actualizar bloques.dat
+    tamano_bloques_ocupados = bloques_ocupados * block_size;
+
+    //Ocupar bits en bitarray
+    for(int i = bloque_inicial; i < bloque_fin_ocupado; i++){
+        bitarray_set_bit(bitarray, i);
+    }
+
+    //Path de archivo a abrir
+    asprintf(&path_archivo_a_truncar, "%s/%s", path_archivo_comun, nombre_archivo_a_truncar);
+
+    //Abrir el archivo para guardar su contenido a un buffer que va a usar para bloques_map
+    FILE *archivo_a_truncar = fopen(path_archivo_a_truncar, "r");
+    if (archivo_a_truncar == NULL) {
+        log_info(logger,"Error abriendo el archivo");
+        exit(EXIT_FAILURE);
+    }
+
+    //Crear un buffer para guardar el contenido de archivo
+    char* buffer_a_truncar = (char*) malloc(tamano_bloques_ocupados);
+    if (buffer_a_truncar == NULL) {
+        perror("Error asignando memoria a buffer");
+        fclose(archivo_a_truncar);
+        exit(EXIT_FAILURE);
+    }
+
+    //Guardar contenido de archivo al buffer
+    fread(buffer_a_truncar, 1, tamano_bloques_ocupados, archivo_a_truncar);
+
+    fclose(archivo_a_truncar);
+
+    //Copiar datos a bloques_map
+    memcpy(bloques_map + tamano_a_saltar, buffer_a_truncar, tamano_bloques_ocupados);
+
+    free(buffer_a_truncar);
+
+    //Como despues de while es vacio hago esto para volver a contener los archivos que tenia anteriormente
+    lista_archivos = lista_temp;
+
+    //Agrego el archivo a truncar devuelta a la lista
+    list_add(lista_archivos,nombre_archivo_a_truncar);
+}
+
+//No estaba en commons asi que creo un funcion que retorna primer elemento de la lista 
+char* list_get_first(t_list *list) {
+    if (list->head == NULL) {
+        return NULL; 
+    }
+    return (char*)list->head->data; 
+}
+
+
+
+/*Cada vez que se corra de nuevo el codigo se pierda la lista por lo que creo una funcion
+
+agrega los nombres de archivos */
+
+void agregar_a_lista_archivos(char* path_archivos, t_list* lista_archivos) {
+    DIR *direccion;
+    struct dirent *dir;
+    direccion = opendir(path_archivos);
+
+    if (direccion) {
+        while ((dir = readdir(direccion)) != NULL) {
+            //No voy a agregar el bitmap.dat y bloques.dat a la lista
+            if (strcmp(dir->d_name, "bloques.dat") == 0 || strcmp(dir->d_name, "bitmap.dat") == 0) {
+                continue;
+            } 
+
+            char *nombre_archivo = strdup(dir->d_name);
+            list_add(lista_archivos, nombre_archivo);
+        }
+        closedir(direccion);
+    } else {
+        perror("Error abriendo el directory");
+    }
 }

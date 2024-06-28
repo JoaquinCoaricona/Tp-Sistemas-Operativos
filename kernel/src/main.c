@@ -306,7 +306,7 @@ void *manage_request_from_dispatch(void *args)
             // aca el grado de multiprogramacion no cambia, porque los procesos en block tambien entratran dentro del
             // grado de multiprogramacion, solo cuando sale por exit se aumenta el grado de multiprogramacion
             break;
-            case STDOUT_ESCRIBIR:
+        case STDOUT_ESCRIBIR:
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
@@ -347,7 +347,7 @@ void *manage_request_from_dispatch(void *args)
             // aca el grado de multiprogramacion no cambia, porque los procesos en block tambien entratran dentro del
             // grado de multiprogramacion, solo cuando sale por exit se aumenta el grado de multiprogramacion
             break;
-            case STDIN_LEER:
+        case STDIN_LEER:
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
@@ -391,88 +391,116 @@ void *manage_request_from_dispatch(void *args)
             // aca el grado de multiprogramacion no cambia, porque los procesos en block tambien entratran dentro del
             // grado de multiprogramacion, solo cuando sale por exit se aumenta el grado de multiprogramacion
             break;
-
-            case DIALFS_CREATE:
-                pthread_mutex_lock(&m_procesoEjectuandoActualmente);
-                procesoEjectuandoActualmente = -1;
-                pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
-
-                t_pcb *receptorPCBDialFSCreate = NULL;
-                t_interfaz_registrada *interfazDialFSCreate = NULL;
-
-                char *nombreInterDialFSCreate = NULL;
-                char *nombre_archivo_C = NULL;
-
-                receptorPCBDialFSCreate = fetch_pcb_DialFSCREATEYDELETE(server_socket, &nombreInterDialFSCreate,&nombre_archivo_C);
-
-                if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
-                    obtenerDatosTemporal();
-                    receptorPCBDialFSCreate->quantum = receptorPCBDialFSCreate->quantum - (ms_transcurridos * 1000);
-                    if(receptorPCBDialFSCreate->quantum < 0){
-                        receptorPCBDialFSCreate->quantum = quantumGlobal;
-                        log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
-                    }
-                }
-
-                interfazDialFSCreate = buscar_interfaz(nombreInterDialFSCreate);
-
-                t_colaDialFS *colaDialFS = malloc(sizeof(t_colaDialFS)); 
-                colaDialFS->tipoOperacion = operation_code;
-                colaDialFS->PCB = receptorPCBDialFSCreate;
-                colaDialFS->nombreArchivo = nombre_archivo_C;
-
-                cargarEnListaDIALFSCREATEYDELETE(colaDialFS, interfazDialFSCreate);
-                
-                sem_post(&short_term_scheduler_semaphore);
-
-                break;
-            case DIALFS_DELETE:
-                pthread_mutex_lock(&m_procesoEjectuandoActualmente);
-                procesoEjectuandoActualmente = -1;
-                pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
-
-                t_pcb *receptorPCBDialFSDelete = NULL;
-                t_interfaz_registrada *interfazDialFSDelete = NULL;
-
-                char *nombreInterDialFSDelete = NULL;
-                char *nombre_archivo_D = NULL;
-
-                receptorPCBDialFSDelete = fetch_pcb_DialFSCREATEYDELETE(server_socket, &nombreInterDialFSDelete,&nombre_archivo_D);
-
-                if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
-                    obtenerDatosTemporal();
-                    receptorPCBDialFSDelete->quantum = receptorPCBDialFSDelete->quantum - (ms_transcurridos * 1000);
-                    if(receptorPCBDialFSDelete->quantum < 0){
-                        receptorPCBDialFSDelete->quantum = quantumGlobal;
-                        log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
-                    }
-                }
-
-                interfazDialFSDelete = buscar_interfaz(nombreInterDialFSDelete);
-                cargarEnListaDIALFSCREATEYDELETE(receptorPCBDialFSDelete, interfazDialFSDelete, nombre_archivo_D);
-                sem_post(&short_term_scheduler_semaphore);
-
-                break;
-            case WAIT_SOLICITUD:
+        case WAIT_SOLICITUD:
                 apropiarRecursos(server_socket);
             break;
-            case SIGNAL_SOLICITUD:
+        case SIGNAL_SOLICITUD:
                 liberarRecursos(server_socket);
             break;
-            case OUT_MEMORY:
+        case OUT_MEMORY:
+                pthread_mutex_lock(&m_procesoEjectuandoActualmente);
+                procesoEjectuandoActualmente = -1;
+                pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
+                // printf("Llego Un PCB");
+                log_info(logger, "LLEGO UN PCB POR OUT OF MEMORY");
+                fetch_pcb_actualizado(server_socket);
+                //Aca Controlo que solamente en VRR hago destroy al t_temporal
+                if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
+                temporal_destroy(timer);
+                }
+                sem_post(&short_term_scheduler_semaphore);
+                controlGradoMultiprogramacion();
+                //sem_post(&sem_multiprogramacion);
+            break;
+        case DIALFS_CREATE:
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
-            // printf("Llego Un PCB");
-            log_info(logger, "LLEGO UN PCB POR OUT OF MEMORY");
-            fetch_pcb_actualizado(server_socket);
-            //Aca Controlo que solamente en VRR hago destroy al t_temporal
+
+            t_pcb *receptorPCBDialFSC = NULL;
+            t_interfaz_registrada *interfazDialFSC = NULL;
+            char *nombreInterDialFSC = NULL;
+            char *nombreArchivoC = NULL;
+
+            receptorPCBDialFSC = fetch_pcb_dialfs_create_o_delete(server_socket, &nombreInterDialFSC,&nombreArchivoC);
+
             if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
-            temporal_destroy(timer);
+                obtenerDatosTemporal();
+                receptorPCBDialFSC->quantum = receptorPCBDialFSC->quantum - (ms_transcurridos * 1000);
+                if(receptorPCBDialFSC->quantum < 0){
+                    receptorPCBDialFSC->quantum = quantumGlobal;
+                    log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
+                }
             }
+
+            int tamanoNuevoC = -1;
+            interfazDialFSC = buscar_interfaz(nombreInterDialFSC);
+
+            cargarEnListaDialFS(receptorPCBDialFSC, interfazDialFSC, nombreArchivoC, tamanoNuevoC, DIALFS_CREATE);
+
             sem_post(&short_term_scheduler_semaphore);
-            controlGradoMultiprogramacion();
-            //sem_post(&sem_multiprogramacion);
+            break;
+        case DIALFS_DELETE:
+            pthread_mutex_lock(&m_procesoEjectuandoActualmente);
+            procesoEjectuandoActualmente = -1;
+            pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
+
+            t_pcb *receptorPCBDialFSD = NULL;
+            t_interfaz_registrada *interfazDialFSD = NULL;
+            char *nombreInterDialFSD = NULL;
+            char *nombreArchivoD = NULL;
+
+            receptorPCBDialFSD = fetch_pcb_dialfs_create_o_delete(server_socket, &nombreInterDialFSD,&nombreArchivoD);
+
+            if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
+                obtenerDatosTemporal();
+                receptorPCBDialFSD->quantum = receptorPCBDialFSD->quantum - (ms_transcurridos * 1000);
+                if(receptorPCBDialFSD->quantum < 0){
+                    receptorPCBDialFSD->quantum = quantumGlobal;
+                    log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
+                }
+            }
+
+            int tamanoNuevoD = -1;
+            interfazDialFSD = buscar_interfaz(nombreInterDialFSD);
+
+            cargarEnListaDialFS(receptorPCBDialFSD, interfazDialFSD, nombreArchivoD, tamanoNuevoD, DIALFS_DELETE);
+
+            sem_post(&short_term_scheduler_semaphore);
+            break;
+        case DIALFS_TRUNCATE:
+            pthread_mutex_lock(&m_procesoEjectuandoActualmente);
+            procesoEjectuandoActualmente = -1;
+            pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
+
+            t_pcb *receptorPCBDialFST = NULL;
+            t_interfaz_registrada *interfazDialFST = NULL;
+            char *nombreInterDialFST = NULL;
+            char *nombreArchivoT = NULL;
+            int tamanoNuevoT;
+
+            receptorPCBDialFST = fetch_pcb_dialfs_truncate(server_socket, &nombreInterDialFST,&nombreArchivoT,&tamanoNuevoT);
+
+            if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
+                obtenerDatosTemporal();
+                receptorPCBDialFST->quantum = receptorPCBDialFST->quantum - (ms_transcurridos * 1000);
+                if(receptorPCBDialFST->quantum < 0){
+                    receptorPCBDialFST->quantum = quantumGlobal;
+                    log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
+                }
+            }
+            interfazDialFST = buscar_interfaz(nombreInterDialFST);
+
+            cargarEnListaDialFS(receptorPCBDialFST, interfazDialFST, nombreArchivoT, tamanoNuevoT, DIALFS_TRUNCATE);
+
+            sem_post(&short_term_scheduler_semaphore);
+            break;
+
+        case DIALFS_READ:
+
+            break;
+        case DIALFS_WRITE :
+
             break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
@@ -546,6 +574,10 @@ void create_process(char *path)
     // packetPCB = create_packet(PCB_REC, bufferPCB);
     // add_to_packet(packetPCB, PCB, sizePCB);
     // send_packet(packetPCB, cpu_dispatch_socket);
+}
+
+void end_process()
+{
 }
 
 void fetch_pcb_actualizado(int server_socket)
