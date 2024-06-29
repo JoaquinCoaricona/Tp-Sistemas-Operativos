@@ -714,7 +714,7 @@ void borrar_archivo(int socket_kernel){
 
     //necesita para compactar 
     //Busco el nombre de archivo desde la lista y borro dicho nombre
-    char* nombre_archivo_a_borrar = list_find(lista_archivos, nombre_archivo);
+    char* nombre_archivo_a_borrar = list_find(lista_archivos, buscar_de_lista);
     list_remove(lista_archivos,nombre_archivo_a_borrar);
 
     /*Aca estoy haciendo esto para dejar path_archivo_comun para una path usados por multiples diferentes archivos

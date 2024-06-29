@@ -435,7 +435,7 @@ void *manage_request_from_dispatch(void *args)
             interfazDialFSC = buscar_interfaz(nombreInterDialFSC);
 
             int tamanoNuevoC = -1;
-            void* contenidoDialFSC = -1;
+            void* contenidoDialFSC = NULL;
             int tamaContenidoDialFSC = -1;
             int punteroArchivoC = -1;
             cargarEnListaDialFS(receptorPCBDialFSC, interfazDialFSC, nombreArchivoC, tamanoNuevoC, DIALFS_CREATE, contenidoDialFSC, tamaContenidoDialFSC, punteroArchivoC);
@@ -465,7 +465,7 @@ void *manage_request_from_dispatch(void *args)
             interfazDialFSD = buscar_interfaz(nombreInterDialFSD);
 
             int tamanoNuevoD = -1;
-            void* contenidoDialFSD = -1;
+            void* contenidoDialFSD = NULL;
             int tamaContenidoDialFSD = -1;
             int punteroArchivoD = -1;
             cargarEnListaDialFS(receptorPCBDialFSD, interfazDialFSD, nombreArchivoD, tamanoNuevoD, DIALFS_DELETE, contenidoDialFSD, tamaContenidoDialFSD, punteroArchivoD);
@@ -481,7 +481,7 @@ void *manage_request_from_dispatch(void *args)
             t_interfaz_registrada *interfazDialFST = NULL;
             char *nombreInterDialFST = NULL;
             char *nombreArchivoT = NULL;
-            int tamanoNuevoT;
+            int tamanoNuevoT = 0;
 
             receptorPCBDialFST = fetch_pcb_dialfs_truncate(server_socket, &nombreInterDialFST,&nombreArchivoT,&tamanoNuevoT);
 
@@ -495,7 +495,7 @@ void *manage_request_from_dispatch(void *args)
             }
             interfazDialFST = buscar_interfaz(nombreInterDialFST);
 
-            void* contenidoDialFST = -1;
+            void* contenidoDialFST = NULL;
             int tamaContenidoDialFST = -1;
             int punteroArchivoT = -1;
             cargarEnListaDialFS(receptorPCBDialFST, interfazDialFST, nombreArchivoT, tamanoNuevoT, DIALFS_TRUNCATE, contenidoDialFST, tamaContenidoDialFST, punteroArchivoT);
@@ -511,9 +511,9 @@ void *manage_request_from_dispatch(void *args)
             t_interfaz_registrada *interfazDialFSR = NULL;
             char *nombreInterDialFSR = NULL;
             char *nombreArchivoR = NULL;
-            int punteroArchivoR = NULL;
+            int punteroArchivoR = 0;
             void *contenidoDialFSR = NULL;
-            int tamaContenidoDialFSR;
+            int tamaContenidoDialFSR = 0;
 
             receptorPCBDialFSR = fetch_pcb_dialfs_read_o_write(server_socket, &nombreInterDialFSR, &nombreArchivoR, &punteroArchivoR, &contenidoDialFSR, &tamaContenidoDialFSR);
 
@@ -526,7 +526,7 @@ void *manage_request_from_dispatch(void *args)
                 }
             }
             interfazDialFSR = buscar_interfaz(nombreInterDialFSR);
-            
+
             int tamanoNuevoR = -1;
             cargarEnListaDialFS(receptorPCBDialFSR, interfazDialFSR, nombreArchivoR, tamanoNuevoR, DIALFS_READ, contenidoDialFSR, tamaContenidoDialFSR, punteroArchivoR);
 
@@ -542,9 +542,9 @@ void *manage_request_from_dispatch(void *args)
             t_interfaz_registrada *interfazDialFSW = NULL;
             char *nombreInterDialFSW = NULL;
             char *nombreArchivoW = NULL;
-            int punteroArchivoW = NULL;
+            int punteroArchivoW = 0;
             void *contenidoDialFSW = NULL;
-            int tamaContenidoDialFSW;
+            int tamaContenidoDialFSW = 0;
 
             receptorPCBDialFSW = fetch_pcb_dialfs_read_o_write(server_socket, &nombreInterDialFSW, &nombreArchivoW, &punteroArchivoW, &contenidoDialFSW, &tamaContenidoDialFSW);
 
@@ -557,7 +557,7 @@ void *manage_request_from_dispatch(void *args)
                 }
             }
             interfazDialFSW = buscar_interfaz(nombreInterDialFSW);
-            
+
             int tamanoNuevoW = -1;
             cargarEnListaDialFS(receptorPCBDialFSW, interfazDialFSW,nombreArchivoW, tamanoNuevoW, DIALFS_WRITE, contenidoDialFSW, tamaContenidoDialFSW, punteroArchivoW);
 
