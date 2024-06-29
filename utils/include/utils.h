@@ -131,6 +131,9 @@ typedef struct{
     op_code tipoOperacion;            
     char *nombreArchivo;
     int tamanoNuevo;
+    void *contenido;
+    int tamanoContenido;
+    int punteroArchivo;
 }t_colaDialFS;  
 
 

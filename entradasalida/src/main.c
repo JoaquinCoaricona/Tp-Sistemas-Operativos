@@ -1231,10 +1231,7 @@ char* list_get_first(t_list *list) {
     return (char*)list->head->data; 
 }
 
-
-
 /*Cada vez que se corra de nuevo el codigo se pierda la lista por lo que creo una funcion
-
 agrega los nombres de archivos */
 
 void agregar_a_lista_archivos(char* path_archivos, t_list* lista_archivos) {

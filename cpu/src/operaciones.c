@@ -1110,14 +1110,17 @@ void operacion_io_fs_read(t_pcb *contexto,int socket,t_instruccion_unitaria* ins
 		add_to_packet(packet,&cantidadBytes,sizeof(int));
 		add_to_packet(packet,&dirFisica,sizeof(int));
 	}
-	
-	//Ahora agrego el PCB al paquete
 
 	contexto->state = BLOCKED;
+
+	//Tamano de PCB
 	int tamanioPCB = sizeof(t_pcb);
-    add_to_packet(packet, contexto, tamanioPCB); //CARGO EL PCB ACTUALIZADO
+
+	//PCB
+    add_to_packet(packet, contexto, tamanioPCB); 
 	
-	send_packet(packet,socket);		//ENVIO EL PAQUETE
+	send_packet(packet,socket);
+	
 	destroy_packet(packet);
 }
 
@@ -1182,13 +1185,16 @@ void operacion_io_fs_write(t_pcb *contexto,int socket,t_instruccion_unitaria* in
 		add_to_packet(packet,&cantidadBytes,sizeof(int));
 		add_to_packet(packet,&dirFisica,sizeof(int));
 	}
-	
-	//Ahora agrego el PCB al paquete
 
 	contexto->state = BLOCKED;
+
+	//Tamano de PCB
 	int tamanioPCB = sizeof(t_pcb);
-    add_to_packet(packet, contexto, tamanioPCB); //CARGO EL PCB ACTUALIZADO
+
+	//PCB
+    add_to_packet(packet, contexto, tamanioPCB); 
 	
-	send_packet(packet,socket);		//ENVIO EL PAQUETE
+	send_packet(packet,socket);
+	
 	destroy_packet(packet);
 }

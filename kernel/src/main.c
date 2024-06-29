@@ -432,11 +432,13 @@ void *manage_request_from_dispatch(void *args)
                     log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
                 }
             }
-
-            int tamanoNuevoC = -1;
             interfazDialFSC = buscar_interfaz(nombreInterDialFSC);
 
-            cargarEnListaDialFS(receptorPCBDialFSC, interfazDialFSC, nombreArchivoC, tamanoNuevoC, DIALFS_CREATE);
+            int tamanoNuevoC = -1;
+            void* contenidoDialFSC = -1;
+            int tamaContenidoDialFSC = -1;
+            int punteroArchivoC = -1;
+            cargarEnListaDialFS(receptorPCBDialFSC, interfazDialFSC, nombreArchivoC, tamanoNuevoC, DIALFS_CREATE, contenidoDialFSC, tamaContenidoDialFSC, punteroArchivoC);
 
             sem_post(&short_term_scheduler_semaphore);
             break;
@@ -460,11 +462,13 @@ void *manage_request_from_dispatch(void *args)
                     log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
                 }
             }
-
-            int tamanoNuevoD = -1;
             interfazDialFSD = buscar_interfaz(nombreInterDialFSD);
 
-            cargarEnListaDialFS(receptorPCBDialFSD, interfazDialFSD, nombreArchivoD, tamanoNuevoD, DIALFS_DELETE);
+            int tamanoNuevoD = -1;
+            void* contenidoDialFSD = -1;
+            int tamaContenidoDialFSD = -1;
+            int punteroArchivoD = -1;
+            cargarEnListaDialFS(receptorPCBDialFSD, interfazDialFSD, nombreArchivoD, tamanoNuevoD, DIALFS_DELETE, contenidoDialFSD, tamaContenidoDialFSD, punteroArchivoD);
 
             sem_post(&short_term_scheduler_semaphore);
             break;
@@ -491,16 +495,73 @@ void *manage_request_from_dispatch(void *args)
             }
             interfazDialFST = buscar_interfaz(nombreInterDialFST);
 
-            cargarEnListaDialFS(receptorPCBDialFST, interfazDialFST, nombreArchivoT, tamanoNuevoT, DIALFS_TRUNCATE);
+            void* contenidoDialFST = -1;
+            int tamaContenidoDialFST = -1;
+            int punteroArchivoT = -1;
+            cargarEnListaDialFS(receptorPCBDialFST, interfazDialFST, nombreArchivoT, tamanoNuevoT, DIALFS_TRUNCATE, contenidoDialFST, tamaContenidoDialFST, punteroArchivoT);
 
             sem_post(&short_term_scheduler_semaphore);
             break;
-
         case DIALFS_READ:
+            pthread_mutex_lock(&m_procesoEjectuandoActualmente);
+            procesoEjectuandoActualmente = -1;
+            pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
+
+            t_pcb *receptorPCBDialFSR = NULL;
+            t_interfaz_registrada *interfazDialFSR = NULL;
+            char *nombreInterDialFSR = NULL;
+            char *nombreArchivoR = NULL;
+            int punteroArchivoR = NULL;
+            void *contenidoDialFSR = NULL;
+            int tamaContenidoDialFSR;
+
+            receptorPCBDialFSR = fetch_pcb_dialfs_read_o_write(server_socket, &nombreInterDialFSR, &nombreArchivoR, &punteroArchivoR, &contenidoDialFSR, &tamaContenidoDialFSR);
+
+            if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
+                obtenerDatosTemporal();
+                receptorPCBDialFSR->quantum = receptorPCBDialFSR->quantum - (ms_transcurridos * 1000);
+                if(receptorPCBDialFSR->quantum < 0){
+                    receptorPCBDialFSR->quantum = quantumGlobal;
+                    log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
+                }
+            }
+            interfazDialFSR = buscar_interfaz(nombreInterDialFSR);
+            
+            int tamanoNuevoR = -1;
+            cargarEnListaDialFS(receptorPCBDialFSR, interfazDialFSR, nombreArchivoR, tamanoNuevoR, DIALFS_READ, contenidoDialFSR, tamaContenidoDialFSR, punteroArchivoR);
+
+            sem_post(&short_term_scheduler_semaphore);
 
             break;
         case DIALFS_WRITE :
+            pthread_mutex_lock(&m_procesoEjectuandoActualmente);
+            procesoEjectuandoActualmente = -1;
+            pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
 
+            t_pcb *receptorPCBDialFSW = NULL;
+            t_interfaz_registrada *interfazDialFSW = NULL;
+            char *nombreInterDialFSW = NULL;
+            char *nombreArchivoW = NULL;
+            int punteroArchivoW = NULL;
+            void *contenidoDialFSW = NULL;
+            int tamaContenidoDialFSW;
+
+            receptorPCBDialFSW = fetch_pcb_dialfs_read_o_write(server_socket, &nombreInterDialFSW, &nombreArchivoW, &punteroArchivoW, &contenidoDialFSW, &tamaContenidoDialFSW);
+
+            if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
+                obtenerDatosTemporal();
+                receptorPCBDialFSW->quantum = receptorPCBDialFSW->quantum - (ms_transcurridos * 1000);
+                if(receptorPCBDialFSW->quantum < 0){
+                    receptorPCBDialFSW->quantum = quantumGlobal;
+                    log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
+                }
+            }
+            interfazDialFSW = buscar_interfaz(nombreInterDialFSW);
+            
+            int tamanoNuevoW = -1;
+            cargarEnListaDialFS(receptorPCBDialFSW, interfazDialFSW,nombreArchivoW, tamanoNuevoW, DIALFS_WRITE, contenidoDialFSW, tamaContenidoDialFSW, punteroArchivoW);
+
+            sem_post(&short_term_scheduler_semaphore);
             break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
@@ -574,10 +635,6 @@ void create_process(char *path)
     // packetPCB = create_packet(PCB_REC, bufferPCB);
     // add_to_packet(packetPCB, PCB, sizePCB);
     // send_packet(packetPCB, cpu_dispatch_socket);
-}
-
-void end_process()
-{
 }
 
 void fetch_pcb_actualizado(int server_socket)
