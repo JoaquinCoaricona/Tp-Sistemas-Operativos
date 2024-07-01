@@ -493,12 +493,12 @@ void interfazDialFS(){
             break;
         case DIALFS_READ:
             usleep(tiempoUnidad * 1000);
-
+            leer_archivo(socket_kernel);
             enviarAvisoAKernel(socket_kernel,CONFIRMACION_DIALFS_READ);
             break;
         case DIALFS_WRITE:
             usleep(tiempoUnidad * 1000);
-
+            escribir_archivo(socket_kernel);
             enviarAvisoAKernel(socket_kernel,CONFIRMACION_DIALFS_WRITE);
             break;
         case -1:
@@ -750,9 +750,6 @@ void borrar_archivo(int socket_kernel){
     //Liberar los bloques que ocupaba el archivo desde bitrray 
     hacer_libre_bloques(bitarray, bloque_inicial, tamano);
 
-    //Liberar los bloques ocupados en bloques.dat
-    liberar_bloques(bloque_inicial, tamano);
-
     //Borrar el Archivo
     if(remove(path_archivo) == 0) {
         log_info(logger,"Archivo %s borrado", nombre_archivo);
@@ -788,42 +785,6 @@ void hacer_libre_bloques(t_bitarray *bitarray, int bloque_inicial, int tamano){
         //Sumar bloques_libres cada vez que libera un bit
         bloques_libres = bloques_libres + 1;
     }
-}
-
-//Liberar bloques en bloques.dat
-void liberar_bloques(int bloque_inicial, int tamano) {
-    //Como necesito una tipo size_t para munmap cambio a size_t
-    size_t bloque_inicial2 = (size_t)bloque_inicial;
-    size_t tamano2 = (size_t)tamano;
-    size_t block_size2 = (size_t)block_size;
-
-    /*Calculo el cantidad de bloques_ocupados para liberar
-    -1 existe para casos cunado por ejemplo tamano es 100 y block_size es 100.
-    Entonces bloques_ocupados debe ser 1 pero retornara un 2, por lo que hiso un -1*/
-    size_t bloques_ocupados = (tamano2 + block_size2 - 1) / block_size2;  
-
-    /*Aca estoy haciendo esto para que puedo liberar en unidad de bloques. osea si por ejemplo el tamano
-    a liberar es 550 mientras que el block_size es 100, entonces bloques ocupados te devuelve un 6 que sera 
-    la cantidad de bloques a liberar. Despues multiplico eso a block_size de nuevo para saber el tamano_de 6 bloques no de 5
-    ni 5.5*/
-    size_t tamano_a_liberar = bloques_ocupados * block_size2;
-
-    /*Tengo que saber el tamano de bloques hasta el bloque_inicial para usar en el addr*/
-    size_t tamano_hasta_bloque_inicial = bloque_inicial2 * block_size2;
-
-    //Sumar posicion de inicio de blouqes.dat mas el espacio ocupado hasta bloque inicial
-    char *addr = bloques_map + tamano_hasta_bloque_inicial;
-
-    //Si tamano_a_liberar = 0 significa que no ocupaba bloques en bloques.dat por lo que no es necesario el munmap
-    if(tamano_a_liberar != 0) {
-        //Unmap desde bloque inicial por su tamano
-        if (munmap(addr, tamano_a_liberar) == -1) {
-            perror("Error unmapping");
-            exit(EXIT_FAILURE);
-        }
-    }
-
-    log_info(logger, "Liberar bloques exitoso");
 }
 
 void truncar_archivo(int socket_kernel){
@@ -924,8 +885,6 @@ void truncar_archivo(int socket_kernel){
         Libera en el bitmap.dat*/
         hacer_libre_bloques(bitarray, bloque_inicial_a_borrar, diferencia_tamano_positivo);
 
-        //Libera el bloques.dat
-        liberar_bloques(bloque_inicial_a_borrar, diferencia_tamano_positivo);
     }
     //Agrandar el archivo
     else if(diferencia_tamano > 0){
@@ -1253,4 +1212,278 @@ void agregar_a_lista_archivos(char* path_archivos, t_list* lista_archivos) {
     } else {
         perror("Error abriendo el directory");
     }
+}
+
+//Para IO_FS_WRITE
+/*Verificar que pasa si tamano de escritura pasa el limite de tamanos(Cantidad de bloques) disponibles para el archivos.
+Sera que debe esperar primera truncar para escribir o en momento de falata de espacio puede actualizar su tamano?*/
+void escribir_archivo(int socket_kernel){
+    int total_size;
+    int offset = 0;
+
+    int pid;
+    char *nombre_archivo;
+    int tamano_nombre_archivo;
+    int puntero_archivo;
+    int cantidad_bytes_cdf;
+    int cantidad_direccioens_fisicas;
+
+    int cantidad_bytes;
+    int direccion_fisica;
+
+    int desplazamiento = 0;
+
+    int bloque_inicial;
+    int tamano;
+
+    void *buffer2;
+    buffer2 = fetch_buffer(&total_size, socket_kernel);
+
+    //Tamano de Nombre de Archivo
+    memcpy(&tamano_nombre_archivo,buffer2 + offset, sizeof(int));
+    offset += sizeof(int);
+
+    //Nombre de Archivo
+    nombre_archivo = malloc(tamano_nombre_archivo);
+    memcpy(nombre_archivo,buffer2 + offset, tamano_nombre_archivo);
+    offset += tamano_nombre_archivo;
+
+    //Saltar tamano de PID que no es necesario
+    offset += sizeof(int);
+
+    //PID
+    memcpy(&pid,buffer2 + offset, sizeof(int));
+    
+    //Saltar tamano de Puntero Archivo que no es necesario
+    offset += sizeof(int);
+    
+    //Puntero Archivo
+    memcpy(&puntero_archivo,buffer2 + offset, sizeof(int));
+    offset += sizeof(int);
+
+    //Saltar tamano de Cantidad Bytes que no es necesario
+    offset += sizeof(int);
+
+    //Cantidad Bytes
+    memcpy(&cantidad_bytes_cdf,buffer2 + offset, sizeof(int));
+    offset += sizeof(int);
+
+    //Saltar tamano de Cantidad Direcciones Fisicas que no es necesario
+    offset += sizeof(int);
+
+    //Cantidad Direcciones Fisicas
+    memcpy(&cantidad_direccioens_fisicas,buffer2 + offset, sizeof(int));
+    offset += sizeof(int);
+
+    //Necesito para buscar_de_lista
+    nombre_archivo_a_buscar = nombre_archivo;
+    char* nombre_archivo_a_escribir = list_find(lista_archivos, buscar_de_lista);
+
+    //Si no existe el archivo a escribir entonces non vamnos a poder escribir por lo que hacemos un exit
+    if(nombre_archivo_a_escribir == NULL) {
+        log_info(logger,"Error buscando el archivo para escribir");
+        exit(EXIT_FAILURE);
+    }
+
+    //Como es el archivo metadata que tiene los bloques_inicial y tamano, abro eso y no el archivo actual
+
+    //Nombre de Archivo Metadata
+    char* nombre_archivo_metadata;
+    asprintf(&nombre_archivo_metadata, "meta_%s", nombre_archivo);
+
+    //Path de Archivo de Metadata
+    char* path_archivo_metadata;
+    asprintf(&path_archivo_metadata, "%s/%s", path_archivo_comun, nombre_archivo_metadata);
+
+    //Abrir archivo metadataque es necesario saber el bloque incial para calcular el posicion de archivo en memoria
+    FILE *archivo_metadata = fopen(path_archivo_metadata, "r");
+    if (archivo_metadata == NULL) {
+        log_info(logger,"Error abriendo el archivo metadata");
+        exit(EXIT_FAILURE);
+    }
+
+    //Leer y guardar Bloque Inicial
+    fprintf(archivo_metadata_a_truncar, "BLOQUE_INICIAL=%i\n", &bloque_inicial);
+
+    //Leer y guardar Tamano
+    fprintf(archivo_metadata_a_truncar, "TAMANO=%i\n", &tamano);
+
+    //Calculo la posicion de inicio de archivo en bloques.dat
+    int posicion_archivo = bloque_inicial *block_size;
+
+    //Posicion de escritura en bloques.dat
+    int posicion_bloques_dat = posicion_archivo + puntero_archivo;
+
+    //Posicion de donde tengo que leer en el memoria
+    void* posicion_memoria = bloques_map + posicion_bloques_dat;
+
+    //Un for loop para mandar a leer cada direcciones fisicas
+    for(int i = 0; i < cantidadDireccionesFisicas; i++){
+
+        //Salto tamano de cantidad bytes
+        offset += sizeof(int); 
+
+        //Cantidad bytes
+        memcpy(&cantidad_bytes,buffer2 + offset, sizeof(int)); 
+        offset += sizeof(int);
+
+        //Salto tamano de Direccion Fisica
+        offset += sizeof(int);
+
+        //Direccion Fisica
+        memcpy(&direccion_fisica,buffer2 + offset, sizeof(int)); 
+        offset += sizeof(int);
+
+        //Mandar a leer 
+        //Como desplazamiento = 0 en el primer loop, se va a guardar desde posicion_memoria
+        mandarALeer(direccion_fisica, cantidad_bytes, pid, posicion_memoria + desplazamiento);
+
+        //Actualizo desplazamiento para siguiente direccion Fisica y Cantidad bytes
+        desplazamiento += cantidad_bytes;
+    }
+
+    /*Antes todo tengo que probar si hay suficiente bloque para escribir lo que lee desde memoria a archivo en bitmap.dat
+    Verifico si tamano max archivo - puntero archivo > tamano de escritura pq sino cumple este condicion deben truncar priemro
+    y no va a poder escribir.*/
+    bool tiene_suficiente_espacio_para_escribir = tamano - puntero_archivo > cantidad_bytes_cdf;
+
+    if(tiene_suficiente_espacio_para_escribir){
+
+        //Copiar a bloques_map los que esta en posicion memoria
+        //Hay que hacer + posicion_bloques_dat a bloques_map para la posicion actual de donde esta guardado el archivo
+        memcpy(bloques_map + posicion_bloques_dat, posicion_memoria, cantidad_bytes_cdf);
+
+    }else{
+        log_info(logger,"No hay suficiente espacio . Trunca el archivo primero.");
+    }
+
+    fclose(archivo_metadata);
+}
+
+//Para IO_FS_READ 
+//Se lea desde el archivo por lo que no va a tocar el bitmap.dat y bloques.dat
+void leer_archivo(int socket_kernel){
+    int total_size;
+    int offset = 0;
+
+    int pid;
+    char *nombre_archivo;
+    int tamano_nombre_archivo;
+    int puntero_archivo;
+    int cantidad_bytes_cdf;
+    int cantidad_direccioens_fisicas;
+
+    int cantidad_bytes;
+    int direccion_fisica;
+
+    int desplazamiento = 0;
+
+    int bloque_inicial;
+    int tamano;
+
+    void *buffer2;
+    buffer2 = fetch_buffer(&total_size, socket_kernel);
+
+    //Tamano de Nombre de Archivo
+    memcpy(&tamano_nombre_archivo,buffer2 + offset, sizeof(int));
+    offset += sizeof(int);
+
+    //Nombre de Archivo
+    nombre_archivo = malloc(tamano_nombre_archivo);
+    memcpy(nombre_archivo,buffer2 + offset, tamano_nombre_archivo);
+    offset += tamano_nombre_archivo;
+
+    //Saltar tamano de PID que no es necesario
+    offset += sizeof(int);
+
+    //PID
+    memcpy(&pid,buffer2 + offset, sizeof(int));
+    
+    //Saltar tamano de Puntero Archivo que no es necesario
+    offset += sizeof(int);
+    
+    //Puntero Archivo
+    memcpy(&puntero_archivo,buffer2 + offset, sizeof(int));
+    offset += sizeof(int);
+
+    //Saltar tamano de Cantidad Bytes que no es necesario
+    offset += sizeof(int);
+
+    //Cantidad Bytes
+    memcpy(&cantidad_bytes_cdf,buffer2 + offset, sizeof(int));
+    offset += sizeof(int);
+
+    //Saltar tamano de Cantidad Direcciones Fisicas que no es necesario
+    offset += sizeof(int);
+
+    //Cantidad Direcciones Fisicas
+    memcpy(&cantidad_direccioens_fisicas,buffer2 + offset, sizeof(int));
+    offset += sizeof(int);
+
+    //Necesito para buscar_de_lista
+    nombre_archivo_a_buscar = nombre_archivo;
+    char* nombre_archivo_a_escribir = list_find(lista_archivos, buscar_de_lista);
+
+    //Si no existe el archivo a escribir entonces non vamnos a poder escribir por lo que hacemos un exit
+    if(nombre_archivo_a_escribir == NULL) {
+        log_info(logger,"Error buscando el archivo para escribir");
+        exit(EXIT_FAILURE);
+    }
+
+    //Como es el archivo metadata que tiene los bloques_inicial y tamano, abro eso y no el archivo actual
+
+    //Nombre de Archivo Metadata
+    char* nombre_archivo_metadata;
+    asprintf(&nombre_archivo_metadata, "meta_%s", nombre_archivo);
+
+    //Path de Archivo de Metadata
+    char* path_archivo_metadata;
+    asprintf(&path_archivo_metadata, "%s/%s", path_archivo_comun, nombre_archivo_metadata);
+
+    //Abrir archivo metadataque es necesario saber el bloque incial para calcular el posicion de archivo en memoria
+    FILE *archivo_metadata = fopen(path_archivo_metadata, "r");
+    if (archivo_metadata == NULL) {
+        log_info(logger,"Error abriendo el archivo metadata");
+        exit(EXIT_FAILURE);
+    }
+
+    //Leer y guardar Bloque Inicial
+    fprintf(archivo_metadata_a_truncar, "BLOQUE_INICIAL=%i\n", &bloque_inicial);
+
+    //Leer y guardar Tamano
+    fprintf(archivo_metadata_a_truncar, "TAMANO=%i\n", &tamano);
+
+    //Calculo la posicion de inicio de archivo en bloques.dat
+    int posicion_archivo = bloque_inicial *block_size;
+
+    //Posicion de escritura en bloques.dat
+    int posicion_bloques_dat = posicion_archivo + puntero_archivo;
+
+    //Posicion de donde tengo que leer en el memoria
+    void* posicion_memoria = bloques_map + posicion_bloques_dat;
+
+    for (int i = 0; (i < cantidad_direccioens_fisicas) && (desplazamiento < cantidad_bytes_cdf); i++) {
+
+        // Salto el tamano de cantidad bytes
+        offset += sizeof(int);
+
+        // Cantidad bytes 
+        memcpy(&cantidad_bytes, buffer2 + offset, sizeof(int)); 
+        offset += sizeof(int);
+
+        // Salto el tamano de Direccion Fisica
+        offset += sizeof(int);
+        
+        // Direccion Fisica
+        memcpy(&direccion_fisica, buffer2 + offset, sizeof(int)); 
+        offset += sizeof(int);       
+
+        // Escribir en memoria lo que esta en el bloques.dat
+        mandarAescribirEnMemoria(direccion_fisica, posicion_memoria + desplazamiento, cantidad_bytes, pid);
+
+        // Actualizo la variable desplazamiento sumandole lo que acabo de escribir en memoria
+        desplazamiento += cantidad_bytes;
+    }
+
+    fclose(archivo_metadata);
 }

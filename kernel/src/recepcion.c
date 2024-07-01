@@ -686,12 +686,12 @@ void llamadasIODialFS(t_interfaz_registrada *interfaz){
                 //PID
                 add_to_packet(packet, &(pcbEnviado->PCB->pid), sizeof(int));
 
+                //Puntero Archivo
+                add_to_packet(packet, &(pcbEnviado->punteroArchivo), sizeof(int));
+
                 //Contenido
                 void *contenidoDialFSR = pcbEnviado->contenido;
                 add_to_packet(packet, contenidoDialFSR, pcbEnviado->tamanoContenido);
-
-                //Puntero Archivo
-                add_to_packet(packet, &(pcbEnviado->punteroArchivo), sizeof(int));
 
                 send_packet(packet, interfaz->socket_de_conexion);
                 break;
@@ -705,12 +705,12 @@ void llamadasIODialFS(t_interfaz_registrada *interfaz){
                 //PID
                 add_to_packet(packet, &(pcbEnviado->PCB->pid), sizeof(int));
 
+                //Puntero Archivo
+                add_to_packet(packet, &(pcbEnviado->punteroArchivo), sizeof(int));
+                
                 //Contenido
                 void *contenidoDialFSW = pcbEnviado->contenido;
                 add_to_packet(packet, contenidoDialFSW, pcbEnviado->tamanoContenido);
-
-                //Puntero Archivo
-                add_to_packet(packet, &(pcbEnviado->punteroArchivo), sizeof(int));
 
                 send_packet(packet, interfaz->socket_de_conexion);
                 break;
@@ -905,6 +905,9 @@ t_pcb *fetch_pcb_dialfs_read_o_write(int server_socket, char **nomrebInterfaz, c
     memcpy(*nombreArchivo,buffer + offset,sizeNombreArchivo);
     offset += sizeNombreArchivo;
 
+    //Tamano de Puntero Archivo
+    offset += sizeof(int);
+
     //Puntero Archivo
     memcpy(&punteroArchivo,buffer + offset, sizeof(int));  
     offset += sizeof(int); 
@@ -914,7 +917,9 @@ t_pcb *fetch_pcb_dialfs_read_o_write(int server_socket, char **nomrebInterfaz, c
     contenidoACopiar = contenidoACopiar - sizeNombreInterfaz;
     contenidoACopiar = contenidoACopiar - sizeNombreArchivo;
     contenidoACopiar = contenidoACopiar - sizeof(int);
-    contenidoACopiar = contenidoACopiar -sizeof(int);
+    contenidoACopiar = contenidoACopiar - sizeof(int);
+    contenidoACopiar = contenidoACopiar - sizeof(int);
+    contenidoACopiar = contenidoACopiar - sizeof(int);
     contenidoACopiar = contenidoACopiar - sizeof(int);
     contenidoACopiar = contenidoACopiar - sizeof(t_pcb);
 
