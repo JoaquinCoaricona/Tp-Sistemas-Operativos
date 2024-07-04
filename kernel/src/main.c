@@ -438,7 +438,7 @@ void *manage_request_from_dispatch(void *args)
             void* contenidoDialFSC = NULL;
             int tamaContenidoDialFSC = -1;
             int punteroArchivoC = -1;
-            cargarEnListaDialFS(receptorPCBDialFSC, interfazDialFSC, nombreArchivoC, tamanoNuevoC, DIALFS_CREATE, contenidoDialFSC, tamaContenidoDialFSC, punteroArchivoC);
+            cargarEnListaDialFS(receptorPCBDialFSC, interfazDialFSC, nombreArchivoC, tamanoNuevoC, DIALFS_CREATE, &contenidoDialFSC, tamaContenidoDialFSC, punteroArchivoC);
 
             sem_post(&short_term_scheduler_semaphore);
             break;
@@ -468,7 +468,7 @@ void *manage_request_from_dispatch(void *args)
             void* contenidoDialFSD = NULL;
             int tamaContenidoDialFSD = -1;
             int punteroArchivoD = -1;
-            cargarEnListaDialFS(receptorPCBDialFSD, interfazDialFSD, nombreArchivoD, tamanoNuevoD, DIALFS_DELETE, contenidoDialFSD, tamaContenidoDialFSD, punteroArchivoD);
+            cargarEnListaDialFS(receptorPCBDialFSD, interfazDialFSD, nombreArchivoD, tamanoNuevoD, DIALFS_DELETE, &contenidoDialFSD, tamaContenidoDialFSD, punteroArchivoD);
 
             sem_post(&short_term_scheduler_semaphore);
             break;
@@ -498,7 +498,7 @@ void *manage_request_from_dispatch(void *args)
             void* contenidoDialFST = NULL;
             int tamaContenidoDialFST = -1;
             int punteroArchivoT = -1;
-            cargarEnListaDialFS(receptorPCBDialFST, interfazDialFST, nombreArchivoT, tamanoNuevoT, DIALFS_TRUNCATE, contenidoDialFST, tamaContenidoDialFST, punteroArchivoT);
+            cargarEnListaDialFS(receptorPCBDialFST, interfazDialFST, nombreArchivoT, tamanoNuevoT, DIALFS_TRUNCATE, &contenidoDialFST, tamaContenidoDialFST, punteroArchivoT);
 
             sem_post(&short_term_scheduler_semaphore);
             break;
@@ -511,9 +511,10 @@ void *manage_request_from_dispatch(void *args)
             t_interfaz_registrada *interfazDialFSR = NULL;
             char *nombreInterDialFSR = NULL;
             char *nombreArchivoR = NULL;
-            int punteroArchivoR = 0;
-            void *contenidoDialFSR = NULL;
-            int tamaContenidoDialFSR = 0;
+
+            int punteroArchivoR;
+            void *contenidoDialFSR;
+            int tamaContenidoDialFSR;
 
             receptorPCBDialFSR = fetch_pcb_dialfs_read_o_write(server_socket, &nombreInterDialFSR, &nombreArchivoR, &punteroArchivoR, &contenidoDialFSR, &tamaContenidoDialFSR);
 
@@ -528,7 +529,7 @@ void *manage_request_from_dispatch(void *args)
             interfazDialFSR = buscar_interfaz(nombreInterDialFSR);
 
             int tamanoNuevoR = -1;
-            cargarEnListaDialFS(receptorPCBDialFSR, interfazDialFSR, nombreArchivoR, tamanoNuevoR, DIALFS_READ, contenidoDialFSR, tamaContenidoDialFSR, punteroArchivoR);
+            cargarEnListaDialFS(receptorPCBDialFSR, interfazDialFSR, nombreArchivoR, tamanoNuevoR, DIALFS_READ, &contenidoDialFSR, tamaContenidoDialFSR, punteroArchivoR);
 
             sem_post(&short_term_scheduler_semaphore);
 
@@ -542,9 +543,10 @@ void *manage_request_from_dispatch(void *args)
             t_interfaz_registrada *interfazDialFSW = NULL;
             char *nombreInterDialFSW = NULL;
             char *nombreArchivoW = NULL;
-            int punteroArchivoW = 0;
-            void *contenidoDialFSW = NULL;
-            int tamaContenidoDialFSW = 0;
+
+            int punteroArchivoW;
+            void *contenidoDialFSW;
+            int tamaContenidoDialFSW;
 
             receptorPCBDialFSW = fetch_pcb_dialfs_read_o_write(server_socket, &nombreInterDialFSW, &nombreArchivoW, &punteroArchivoW, &contenidoDialFSW, &tamaContenidoDialFSW);
 
@@ -559,7 +561,7 @@ void *manage_request_from_dispatch(void *args)
             interfazDialFSW = buscar_interfaz(nombreInterDialFSW);
 
             int tamanoNuevoW = -1;
-            cargarEnListaDialFS(receptorPCBDialFSW, interfazDialFSW,nombreArchivoW, tamanoNuevoW, DIALFS_WRITE, contenidoDialFSW, tamaContenidoDialFSW, punteroArchivoW);
+            cargarEnListaDialFS(receptorPCBDialFSW, interfazDialFSW,nombreArchivoW, tamanoNuevoW, DIALFS_WRITE, &contenidoDialFSW, tamaContenidoDialFSW, punteroArchivoW);
 
             sem_post(&short_term_scheduler_semaphore);
             break;

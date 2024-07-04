@@ -913,15 +913,7 @@ t_pcb *fetch_pcb_dialfs_read_o_write(int server_socket, char **nomrebInterfaz, c
     offset += sizeof(int); 
 
     //Contenido
-    contenidoACopiar = total_size; 
-    contenidoACopiar = contenidoACopiar - sizeNombreInterfaz;
-    contenidoACopiar = contenidoACopiar - sizeNombreArchivo;
-    contenidoACopiar = contenidoACopiar - sizeof(int);
-    contenidoACopiar = contenidoACopiar - sizeof(int);
-    contenidoACopiar = contenidoACopiar - sizeof(int);
-    contenidoACopiar = contenidoACopiar - sizeof(int);
-    contenidoACopiar = contenidoACopiar - sizeof(int);
-    contenidoACopiar = contenidoACopiar - sizeof(t_pcb);
+    contenidoACopiar = total_size - offset - sizeof(int) - sizeof(t_pcb); 
 
     *contenido = malloc(contenidoACopiar);
     memcpy(*contenido,buffer + offset, contenidoACopiar);
@@ -944,7 +936,7 @@ t_pcb *fetch_pcb_dialfs_read_o_write(int server_socket, char **nomrebInterfaz, c
     return PCBrec;
 }
 
-void cargarEnListaDialFS(t_pcb *receptorPCB, t_interfaz_registrada *interfaz, char* nombreArchivo, int tamanoNuevo, op_code cod_op, void* contenido, int tamanoContenido, int punteroArchivo){
+void cargarEnListaDialFS(t_pcb *receptorPCB, t_interfaz_registrada *interfaz, char* nombreArchivo, int tamanoNuevo, op_code cod_op, void** contenido, int tamanoContenido, int punteroArchivo){
 
     t_colaDialFS * colaDialFS = malloc(sizeof(t_colaDialFS));
 
@@ -955,8 +947,8 @@ void cargarEnListaDialFS(t_pcb *receptorPCB, t_interfaz_registrada *interfaz, ch
         colaDialFS->tamanoNuevo = tamanoNuevo;
     }
     //Verificar contenido solo es suficiente ya que contenido y tamanoContendio trabajan juntos
-    if(contenido != -1 ) {
-        colaDialFS->contenido = contenido;
+    if(contenido != NULL ) {
+        colaDialFS->contenido = *contenido;
         colaDialFS->tamanoContenido = tamanoContenido;
         colaDialFS->punteroArchivo = punteroArchivo;
     }
