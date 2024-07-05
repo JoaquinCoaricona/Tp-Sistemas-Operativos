@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
         interfazStdin();
     }else if(string_equals_ignore_case(tipo,"STDOUT")){
         interfazStdout();
-    }else if(string_equals_ignore_case(tipo,"FS")){
+    }else if(string_equals_ignore_case(tipo,"DIALFS")){
         interfazDialFS();
     }else{
         log_info(logger,"Error");
