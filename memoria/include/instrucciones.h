@@ -19,7 +19,7 @@ typedef struct {
 	char* parametros[5];
 
 }t_instruccion_unitaria;
-
+extern int retardoRespuesta;
 extern char *PATH_CONFIG;
 extern t_list *listaINSTRUCCIONES;
 

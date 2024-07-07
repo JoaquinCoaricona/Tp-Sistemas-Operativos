@@ -856,7 +856,10 @@ void borrarArchivo(int socket_kernel){
             log_info(logger,"Archivo no encontrado");
         }else{
             log_info(logger,"Archivo encontrado");
-            list_remove(listaDeArchivos,archivoEncontrado);
+            //Aca puse list_remove solamente y me rompio en una prueba
+            //hay que usar remove element para pasarle el puntero
+            //con remove se pasa un indice 
+            list_remove_element(listaDeArchivos,archivoEncontrado);
             free(archivoEncontrado->pathArchivo);
             free(archivoEncontrado);
         }
@@ -915,9 +918,9 @@ void truncarArchivo(int socket_kernel){
     int nuevaCantidadBloques = (nuevoTamaArchivo + block_size - 1) / block_size;
 
     if(cantidadBloques == nuevaCantidadBloques){
-        log_info(logger,"La nueva cantidad de bloques es igual a la actual");
+        log_info(logger,"<%i> La nueva cantidad de bloques es igual a la actual",pid);
     }else if(cantidadBloques > nuevaCantidadBloques){
-        log_info(logger,"La nueva cantidad de bloques es menor a la actual");
+        log_info(logger,"<%i> La nueva cantidad de bloques es menor a la actual",pid);
         //Esta funcion solo la uso aca y es para borrar los bits que tiene de mas
         //ahora con su nuevo tamaño mas chico
         borrarUltimosbits(bitarray,cantidadBloques,nuevaCantidadBloques,bloque_inicial);
@@ -939,7 +942,7 @@ void truncarArchivo(int socket_kernel){
         //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     }else{
-        log_info(logger,"La nueva cantidad de bloques es mayor a la actual");
+        log_info(logger,"<%i> La nueva cantidad de bloques es mayor a la actual",pid);
         int diferencia = nuevaCantidadBloques - cantidadBloques;
 
         if(diferencia > bloquesLibres){
@@ -985,7 +988,7 @@ void truncarArchivo(int socket_kernel){
         esNecesario = verificarNecesidadDeCompactar(bitarray,cantidadBloques,nuevaCantidadBloques,bloque_inicial);    
 
         if(esNecesario){
-            log_info(logger,"Hay que compactar");
+            log_info(logger,"<%i> Hay que compactar",pid);
             //Aca lo que hago es buscar el archivo por el que estamos compactando
             //lo busco en la lista y momentaneamte le cambio el bloque inicial a -1
             //solo para que no moleste en la funcion compactar (en la busqueda de archivos
@@ -1024,7 +1027,7 @@ void truncarArchivo(int socket_kernel){
             //Libero el void* que use para la copia
             free(copiaContenidoBloques);
         }else{
-            log_info(logger,"No es necesario compactar");
+            log_info(logger,"<%i> No es necesario compactar",pid);
             marcarBitsOcupados(bitarray,bloque_inicial,cantidadBloques,(nuevaCantidadBloques - cantidadBloques));
 
             //+++++++++++Actualizo la cantidad de bloques en la lista+++++++++++++++++++
@@ -1035,7 +1038,7 @@ void truncarArchivo(int socket_kernel){
             if(archivoEncontrado == NULL){
                 log_info(logger,"Archivo no encontrado");
             }else{
-                log_info(logger,"Actualizo la nueva cantidad de bloques");
+                log_info(logger,"<%i> Actualizo la nueva cantidad de bloques",pid);
                 //Este campo dentro de la lista no lo uso nunca creo
                 //pero igual hay que aclarar que dice tamaarchivo 
                 //pero el tamaño no esta en bytes, esta en bloques
@@ -1297,7 +1300,17 @@ void moverArchivosParaAtras(t_bitarray *bitarray,int indice){
     //a los archivos. Los de atras no sirven porque no los voy a mover.
     //Muevo desde el primer espacio vacio, que es el valor de Indice
     bloqueABuscar = indice;
-
+    //PROBLEMA MUY DIFICIL DE ENCONTRAR, APARECIO EN LA PRUEBA DE FS
+    //HORAS Y HORAS BUSCANDO DONDE FALLABA
+    //ANTES DEL FILTER TENGO QUE ORDENAR DE MENOR A MAYOR PORQUE SE DAN CASOS EN LOS QUE
+    //DEPENDIENDO COMO LOS GUARDE EN LA LISTA O COMO SE CREEN Y LAS COMPACTACIONES QUE SE
+    //HAGAN ENTONCES QUIZAS APARECEN EN CUALQUIER ORDEN EN LA LISTA. Y COMO SOLO
+    //HACEMOS UN FILTER ENTONCES PUEDE ESTAR EN PRIMER LUGAR EL QUE ES MAYOR PERO
+    //NO EL MENOR DE LOS MAYORES, ENTONCES AHI EMPEZAMOS A PISAR COSAS QUE NO DEBERIAMOS
+    //PISAR Y SE HACE UN LIO. PODRIAMOS ORDENAR, O UNA VEZ QUE HACEMOS EL FILTER
+    //PODRIAMOS ELEGIR AL MENOR DE LOS DEL FILTER (CREO QUE ESO ES MAS FACIL)
+    //Al final hice lo de ordenar porque con lo del minimo no sabia como iba a comparar
+    //porque tenia que ir eliminando el minimo anterior y era un problema
     t_list *listaFiltrada = list_filter(listaDeArchivos,encontrarArchivoFilter);
     //Aca podria llegar a tener un problema segun el orden de listfilter
     //porque si al filtrar, a los ultimos que encuentra los pone en las primeras
@@ -1317,6 +1330,10 @@ void moverArchivosParaAtras(t_bitarray *bitarray,int indice){
             //Aca hay que hacer lo del memcpy
             
             //List Get empieza en 0
+            //ANTES TENIA UN LIST GET PERO ESTABA EL PROBLEMA QUE QUIZAS NO ESTABA ORDENADA DEL
+            //BLOQUE MAS CERCANO, OSEA ENTRE LOS MAYORES NO EMPEZABA POR EL MENOR
+            //Ahora si funciona con el sort
+            list_sort(listaFiltrada,(void *)archivoMasCercano);
             t_archivo *archivoActual = list_get(listaFiltrada,i);
             if(archivoActual == NULL){
                 log_info(logger,"Error en el getter");
@@ -1624,3 +1641,21 @@ void readArchivo(int socket_kernel){
     }
 
 }
+
+// * @fn    list_sort
+// * @brief Ordena la lista segun el comparador
+// *
+// * @note El comparador devuelve si el primer parametro debe aparecer antes
+// *       que el segundo en la lista
+// */
+// void list_sort(t_list *, bool (*comparator)(void *, void *));
+
+//Funcion para ordenar lista de filtrados, si el primer archivo tiene un bloque inicial
+//menor al del segundo archivo entonces tiene que estar antes
+//En este caso si el bloque inicial del archivo 1 es menor al bloque incial del archivo 2 entonces
+//devuelve true porque el primer parametro tiene que estar antes del segundo en la lista
+bool archivoMasCercano(t_archivo *arch1, t_archivo *arch2){
+    
+    return arch1->bloque_inicial < arch2->bloque_inicial;
+}
+

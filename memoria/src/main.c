@@ -11,6 +11,7 @@ int memoriaDisponible;
 int cantidadMarcos;
 int memoriaTotal;
 int tamaPagina;
+int retardoRespuesta;
 int main(int argc, char *argv[])
 {
     char *PORT;
@@ -35,6 +36,7 @@ int main(int argc, char *argv[])
     //Estos dos van con atoi porque esta funcion devuelve string
     memoriaTotal = atoi(config_get_string_value(config, "TAM_MEMORIA"));
     tamaPagina = atoi(config_get_string_value(config, "TAM_PAGINA"));
+    retardoRespuesta = atoi(config_get_string_value(config, "RETARDO_RESPUESTA"));
 
     //Creacion de Tabla De Marcos 
     cantidadMarcos = memoriaTotal/tamaPagina;

@@ -34,4 +34,5 @@ typedef struct{
     int bloque_inicial;
     int tama_archivo;
 }t_archivo;    
+bool archivoMasCercano(t_archivo *arch1, t_archivo *arch2);
 #endif /* MAIN_H_ */
