@@ -1600,6 +1600,71 @@ void listar(void *arg_pcb_n){
     log_info(logger,"Pid: %i",pcb->pid);
 }
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//  FUNCIONES PARA LISTAR PIDS DENTRO DE CADA COLA DE INTERFAZ DEPENDIENDO EL TIPO DE INTERFAZ
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//PODRIA HABER HECHO ALGO PARECIDO A POLIMORFISMO (ESTABA INTENTANDOLO)
+//PORQUE TODAS LAS ESTRUCCTUARAS TIENEN
+//UN CAMPO PCB PERO FALTA POCO TIEMPO Y PARA EVITAR ERRORES PREFERI HACERLO ASI
+
+//Funcion para listar PID dentro de la cola de la interfaz
+//cada una trabaja con el struct de cada cola segun el tipo de interfaz
+void pidsInterfazSleep(void *interRegis){
+	t_pcbYtiempo *inter = (t_pcbYtiempo *) interRegis;
+    log_info(logger,"Pid: %i",inter->PCB->pid);
+}
+//Funcion para listar PID dentro de la cola de la interfaz
+void pidsInterfazStdOut(void *interRegis){
+	t_colaStdOUT *inter = (t_colaStdOUT *) interRegis;
+    log_info(logger,"Pid: %i",inter->PCB->pid);
+}
+//Funcion para listar PID dentro de la cola de la interfaz
+void pidsInterfazStdin(void *interRegis){
+	t_colaStdIN *inter = (t_colaStdIN *) interRegis;
+    log_info(logger,"Pid: %i",inter->PCB->pid);
+}
+//Funcion para listar PID dentro de la cola de la interfaz
+void pidsInterfazFs(void *interRegis){
+	t_colaFS *inter = (t_colaFS *) interRegis;
+    log_info(logger,"Pid: %i",inter->PCB->pid);
+}
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//FUNCION PARA ITERAR EN LAS COLAS DE CADA INTERFAZ, ESTA ES LA FUNCION QUE LE PASO A LIST
+//ITERATE DE LA COLA DE INTERFACES GENERAL
+void listarPidInterfaz(void *interfazIterate){
+    //Agarro la interfaz e imprimo su nombre 
+	t_interfaz_registrada *interfaz = (t_interfaz_registrada *) interfazIterate;
+    log_info(logger,"Nombre: %s Tipo: %s",interfaz->nombre,interfaz->tipo);
+
+    //Activo el semaforo para acceder a la cola de procesos
+    pthread_mutex_lock(&(interfaz->mutexColaIO));
+    //Me fijo si esta vacia y imprimo que esta vacia, pero sino
+    //separo en casos porque dependiendo el caso tiene structs diferentes
+        if(list_size(interfaz->listaProcesosEsperando->elements) == 0){
+            log_info(logger,"La interfaz no tiene elementos esperando");
+        }else{
+            if(string_equals_ignore_case(interfaz->tipo,"GENERICA")){
+                list_iterate(interfaz->listaProcesosEsperando->elements,pidsInterfazSleep);
+            }
+            if(string_equals_ignore_case(interfaz->tipo,"STDOUT")){
+                list_iterate(interfaz->listaProcesosEsperando->elements,pidsInterfazStdOut);
+            }
+            if(string_equals_ignore_case(interfaz->tipo,"STDIN")){
+                list_iterate(interfaz->listaProcesosEsperando->elements,pidsInterfazStdin);
+            }
+            if(string_equals_ignore_case(interfaz->tipo,"FS")){
+                list_iterate(interfaz->listaProcesosEsperando->elements,pidsInterfazFs);
+            }
+        }
+    //Desbloqueo el semaforo aca una vez hechas todas las comprobaciones
+    pthread_mutex_unlock(&(interfaz->mutexColaIO));
+
+}
+
 void listarProcesos(){
 
     //Listo la cola READY bloqueandola con el semaforo por las dudas
@@ -1613,8 +1678,8 @@ void listarProcesos(){
     }
 	pthread_mutex_unlock(&mutex_state_ready);
 
-    //Listo la cola READY + DEL VRR bloqueandola con el semaforo por las dudas
-    log_info(logger,"Lista Cola READY + VRR");
+    //Listo la cola READY+ DEL VRR bloqueandola con el semaforo por las dudas
+    log_info(logger,"Lista Cola READY+ VRR");
     
     pthread_mutex_lock(&mutex_state_prioridad);
     if(list_size(queue_prioridad->elements) <= 0){
@@ -1664,6 +1729,31 @@ void listarProcesos(){
     //Listo la cola Block
     log_info(logger,"Lista cola BLOCK");
     
-    
+    //Primero listo las interfaces
+    if(list_size(listaInterfaces) == 0){
+        log_info(logger,"No hay interfaces cargadas");
+    }else{
+        list_iterate(listaInterfaces,listarPidInterfaz);
+    }
+
+    //Ahora las colas de Procesos bloqueados en Recursos
+    for (int i = 0; i < totalRecursos; i++){
+        t_recurso *recurso = dictionary_get(recursosActuales,recursos[i]);
+        log_info(logger,"Recurso: %s",recursos[i]);
+
+        //ACA NO TENGO SEMAFORO, CREO QUE NO ES NECESARIO, SERIA UN CASO MUY BORDE
+        //Me fijo si la lista esta vacia o no 
+        if(list_size(recurso->colaBloqueo->elements) == 0){
+            log_info(logger,"Cola Bloqueo Vacia");
+        }else{
+            //Para esta iteracion usa la misma funcion que para ready new y esas
+            //porque esta cola tiene struct pcb normales y no structs mas grandes con pcb dentro
+            //como las de las interfaces
+            list_iterate(recurso->colaBloqueo->elements,listar);
+        }
+        
+
+                
+    }
 
 }

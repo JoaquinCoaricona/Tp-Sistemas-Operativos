@@ -51,6 +51,8 @@ extern pthread_mutex_t mutex_state_prioridad;
 
 extern pthread_mutex_t m_planificador_corto_plazo;
 extern pthread_mutex_t m_planificador_largo_plazo;
+extern pthread_mutex_t m_add_estado_ready;
+extern pthread_mutex_t m_add_estado_readyPlus;
 extern pthread_mutex_t procesosBloqueados;
 extern pthread_mutex_t m_procesoEjectuandoActualmente;
 

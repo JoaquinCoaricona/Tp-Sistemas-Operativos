@@ -14,6 +14,8 @@ pthread_mutex_t mutex_state_prioridad;
 
 pthread_mutex_t m_planificador_corto_plazo;
 pthread_mutex_t m_planificador_largo_plazo;
+pthread_mutex_t m_add_estado_ready;
+pthread_mutex_t m_add_estado_readyPlus;
 pthread_mutex_t procesosBloqueados;
 pthread_mutex_t m_procesoEjectuandoActualmente;
 
@@ -51,6 +53,9 @@ void initialize_queue_and_semaphore() {
 	pthread_mutex_init(&m_planificador_largo_plazo, NULL);
 	pthread_mutex_init(&m_procesoEjectuandoActualmente, NULL);
 	pthread_mutex_init(&procesosBloqueados, NULL);
+	pthread_mutex_init(&m_add_estado_ready, NULL);
+	pthread_mutex_init(&m_add_estado_readyPlus, NULL);
+
 
 }
 
@@ -83,9 +88,14 @@ t_pcb *obtenerSiguienteAready()
 }
 
 void addEstadoReady(t_pcb *pcb){
-    pthread_mutex_lock(&mutex_state_ready);
+
+	pthread_mutex_lock(&m_add_estado_ready);
+    
+	pthread_mutex_lock(&mutex_state_ready);
 	queue_push(queue_ready,pcb);
 	pthread_mutex_unlock(&mutex_state_ready);
+
+	pthread_mutex_unlock(&m_add_estado_ready);
 
 	log_info(logger, "Se agrega el proceso: %d a ready \n", pcb->pid);
 }
