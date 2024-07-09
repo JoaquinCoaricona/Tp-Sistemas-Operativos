@@ -1594,3 +1594,76 @@ void ejecutar_script(char *path){
     fclose(archivoScript);
 
 }
+//FUNCION PARA ITERAR EN LAS LISTAS Y LISTAR LOS PIDS
+void listar(void *arg_pcb_n){
+	t_pcb *pcb = (t_pcb *) arg_pcb_n;
+    log_info(logger,"Pid: %i",pcb->pid);
+}
+
+void listarProcesos(){
+
+    //Listo la cola READY bloqueandola con el semaforo por las dudas
+    log_info(logger,"Lista Cola READY");
+    
+    pthread_mutex_lock(&mutex_state_ready);
+    if(list_size(queue_ready->elements) <= 0){
+        log_info(logger,"Lista Vacia");
+    }else{
+        list_iterate(queue_ready->elements, listar);
+    }
+	pthread_mutex_unlock(&mutex_state_ready);
+
+    //Listo la cola READY + DEL VRR bloqueandola con el semaforo por las dudas
+    log_info(logger,"Lista Cola READY + VRR");
+    
+    pthread_mutex_lock(&mutex_state_prioridad);
+    if(list_size(queue_prioridad->elements) <= 0){
+        log_info(logger,"Lista Vacia");
+    }else{
+        list_iterate(queue_prioridad->elements, listar);
+    }
+	pthread_mutex_unlock(&mutex_state_prioridad);
+
+    //Listo la cola NEW bloqueandola con el semaforo por las dudas
+    log_info(logger,"Lista Cola NEW");
+    
+    pthread_mutex_lock(&mutex_state_new);
+    if(list_size(queue_new->elements) <= 0){
+        log_info(logger,"Lista Vacia");
+    }else{
+        list_iterate(queue_new->elements, listar);
+    }
+    pthread_mutex_unlock(&mutex_state_new);
+
+    //Listo la cola EXIT bloqueandola con el semaforo por las dudas
+    log_info(logger,"Lista Cola EXIT");
+    
+    //NO SE PORQUE CUANDO HAGO LIST SIZE QUEUEEXIT DA NEGATIVO
+    //ANTES TENIA UN == 0 Y LO SALTABA Y ENTRABA POR EL ELSE Y DABA SEG FAULT
+    //AHORA QUE PUSE MENOR O IGUAL A 0 FUNCIONA BIEN. NO SE PORQUE PASA BUSQUE
+    //Y TODO ESTABA BIEN
+    //EL ERROR ESTA EN QUE ES LIST_ITERATE Y ESTABA PASANDO QUEUE, HAY QUE 
+    //USAR LA LISTA DENTRO DE LA QUEUE CON ->ELEMENTS
+    pthread_mutex_lock(&mutex_state_exit);
+    if(list_size(queue_exit->elements) <= 0){
+        log_info(logger,"Lista Vacia");
+    }else{
+        list_iterate(queue_exit->elements, listar);
+    }
+    pthread_mutex_unlock(&mutex_state_exit);
+
+    //Proceso Ejecutando
+    log_info(logger,"Estado EXEC");
+    if(pcbEJECUTANDO == NULL){
+        log_info(logger,"No hay ningun proceso en EXEC");
+    }else{
+        log_info(logger,"Proceso en EXEC: %i",pcbEJECUTANDO->pid);
+    }
+
+
+    //Listo la cola Block
+    log_info(logger,"Lista cola BLOCK");
+    
+    
+
+}
