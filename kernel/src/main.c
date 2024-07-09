@@ -239,6 +239,14 @@ void *manage_request_from_dispatch(void *args)
         // pero leyendo lo que falto deserializar del buffer y si tenia que quedar esperando no va a esperar
         // porque el socket todavia tiene algo cargado
 
+        //Hago esto porque voy a agregar un semaforo, porque en la consigna dice que
+        //cuando detenemos la planificacion, el proceso que esta ejecutando actualmente
+        //no se elimina pero cuando vuelve pausa su transicion al otro estado y el motivo del
+        //desalojo tambien se pausa. Por eso para ahorar un monton de semaforos
+        //pongo uno general aca. No queria tocar esta parte pero es para ahorrar muchos semaforos
+        log_info(logger,"<%i> Llego a kernel",procesoEjectuandoActualmente);
+        pthread_mutex_lock(&m_dispatch_kernel_Llegada_Procesos);
+
         switch (operation_code)
         {
             // este caso es la salida Por instruccion EXIT
@@ -539,6 +547,9 @@ void *manage_request_from_dispatch(void *args)
             log_error(logger, "Alguno error inesperado %s", server_name);
             return;
         }
+        //Aca desbloqueo el semaforo,este cambio solo esta hecho para detener planificacion
+        //y por lo que esta explicando donde bloqueo este semaforo
+        pthread_mutex_unlock(&m_dispatch_kernel_Llegada_Procesos);
     }
 
     log_warning(logger, "Conexion cerrada %s", server_name);
@@ -945,6 +956,9 @@ void detener_planificacion()
         pthread_mutex_lock(&m_planificador_largo_plazo);
         pthread_mutex_lock(&m_planificador_corto_plazo);
         pthread_mutex_lock(&procesosBloqueados);
+        pthread_mutex_lock(&m_add_estado_readyPlus);
+        pthread_mutex_lock(&m_add_estado_ready);
+        pthread_mutex_lock(&m_dispatch_kernel_Llegada_Procesos);
         planificacion_detenida = true;
         log_info(logger, "Pausa planificación: “PAUSA DE PLANIFICACIÓN“");
     }
@@ -962,6 +976,9 @@ void iniciar_planificacion()
         pthread_mutex_unlock(&m_planificador_largo_plazo);
         pthread_mutex_unlock(&m_planificador_corto_plazo);
         pthread_mutex_unlock(&procesosBloqueados);
+        pthread_mutex_unlock(&m_add_estado_ready);
+        pthread_mutex_unlock(&m_add_estado_readyPlus);
+        pthread_mutex_unlock(&m_dispatch_kernel_Llegada_Procesos);
         planificacion_detenida = false;
         log_info(logger, "Inicio de planificación: “INICIO DE PLANIFICACIÓN“");
     }
