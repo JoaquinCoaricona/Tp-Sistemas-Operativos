@@ -95,6 +95,9 @@ void addEstadoReady(t_pcb *pcb){
 	pthread_mutex_unlock(&mutex_state_ready);
 
 	log_info(logger, "Se agrega el proceso: %d a ready \n", pcb->pid);
+	//char* listado_pid = get_pid_lidt(queue_ready);
+	log_info(logger, "Cola Ready: %s \n", get_pid_lidt(queue_ready));
+
 }
 
 
@@ -175,7 +178,23 @@ void *Aready(void *arg)
 	}
 }
 
+char* get_pid_lidt(t_queue *queue){
+	char* pids = string_new();
+	t_list* list_queue = queue->elements;
 
+    void concatenar_pids(void *args){
+        t_pcb *pcb =(t_pcb *) args;
+
+        if(string_length(pids)==0){
+			string_append_with_format(&pids,"[ %d",pcb->pid);
+		}else{
+			string_append_with_format(&pids,", %d",pcb->pid);
+		}
+    }
+    list_iterate(list_queue,concatenar_pids);
+	string_append(&pids,"]");
+	return pids;
+}
 void addEstadoExit(t_pcb *pcb){
 	
 	liberarRecursosProceso(pcb->pid);
@@ -194,6 +213,9 @@ void addColaPrioridad(t_pcb *pcb){
 	pthread_mutex_unlock(&mutex_state_prioridad);
 
 	log_info(logger, "Se agrega el proceso: %d a la cola Prioridad", pcb->pid);
+
+	log_info(logger, "Ready Prioridad: %s \n", get_pid_lidt(queue_prioridad));
+
 }
 
 t_pcb *obtenerSiguienteColaPrioridad(){
