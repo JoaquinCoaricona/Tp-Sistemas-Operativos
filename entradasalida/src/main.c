@@ -97,7 +97,7 @@ void interfazGenerica(){
         case TIEMPO_DORMIR:
             int tiempo = fetch_tiempoDormir(socket_kernel);
             log_info(logger, "RECIBI UN SLEEP DE %i",tiempo);
-            usleep(tiempoUnidad * tiempo); 
+            usleep(tiempoUnidad * tiempo * 1000); 
             log_info(logger, "TERMINE UN SLEEP DE %i",tiempo);
             enviarAvisoAKernel(socket_kernel,CONFIRMACION_SLEEP_COMPLETO);
             //aca antes pasaba que me decia algun error inesperado, no se porque
