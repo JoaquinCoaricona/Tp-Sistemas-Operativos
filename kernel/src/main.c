@@ -1525,4 +1525,72 @@ bool BuscarinterfazYaRegistrada(void* interfazPrueba){
     //Comparo el nombre de la que estoy probando con la de la variable global que cargue antes de hacer el listfind
     return string_equals_ignore_case(interfaz->nombre,buscarInterfazYaRegistrada);
 }
+void ejecutar_script(char *path){
+    
+    int baseTam = strlen("/home/utnso/scripts/") + 1;
+    char *pathBase = malloc(baseTam);
+    memcpy(pathBase,"/home/utnso/scripts/",baseTam);
 
+    string_append(&pathBase,path);
+
+    FILE *archivoScript = fopen(pathBase, "r");
+    if (archivoScript == NULL) {
+        perror("Error al abrir el archivo");
+        return;
+    }
+
+    char linea[256];
+    //Esto lo usa para comprobar que realmente empieza con eso
+    //EN REALIDAD SE DEBERIA PODER LEER CUALQUIER COMANDO
+    //PERO COMO ESTO ES DE LO ULTIMO QUE HAGO, LAS PRUEBAS YA ESTAN PUBLICADAS
+    //Y SOLO USAR SCRIPTS PARA INICIAR PROCESOS POR ESO LO HAGO ASI
+
+    //ACLARACION: FIJARSE QUE EN INICIAR_PROCESO YA INCLUYO EL ESPACIO
+    //ENTONCES CON EL STRLEN INCLUYO EL ESPACIO Y NO HAGO STRLEN + 1
+    //PORQUE QUIERO SALTEARME TODOS ESOS CARACTERES PARA LLEGAR AL PATH
+    //PERO QUIERO SALTEARME EXACTAMENTE ESOS, CON EL ESPACIO INCLUIDO
+    //PERO NO MAS, POR ESO NO HAGO STRLEN MAS 1 
+    const char *prefix = "INICIAR_PROCESO ";
+    
+    size_t prefix_len = strlen(prefix);
+
+    while (fgets(linea, sizeof(linea), archivoScript)) {
+        // Verificar si la línea comienza con "INICIAR_PROCESO "
+        if (strncmp(linea, prefix, prefix_len) == 0) {
+            // Extraer el path después del prefijo
+            //LO QUE HAGO ES, DESDE LA LINEA QUE LEI
+            //LE SUMO EL TAMAÑO DE INICIAR_PROCESO osea
+            //me salteo eso, incluyendo el espacio asi en pathProceso
+            //queda lo que realmente le paso a create_process
+            char *pathProceso = linea + prefix_len;
+            // Eliminar el salto de línea al final del path si existe
+            // Utiliza la función `strcspn` para encontrar el índice del
+            // primer carácter de `path` que coincida con cualquier carácter en
+            // `"\n"` (en este caso, solo el salto de línea). Asigna `'\0'` a esta
+            // posición para eliminar el salto de línea, terminando la cadena `path`
+            // en ese punto.
+            pathProceso[strcspn(pathProceso, "\n")] = '\0';
+            // Crear el proceso
+            create_process(pathProceso); 
+        }
+
+
+    }
+
+// En el código: "linea" es un arreglo de caracteres de
+// tamaño fijo declarado en la pila (stack). No se asigna dinámicamente en
+// el montón (heap), por lo que no es necesario ni apropiado llamar a free
+// para este tipo de arreglo. Los arreglos automáticos (los que se declaran con
+// un tamaño fijo dentro de una función) se liberan automáticamente cuando la
+// función sale de su ámbito.
+
+
+// Prefix no necesita ser liberado porque es una cadena constante
+// (literal de cadena) que se almacena en el segmento de texto del programa,
+// no en el montón (heap). Los literales de cadena en C tienen una duración de
+// vida estática y no requieren liberación explícita de memoria.
+
+    free(pathBase);
+    fclose(archivoScript);
+
+}

@@ -39,9 +39,7 @@ void levantar_consola(t_log *logger) {
 		//COMPARACIONES 
 
 		if (strcmp(comando,"EJECUTAR_SCRIPT") == 0) {
-			//ejecutar_script(parametro); //Incluye parametro path
-			printf("%s\n",comando);
-			printf("%s\n",parametro);
+			ejecutar_script(parametro);
 		} else if (strcmp(comando,"INICIAR_PROCESO") == 0) {
 			create_process(parametro); //Incluye parametro path
 			//enviar_path_a_memoria(parametro);
