@@ -93,7 +93,7 @@ t_pcb *fetch_pcb_con_sleep(int server_socket,int *tiempoDormir,char **nomrebInte
     log_info(logger, "REGISTRO BX : %i",PCBrec->registers.BX);
     // A PARTIR DE ACA EL PCB RECIBIDO VA A ENTRAR EN LA COLA DE ESPERA DE LA INTERFAZ 
     //Y SI LE INTERFAZ ESTA LIBRE SE CREA EL HILO PARA ENVIARLE EL SLEEP
-
+    free(buffer);
     return PCBrec;
 }
 t_pcb *fetch_pcb_con_STDOUT(int server_socket, char **nomrebInterfaz, void **contenido, int *tamanio, int *bytesMalloc){
@@ -553,6 +553,8 @@ void llamadas_io(t_interfaz_registrada *interfaz){
         
         sem_post(&(soloUnoEnvia));
         destroy_packet(packetTiempoDormir);
+        pcbEnviado->PCB = NULL;
+        free(pcbEnviado);
 
     }
 }

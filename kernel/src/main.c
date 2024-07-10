@@ -334,6 +334,7 @@ void *manage_request_from_dispatch(void *args)
             // sem_post(&sem_multiprogramacion);
             // aca el grado de multiprogramacion no cambia, porque los procesos en block tambien entratran dentro del
             // grado de multiprogramacion, solo cuando sale por exit se aumenta el grado de multiprogramacion
+            free(nombreInter); //Lo libero porque solo lo uso para buscar la intefaz
             break;
             case STDOUT_ESCRIBIR:
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
@@ -1319,7 +1320,7 @@ void apropiarRecursos(int socket){
 	    send_packet(packetRta,socket);		//ENVIO EL PAQUETE
 	    destroy_packet(packetRta);
     }
-
+    free(recurso);
     free(buffer);
 }
 
@@ -1425,6 +1426,7 @@ void liberarRecursos(int socket){
     }else{
         log_info(logger,"RECUERDO ENCONTRADO Y ELIMINADO DE LA TABLA DE ASIGNADOS");
         free(rec->nombreRecurso);
+        free(rec);
     }
 
      //Envio confirmacion que siga con el PCB
@@ -1434,7 +1436,7 @@ void liberarRecursos(int socket){
 	send_packet(packetRta,socket);		//ENVIO EL PAQUETE
 	destroy_packet(packetRta);
     
-
+    free(recurso);
     free(buffer);
 }
 
@@ -1485,6 +1487,7 @@ void liberarRecursosProceso(int pid){
         //en ese caso volveria a entrar al while, sino sale directamente
         log_info(logger,"Recurso %s liberado",rec->nombreRecurso);
         free(rec->nombreRecurso);
+        free(rec);
         rec = list_remove_by_condition(recursosAsignados,buscarRecursoUsadoPorPid);
     
     }
