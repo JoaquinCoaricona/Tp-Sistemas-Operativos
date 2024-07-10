@@ -550,6 +550,7 @@ void operacion_mov_out(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 			mandarAescribirEnMemoria(dirFisica,contenidoAescribir,cantidadBits,contexto);
 
 		}
+	free(contenidoAescribir); //Libero por valgrind
 	
 }
 
@@ -633,6 +634,7 @@ void operacion_mov_in(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 		memcpy(&valorAGuardar,contenidoLeido,sizeof(uint32_t)); 
 		setear_registro(contexto,instruccion->parametros[0],valorAGuardar);	
 	}
+	free(contenidoLeido); //Libero por valgrind
 
 }
 

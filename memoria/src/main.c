@@ -210,6 +210,8 @@ void resizePaginas(int client_socket){
     
     }else{
         packet_resize = create_packet(OUT_MEMORY, buffer_resize);
+        add_to_packet(packet_resize,&numeroConfirmacion,sizeof(int)); //Agrego algo para enviar
+        //por las dudas por la misma explicacion de arriba.
     }
 
     send_packet(packet_resize, client_socket);
@@ -276,6 +278,7 @@ void reducirProceso(int pid, int cantidadReducir){
         //Una vez libre el marco ya puedo borrar la pagina de la tabla del proceso
         //Borro la ultima pagina que agregue porque hay que borrar del final hacia adelante 
         list_remove(tablaPagina, cantPaginas - 1);
+        free(paginaBuscada); //borro por valgrind
         log_info(logger,"Elimino Pagina de la lista de paginas PID: %i",pid);
     }
 
@@ -320,7 +323,9 @@ void buscarMarco(int client_socket){
 
     //+++++++++++++++++++Busqueda++++++++++++++++++++++++++++
     //Busco la tabla de paginas
-    t_list *tablaPaginas = dictionary_get(tabla_paginas_por_PID,string_itoa(pid));
+    char *pidV = string_itoa(pid); //Pongo esto por valgrind
+    t_list *tablaPaginas = dictionary_get(tabla_paginas_por_PID,pidV);
+    free(pidV); //porque stringItoa si lo pongo directo ahi se pierde la referencia
     //Busco Dentro de la tabla de paginas
     t_paginaMarco *paginaEncontrada = list_get(tablaPaginas,paginaBuscada);
 
@@ -403,6 +408,7 @@ void escribirMemoria(int client_socket){
     send_packet(packetConfirmacion, client_socket);
     destroy_packet(packetConfirmacion);
 
+    free(contenidoAescribir);
 
 }
 
@@ -450,6 +456,7 @@ void leerMemoria(int client_socket){
 
     send_packet(packetConfirmacion, client_socket);
     destroy_packet(packetConfirmacion);
+    free(contenido); //Borro por valgrind
 
 
 }
