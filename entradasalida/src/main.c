@@ -696,6 +696,8 @@ void interfazFileSystem(){
 
 
 
+    free(path);
+    free(pathBitMap);
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -802,7 +804,9 @@ void crearArchivo(int socket_kernel){
 
     // Cerrar el archivo
     fclose(archivoACrear);
-
+    free(buffer2);
+    free(nombreArchivo);
+    free(pathNuevo);
 
 }
 
@@ -871,6 +875,10 @@ void borrarArchivo(int socket_kernel){
     } else {
         log_info(logger,"Error al borrar el archivo");
     }
+
+    free(nombreArchivo);
+    free(pathNuevo);
+    free(buffer2);
 }
 
 void truncarArchivo(int socket_kernel){
@@ -1077,8 +1085,9 @@ void truncarArchivo(int socket_kernel){
     //En el bitmap y su contenido pero el metadata no porque ahi estan sus valores
     //y es como su FCB
     fclose(archivo);
-
-
+    free(buffer2);
+    free(nombreArchivo);
+    free(pathNuevo);
 
 }
 
@@ -1269,7 +1278,7 @@ void compactar(t_bitarray *bitarray,int bloque_inicial,int cantidadBloques){
             bloqueABuscar = i;
             t_list *listaFiltrada = list_filter(listaDeArchivos,encontrarArchivoFilter);
             int cantidadArchivos = list_size(listaFiltrada);
-            
+            list_destroy(listaFiltrada); //Libero por valgrind
             while((!bitarray_test_bit(bitarray, i)) && (cantidadArchivos > 0)){
                 moverArchivosParaAtras(bitarray,i);
             }
@@ -1419,7 +1428,7 @@ void moverArchivosParaAtras(t_bitarray *bitarray,int indice){
 
         }
     }
-    
+    list_destroy(listaFiltrada); //Borro lista por Valgrind
 }
 
 void writeArchivo(int socket_kernel){
@@ -1545,8 +1554,9 @@ void writeArchivo(int socket_kernel){
     log_info(logger,"%s",reservaParaLoggear);
     //Libero la memoria que solo pedi para loggear que todo haya salido bien
     free(reservaParaLoggear);
-
-    
+    free(buffer2);
+    free(nombreArchivo);
+    free(pathWrite);
 
 }
 void readArchivo(int socket_kernel){
@@ -1640,7 +1650,9 @@ void readArchivo(int socket_kernel){
         //Actualizo la variable desplazamiento sumandole lo que acabo de escribir en memoria
         parteEscrita = parteEscrita + cantidadBytesEscribir;
     }
-
+    free(nombreArchivo);
+    free(buffer2);
+    free(pathRead);
 }
 
 // * @fn    list_sort

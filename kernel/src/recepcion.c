@@ -359,6 +359,7 @@ t_pcb *fetchPCBfileSystem(int server_socket,char **nomrebInterfaz,char **nombreA
     log_info(logger, "REGISTRO AX : %i",PCBrec->registers.AX);
     log_info(logger, "REGISTRO BX : %i",PCBrec->registers.BX);
 
+    free(buffer);
     return PCBrec;
 
 }
@@ -404,6 +405,7 @@ t_pcb *fetchPCBfileSystemWR(int server_socket,char **nomrebInterfaz,void **conte
     log_info(logger, "REGISTRO AX : %i",PCBrec->registers.AX);
     log_info(logger, "REGISTRO BX : %i",PCBrec->registers.BX);
 
+    free(buffer); //Libero por valgrind
     return PCBrec;
 
 }
@@ -777,6 +779,7 @@ void llamadasFS(t_interfaz_registrada *interfaz){
             add_to_packet(packetFS,&(pcbEnviado->PCB->pid), sizeof(int));
 
             send_packet(packetFS,interfaz->socket_de_conexion);
+            free(pcbEnviado->nombreArchivo);
 
         }
         if(pcbEnviado->tipoOperacion == BORRAR_ARCHIVO){
@@ -788,6 +791,7 @@ void llamadasFS(t_interfaz_registrada *interfaz){
             add_to_packet(packetFS,&(pcbEnviado->PCB->pid), sizeof(int));
 
             send_packet(packetFS,interfaz->socket_de_conexion);
+            free(pcbEnviado->nombreArchivo);
 
         }
         if(pcbEnviado->tipoOperacion == TRUNCAR_ARCHIVO){
@@ -800,6 +804,7 @@ void llamadasFS(t_interfaz_registrada *interfaz){
             add_to_packet(packetFS,&(pcbEnviado->nuevoTamaArchivo), sizeof(int));
 
             send_packet(packetFS,interfaz->socket_de_conexion);
+            free(pcbEnviado->nombreArchivo);
 
         }
         if(pcbEnviado->tipoOperacion == FS_WRITE){
@@ -809,6 +814,7 @@ void llamadasFS(t_interfaz_registrada *interfaz){
             add_to_packet(packetFS,pcbEnviado->contenido,pcbEnviado->tamaContenido);
 
             send_packet(packetFS,interfaz->socket_de_conexion);
+            free(pcbEnviado->contenido);
         }
         if(pcbEnviado->tipoOperacion == FS_READ){
             packetFS = create_packet(FS_READ,bufferFS);
@@ -816,6 +822,7 @@ void llamadasFS(t_interfaz_registrada *interfaz){
             add_to_packet(packetFS,pcbEnviado->contenido,pcbEnviado->tamaContenido);
 
             send_packet(packetFS,interfaz->socket_de_conexion);
+            free(pcbEnviado->contenido);
         }
 
         int operation_code = fetch_codop(interfaz->socket_de_conexion); //aca se queda bloqueante esperando la respuesta
@@ -856,6 +863,11 @@ void llamadasFS(t_interfaz_registrada *interfaz){
         
         sem_post(&(soloUnoEnvia));
         destroy_packet(packetFS);
+
+        pcbEnviado->PCB = NULL;
+        free(pcbEnviado);
+
+
 
     }
 }

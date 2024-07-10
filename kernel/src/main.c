@@ -498,6 +498,7 @@ void *manage_request_from_dispatch(void *args)
             //hay casos en los que tiene campos que no usa pero tampoco
             //los necesita y eso lo distingo por el opcode
             sem_post(&short_term_scheduler_semaphore);
+            free(nombreInterFS);
         break;
         //Esto lo hago para que en los dos case entren por aca y no repetir codigo
         //como uso el mismo struct y estas instrucciones tienen los mismos parametros
@@ -541,6 +542,7 @@ void *manage_request_from_dispatch(void *args)
             cargarEnListaFS(guardarFSwr,interfazFSwr);
 
             sem_post(&short_term_scheduler_semaphore);
+            free(nombreInterFSwr);
         break; 
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
