@@ -193,7 +193,7 @@ t_pcb *fetch_pcb_con_STDOUT(int server_socket, char **nomrebInterfaz, void **con
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
+    free(buffer);
     return PCBrec;
 }
 t_pcb *fetch_pcb_con_STDIN(int server_socket,char **nomrebInterfaz,void **contenido,int *tamanio){
@@ -300,7 +300,7 @@ t_pcb *fetch_pcb_con_STDIN(int server_socket,char **nomrebInterfaz,void **conten
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
+    free(buffer); //Libero por valgrind
     return PCBrec;
 
 }
@@ -648,6 +648,8 @@ void llamadasIOstdout(t_interfaz_registrada *interfaz){
             sem_post(&sem_ready); 
         }
         free(pcbEnviado->contenido);
+        pcbEnviado->PCB = NULL;
+        free(pcbEnviado);
         
         sem_post(&(soloUnoEnvia));
         destroy_packet(packetEscribir);
@@ -728,6 +730,8 @@ void llamadasIOstdin(t_interfaz_registrada *interfaz){
             sem_post(&sem_ready); 
         }
         free(pcbEnviado->contenido);
+        pcbEnviado->PCB = NULL;
+        free(pcbEnviado);
         
         sem_post(&(soloUnoEnvia));
         destroy_packet(packetEscribir);

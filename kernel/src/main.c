@@ -376,6 +376,7 @@ void *manage_request_from_dispatch(void *args)
             // sem_post(&sem_multiprogramacion);
             // aca el grado de multiprogramacion no cambia, porque los procesos en block tambien entratran dentro del
             // grado de multiprogramacion, solo cuando sale por exit se aumenta el grado de multiprogramacion
+            free(nombreInterOUT);
             break;
             case STDIN_LEER:
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
@@ -420,6 +421,7 @@ void *manage_request_from_dispatch(void *args)
             // sem_post(&sem_multiprogramacion);
             // aca el grado de multiprogramacion no cambia, porque los procesos en block tambien entratran dentro del
             // grado de multiprogramacion, solo cuando sale por exit se aumenta el grado de multiprogramacion
+            free(nombreInterIN);
             break;
             case WAIT_SOLICITUD:
                 apropiarRecursos(server_socket);

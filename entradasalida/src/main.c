@@ -239,6 +239,7 @@ void recibirYejecutarDireccionesFisicas(int socket_kernel){
 
     log_info(logger,"%s",cadena);
 
+    free(contenido);
     free(buffer2);
     
 }

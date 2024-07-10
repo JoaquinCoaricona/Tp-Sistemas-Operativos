@@ -412,7 +412,7 @@ void agregarALaTLB(t_queue *TLB ,t_entrada_TLB *nuevaEntrada){
 	//Agrego el distinto de cero para el caso que la cant de entradas de la tlb sea 0
 	//crei que no se podia pero lo incluyeron. Si es 0 no se tiene que agregar nada
 	//en ninguno de los dos casos. Asi las busquedas en la tlb siempre dan NULL
-	//Cambio el else que tenia por un elseif para agregar el caso de tlb cant = 0
+	//Cambio el else que tenia por un elseif para agregar el caso de tlb cant != 0
 	if((queue_size(TLB) >= cantEntradasTLB) && (cantEntradasTLB != 0)){
 		//Aca hago lo mismo si es LRU o FIFO porque al usarlos
 		//voy acomodando en caso que sea LRU. Asi en los dos casos
@@ -424,6 +424,13 @@ void agregarALaTLB(t_queue *TLB ,t_entrada_TLB *nuevaEntrada){
 		free(entradaAEliminar);
 	}else if(cantEntradasTLB != 0){
 		queue_push(TLB,nuevaEntrada);
+	}
+	else{
+		//En caso que la cant entradas TLB sea 0 entonces no pasaba nada
+		//aca, pero tengo que liberar esto porque generaba muchos bytes perdidos
+		//en valgrind. Ahora como no lo agregamos a la TLB porque tiene 0
+		//espacios, entonces libero la memoria
+		free(nuevaEntrada);
 	}
 	
 }
@@ -811,6 +818,7 @@ void operacion_copy_string(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 			mandarAescribirEnMemoria(dirFisicaEscritura,contenidoLeido,cantidadBits,contexto);
 
 		}
+		free(contenidoLeido); //Libero por valgrind
 //*********************************************************************************************
 
 }

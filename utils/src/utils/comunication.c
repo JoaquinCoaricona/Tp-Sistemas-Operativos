@@ -36,6 +36,7 @@ static void process_conection(void *args)
         case HANDSHAKE_CPU:
             log_info(logger, "handshake %d recibido %s",operation_code, server_name);
             packet = fetch_packet(client_socket);
+            list_destroy(packet);
             log_info(logger, "Packet received");
 
             //close_conection(client_socket);
