@@ -77,6 +77,9 @@ static void process_conection(void *args)
         case SOLICITUD_LECTURA:
             leerMemoria(client_socket);
         break;
+        case LIBERAR_ESTRUCTURAS:
+            liberarEstructuras(client_socket);
+        break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
             return;

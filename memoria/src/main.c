@@ -12,6 +12,7 @@ int cantidadMarcos;
 int memoriaTotal;
 int tamaPagina;
 int retardoRespuesta;
+int pidBuscadoParaLiberar;
 t_list* paginasBorradas;//Esto es para Limpiar la TLB
 //Para evitar TLB Hits de mas en la prueba FINAL
 int main(int argc, char *argv[])
@@ -456,4 +457,119 @@ void leerMemoria(int client_socket){
 void limpiarRegistrosTLB(void *registro){
     t_registroTLB *registroTLB = (t_registroTLB *) registro;
     free(registroTLB);
+}
+
+void liberarEstructuras(int client_socket){
+    
+    int pid;
+    //+++++++++++++++++Recibo los datos+++++++++++++++++++
+    int total_size;
+    int offset = 0;
+    void *buffer2;
+
+    buffer2 = fetch_buffer(&total_size, client_socket);
+
+    offset += sizeof(int); //Salteo el tamaño del INT
+    
+    memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
+    offset += sizeof(int);
+    free(buffer2);
+
+    //Primero tengo que eliminar la estructura que lee las intrucciones y lo que guardo al 
+    //crear el proceso, en el primer llamado
+    pidBuscadoParaLiberar = pid;
+    //Le pongo ese nombre
+    //Porque en realidad es un proceso, no una instruccion. Puse mal el nombre. Lo hice al principio
+    t_instrucciones *procesoBuscado = list_find(listaINSTRUCCIONES,encontrarPidALiberar);
+
+    if(procesoBuscado != NULL){
+        log_info(logger,"Se encontro el proceso para liberar estructuras");
+        list_remove_element(listaINSTRUCCIONES,procesoBuscado);
+        //Libero el path
+        free(procesoBuscado->path);
+        //Itero esa funcion en la lista, esa funcion libera cada campo de instruccion
+        //unitaria. Porque tiene muchos campos
+        list_iterate(procesoBuscado->lista_de_instrucciones,destroy_instuccion_unitaria);
+        //Por las dudas le paso list_clean
+        list_clean(procesoBuscado->lista_de_instrucciones);
+        //Destruyo la lista
+        list_destroy(procesoBuscado->lista_de_instrucciones);
+        
+        //Ahora al final le hago free al puntero que tenia este struct
+        free(procesoBuscado);
+
+    }else{
+        log_info(logger,"No encontro el proceso Para liberar Estructuras Iniciales");
+    }
+    
+    //Ahora tengo que liberar la tabla de paginas del proceso
+    t_list *tablaDePaginasBuscada = dictionary_get(tabla_paginas_por_PID,string_itoa(pid));
+    if(tablaDePaginasBuscada == NULL){
+        log_info(logger,"Error al buscar la tabla de paginas");
+    }
+    //Borro todas las estructuras t_paginaMarco que tiene dentro de la tabla
+    //esta funcion que le paso al iterate, libera la estrcutura y tambien
+    //libera el marco que ocupaba
+    list_iterate(tablaDePaginasBuscada,destroyPaginasYLiberarMarco);
+    //Borro la tabla de paginas del diccionario
+    dictionary_remove(tabla_paginas_por_PID,string_itoa(pid));
+    //Hago el list_clean por las dudas aunque no se si sirve algo
+    list_clean(tablaDePaginasBuscada);
+    //Ahora destruyo la lista
+    list_destroy(tablaDePaginasBuscada);
+    
+
+}
+
+bool encontrarPidALiberar(void *registrado){
+
+	t_instrucciones *procesoRegistrado = (t_instrucciones*) registrado;
+	
+	return procesoRegistrado->pid == pidBuscadoParaLiberar;
+	
+}
+
+//Para borrar instrucciones unitarias con los campos de adentro
+void destroy_instuccion_unitaria(t_instruccion_unitaria *instruccion){
+    
+    free(instruccion->opcode);
+    if(instruccion->parametro1_lenght != 0){
+
+        free(instruccion->parametros[0]);
+
+          if(instruccion->parametro2_lenght != 0){
+            free(instruccion->parametros[1]);
+            if(instruccion->parametro3_lenght != 0){
+                	free(instruccion->parametros[2]);
+                    if(instruccion->parametro4_lenght != 0){
+                	    free(instruccion->parametros[3]);
+                        if(instruccion->parametro5_lenght != 0){
+                	        free(instruccion->parametros[4]);
+                            }
+                    }
+                }
+            } 
+        }
+    
+    free(instruccion);
+    log_info(logger,"Destruyo instruccion unitaria");
+}
+void destroyPaginasYLiberarMarco(void *pagina){
+    t_paginaMarco *paginaBorrar = (t_paginaMarco*) pagina;
+
+    //De la tabla de Situacion de marcos busco el marco donde estaba la pagina que voy a borrar
+    //Aca no hago el -1 en el indice porque los numeros de marco arrancan en 0
+    //Cuando cree la lita de marcos la primera tiene su campo numeroMarco = 0
+    //Por eso recomendaban usar una lista para esto para directamente buscar el marco por el indice
+    t_situacion_marco *marcoBuscado = list_get(situacionMarcos,paginaBorrar->numeroMarco);
+    log_info(logger,"Elimino Pagina de la lista de paginas PID: %i",marcoBuscado->pid);
+
+    //Libero el Marco
+    marcoBuscado->esLibre = true;
+    marcoBuscado->pid = -1;
+    //Actualizo contador de marcos libres
+    cantidadMarcos = cantidadMarcos + 1;
+
+
+    free(paginaBorrar);
 }

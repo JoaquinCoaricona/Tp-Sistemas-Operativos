@@ -217,8 +217,8 @@ void *fetch_pathYpid(int client_socket,t_instrucciones *instruccionREC)
 
     memcpy(instruccionREC->path,buffer2 + offset, lpath);
     
-    printf("\n");
-    printf("%s\n",instruccionREC->path);
+    //printf("\n");
+    //printf("%s\n",instruccionREC->path);
   
     free(buffer2);
 

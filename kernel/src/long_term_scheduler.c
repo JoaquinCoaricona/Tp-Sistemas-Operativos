@@ -194,6 +194,20 @@ void addEstadoExit(t_pcb *pcb){
 	queue_push(queue_exit,pcb);
 	pthread_mutex_unlock(&mutex_state_exit);
 
+	//Aca tengo que enviarle a memoria el aviso de que un proceso finalizo y que 
+	//tengo que borrar las cosas que tenia. Del proceso
+	
+	int PIDaLiberar = pcb->pid;
+	//Creo le buffer y el paquete
+    t_buffer *bufferMemoria;
+    t_packet *packetMemoria;
+    // Inicializar Buffer y Packet
+    bufferMemoria = create_buffer();
+    packetMemoria = create_packet(LIBERAR_ESTRUCTURAS, bufferMemoria);
+    add_to_packet(packetMemoria, &PIDaLiberar, sizeof(int)); 
+    send_packet(packetMemoria, memory_socket);
+    destroy_packet(packetMemoria);
+	
 	log_info(logger, "Se agrega el proceso: %d a Exit \n", pcb->pid);
 }
 

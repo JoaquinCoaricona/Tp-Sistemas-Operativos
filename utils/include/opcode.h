@@ -78,6 +78,7 @@ typedef enum
     FS_READ,
     FS_WRITE_CONFIRMACION,
     FS_READ_CONFIRMACION,
+    LIBERAR_ESTRUCTURAS,
 } op_code;
 
 #endif // OPCODE_H

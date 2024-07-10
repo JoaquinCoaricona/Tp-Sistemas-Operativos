@@ -96,8 +96,8 @@ void leer_pseudo(int client_socket){
 
         strtok(cadena,"\n"); //aca cadena tiene un bara n al final y el strtok lo reemplaza por/0
         
-        printf("\n");
-        printf("%s\n",cadena);
+        //printf("\n");
+        //printf("%s\n",cadena);
 		
 
         t_instruccion_unitaria *ptr_inst = malloc(sizeof(t_instruccion_unitaria));

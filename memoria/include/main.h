@@ -32,5 +32,8 @@ bool esMarcoLibre(void* args);
 void ampliarProceso(int pid, int cantidadAgregar);
 void limpiarRegistrosTLB(void *registro);
 t_situacion_marco* buscarMarcoLibre();
+bool encontrarPidALiberar(void *registrado);
+void destroy_instuccion_unitaria(t_instruccion_unitaria *instruccion);
+void destroyPaginasYLiberarMarco(void *pagina);
 
 #endif /* MAIN_H_ */
