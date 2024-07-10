@@ -366,7 +366,7 @@ void *manage_request_from_dispatch(void *args)
             //y al hacer las restas quedaba un valor negativo, y como al volver de IO solo se fije que sea igual al 
             //quantumgloabl entonces podias terminar en la cola prioritaria teniendo quantum negativo.
             if(receptorPCBOUT->quantum < 0){
-                receptorPCB->quantum = quantumGlobal;
+                receptorPCBOUT->quantum = quantumGlobal;
                 log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
             }
             }

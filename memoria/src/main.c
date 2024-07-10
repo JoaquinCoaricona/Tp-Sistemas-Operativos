@@ -131,7 +131,9 @@ void resizePaginas(int client_socket){
 //--------------------------------------
 
 //--------Calculo el tamaño del proceso-----
-    tablaPaginasBuscada = dictionary_get(tabla_paginas_por_PID,string_itoa(pid));
+    char *pidbuscc = string_itoa(pid); //hago esto por valgrind
+    tablaPaginasBuscada = dictionary_get(tabla_paginas_por_PID,pidbuscc);
+    free(pidbuscc);
     tamaActualProceso = list_size(tablaPaginasBuscada); //Obtengo su tamaño en cantidad de paginas
 //-----------------------------------------
 
@@ -220,8 +222,9 @@ void resizePaginas(int client_socket){
 }
 
 void ampliarProceso(int pid, int cantidadAgregar){
-    t_list *tablaPagina = dictionary_get(tabla_paginas_por_PID,string_itoa(pid));
-
+    char *pidAmpliar = string_itoa(pid); //Hago esto por valgrind
+    t_list *tablaPagina = dictionary_get(tabla_paginas_por_PID,pidAmpliar);
+    free(pidAmpliar);
     for (int i = 0; i < cantidadAgregar ; i++){
         //Busco un marco libre y tambien creo un puntero a una variable paginaMarco
         t_situacion_marco *marcoLibre = buscarMarcoLibre();
@@ -244,8 +247,9 @@ void ampliarProceso(int pid, int cantidadAgregar){
     }
 }
 void reducirProceso(int pid, int cantidadReducir){
-    t_list *tablaPagina = dictionary_get(tabla_paginas_por_PID,string_itoa(pid));
-
+    char *pidReducir = string_itoa(pid);
+    t_list *tablaPagina = dictionary_get(tabla_paginas_por_PID,pidReducir);
+    free(pidReducir);
 
     for (int i = 0; i < cantidadReducir; i++){
         int cantPaginas = list_size(tablaPagina);
@@ -510,7 +514,9 @@ void liberarEstructuras(int client_socket){
     }
     
     //Ahora tengo que liberar la tabla de paginas del proceso
-    t_list *tablaDePaginasBuscada = dictionary_get(tabla_paginas_por_PID,string_itoa(pid));
+    char *pidTablaBuscada = string_itoa(pid); //Hago esto por valgrind
+    t_list *tablaDePaginasBuscada = dictionary_get(tabla_paginas_por_PID,pidTablaBuscada);
+    free(pidTablaBuscada);
     if(tablaDePaginasBuscada == NULL){
         log_info(logger,"Error al buscar la tabla de paginas");
     }
@@ -519,7 +525,9 @@ void liberarEstructuras(int client_socket){
     //libera el marco que ocupaba
     list_iterate(tablaDePaginasBuscada,destroyPaginasYLiberarMarco);
     //Borro la tabla de paginas del diccionario
-    dictionary_remove(tabla_paginas_por_PID,string_itoa(pid));
+    char *pidRemover = string_itoa(pid); //Hago esto por valgrind
+    dictionary_remove(tabla_paginas_por_PID,pidRemover);
+    free(pidRemover);
     //Hago el list_clean por las dudas aunque no se si sirve algo
     list_clean(tablaDePaginasBuscada);
     //Ahora destruyo la lista
