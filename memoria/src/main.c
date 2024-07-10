@@ -12,6 +12,8 @@ int cantidadMarcos;
 int memoriaTotal;
 int tamaPagina;
 int retardoRespuesta;
+t_list* paginasBorradas;//Esto es para Limpiar la TLB
+//Para evitar TLB Hits de mas en la prueba FINAL
 int main(int argc, char *argv[])
 {
     char *PORT;
@@ -41,6 +43,9 @@ int main(int argc, char *argv[])
     //Creacion de Tabla De Marcos 
     cantidadMarcos = memoriaTotal/tamaPagina;
     situacionMarcos = list_create();
+
+    //Lista para limpiar la TLB
+    paginasBorradas = list_create();
 
     for(int i =0; i<cantidadMarcos; i++){
 		t_situacion_marco * marco_n = malloc(sizeof(t_situacion_marco));
@@ -99,6 +104,7 @@ void resizePaginas(int client_socket){
    int pid;
    int tamaActualProceso; //la cuento en cantidad de paginas
    t_list *tablaPaginasBuscada; 
+   int numeroConfirmacion = 0; //Para limpiar la TLB, si hay reduccion cambia a 1 y entrar por un if, sino no
 //--------Recibo El Nuevo Tamaño y el Pid---------------
     int total_size;
     int offset = 0;
@@ -146,6 +152,7 @@ void resizePaginas(int client_socket){
         log_info(logger, "Reduccion de Proceso PID: %i Tamaño Actual: %i Tamaño a Reducir: %i",pid,tamaActualProceso,tamaActualProceso - nuevaCantidadPaginas);
         reducirProceso(pid , tamaActualProceso - nuevaCantidadPaginas);
         resizeExitoso = true;
+        numeroConfirmacion = 1;
     }
     //La unica forma en que no entre por ninguno es que deba entrar por el segundo
     //pero que no haya marcos disponibles, entonces devuelvo out of memory
@@ -156,13 +163,53 @@ void resizePaginas(int client_socket){
     buffer_resize = create_buffer();
     if(resizeExitoso){
         packet_resize = create_packet(RESIZE_EXITOSO, buffer_resize);
+        //Aca en caso que se haya reducido el proceso tengo que borrar algunas
+        //Paginas de la TLB, osea puede ser que algunas de las paginas que se borraron
+        //estaban en la TLB y tengo qeu borrarlas para que no haga HITS de mas
+        //este numero lo pongo en 1 solo si hice reuduccion
+        if(numeroConfirmacion == 1){
+            //LE CARGO EL NUMERO DE CONFIRMACION AL PRINCIPIO DEL PAQUETE
+            add_to_packet(packet_resize,&numeroConfirmacion,sizeof(int));
+
+            int cantRegistros = list_size(paginasBorradas);
+            //Agrego la cantidad de paginas borradas
+            add_to_packet(packet_resize,&cantRegistros,sizeof(int));
+
+            //Aca agrego todos los numeros de paginas que borre para limpiar la TLB
+            for (int i = 0;i < cantRegistros;i++){
+                //como las posiciones de la lista arrancan en 0
+                //hago list get desde 0 hasta el total -1 
+                t_registroTLB* registroActual = list_get(paginasBorradas,i);
+                int paginaNumero = registroActual->numeroPagina;
+                add_to_packet(packet_resize,&paginaNumero,sizeof(int));
+            }
+            //La funcion que le paso le hace free a los registros
+            list_iterate(paginasBorradas,limpiarRegistrosTLB);
+            //Por las dudas lo borro asi tambien
+            list_clean(paginasBorradas);
+        }else{
+            //ACLARACION MUY IMPORTANTE, LO HAGO ACA Y TAMBIEN EN EL FFETCHCODOP
+            //DE OPERACIONES.C DE LA FUNCION RESIZE. 
+            //CUANDO YO CREO UN PAQUETE LE PONGO UN CODOP QUE ES COMO EL SELLO DEL SOBRE
+            //ENTONCES SI YO LO MANDO SIN ENVIARLE NADA (OSEA CON BUFFER VACIO)
+            //DEL OTRO LADO CUANDO YO HAGA FETCH BUFFER SE VA TRABAR Y SE VA A BLOQUEAR AHI
+            //PORQUE SI BIEN AL CREAR EL PAQUETE LE ASOCIO UN BUFFER, DESPUES SI NO
+            //LE HAGO NINGUN ADD TO PACKET ENTONCES EL BUFFER LLEGA VACIO Y 
+            //SI LLEGA VACIO LA FUNCION FETCHBUFFER NO RECIBE NADA Y SE QUEAD BLOQUEADO AHI
+            //PORQUE ESA FUNCION (PARECE, NO ESTOY SEGURO) ES BLOQUEANTE
+
+            //ENTONCES POR ESO ACA HICE ESTE ELSE. PORQUE SI SE DABA EL CASO 
+            //QUE NO ENTRABA POR EL IF, OSEA QUE NO HUBO REDUCCION ENTONCES NO SE HACIA NINGUN
+            //ADD TO PACKET DE NADA Y DEL OTRO LADO SE QUEDABA BLOQUEADO EN FETCH BUFFER PORQUE
+            //ENVIE UN BUFFER VACIO
+            //POR ESO LE CARGO ESTO QUE ES BASURA. DEL OTRO LADO RECIBO EL NUMERO DE CONFIRMACION
+            //Y SOLO SI ES IGUAL A UNO RECIBO LAS PAGINAS BORRADAS, SINO NO
+            add_to_packet(packet_resize,&numeroConfirmacion,sizeof(int));
+        }
+    
     }else{
         packet_resize = create_packet(OUT_MEMORY, buffer_resize);
     }
-    //+++++++++++++++SOLO PARA ENVIAR ALGO+++++++++++++++++++++++++++++
-    int numeroConfirmacion;
-    add_to_packet(packet_resize,&numeroConfirmacion,sizeof(int));
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     send_packet(packet_resize, client_socket);
     destroy_packet(packet_resize);
@@ -196,11 +243,22 @@ void ampliarProceso(int pid, int cantidadAgregar){
 void reducirProceso(int pid, int cantidadReducir){
     t_list *tablaPagina = dictionary_get(tabla_paginas_por_PID,string_itoa(pid));
 
+
     for (int i = 0; i < cantidadReducir; i++){
         int cantPaginas = list_size(tablaPagina);
         
         //Busco la ultima pagina de la tabla del Proceso
         t_paginaMarco *paginaBuscada = list_get(tablaPagina,cantPaginas - 1);
+
+        //Aca guardo las paginas que se borraron en una lista
+        //Para enviarselas a la TLB
+        t_registroTLB *guardarRegistro = malloc(sizeof(t_registroTLB));
+        //Aca me guardo el cantPaginas -1 porque en las paginas 
+        //empece a contar desde 0. Sino si hubiese emmpezado en 1 entonces
+        //tendria que manddarlo sin el -1 pero como empece con las paginas en 
+        //0 entonces lo mando asi.
+        guardarRegistro->numeroPagina = cantPaginas-1;
+        list_add(paginasBorradas,guardarRegistro);
 
         //De la tabla de Situacion de marcos busco el marco donde estaba la pagina que voy a borrar
         //Aca no hago el -1 en el indice porque los numeros de marco arrancan en 0
@@ -219,6 +277,7 @@ void reducirProceso(int pid, int cantidadReducir){
         list_remove(tablaPagina, cantPaginas - 1);
         log_info(logger,"Elimino Pagina de la lista de paginas PID: %i",pid);
     }
+
 }
 
 //Funcion Para usar en el list_find de buscarMarcoLibre
@@ -392,4 +451,9 @@ void leerMemoria(int client_socket){
     destroy_packet(packetConfirmacion);
 
 
+}
+//Solo la uso para liberar memoria de los elementos
+void limpiarRegistrosTLB(void *registro){
+    t_registroTLB *registroTLB = (t_registroTLB *) registro;
+    free(registroTLB);
 }

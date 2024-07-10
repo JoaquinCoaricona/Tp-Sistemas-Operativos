@@ -24,8 +24,13 @@ typedef struct{
 	int bitValidez;
 }t_paginaMarco;
 
+typedef struct{
+	int numeroPagina;
+}t_registroTLB; //Esto es para limpiar la TLB, no es un registro TLB como tal
+
 bool esMarcoLibre(void* args);
 void ampliarProceso(int pid, int cantidadAgregar);
+void limpiarRegistrosTLB(void *registro);
 t_situacion_marco* buscarMarcoLibre();
 
 #endif /* MAIN_H_ */
