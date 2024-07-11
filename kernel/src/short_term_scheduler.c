@@ -372,7 +372,24 @@ t_pcb *initializePCB(int PID){
         //pcb->registers = malloc(sizeof( t_cpu_registers));
         //pcb->instruction = malloc(sizeof( t_instruction));
         // pcb->prueba=5;
-        
+
+
+        //Hago esto porque valgrind decia que estabamos mandando memoria sin inicializar
+        //entonces mostraba un error. Por eso lo inicializo asi.
+        //Igual dijeron que siempre le van a hacer set a un registro
+        //antes de usarlo no deberia haber problemas
+        pcb->registers.PC = 1;     // Program Counter
+        pcb->registers.AX = 1;     // Registro AX
+        pcb->registers.BX = 1;     // Registro BX
+        pcb->registers.CX = 1;     // Registro CX
+        pcb->registers.DX = 1;     // Registro DX
+        pcb->registers.EAX = 1;    // Registro EAX
+        pcb->registers.EBX = 1;    // Registro EBX
+        pcb->registers.ECX = 1;    // Registro ECX
+        pcb->registers.EDX = 1;    // Registro EDX
+        pcb->registers.SI = 1;     // Source Index
+        pcb->registers.DI = 1;   
+        //Se arreglo el error
         return pcb;
 }
 
