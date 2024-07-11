@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
     //Y despues cuando quiero agregar una fila a la tabla de paginas pido la lista con la llave
     tabla_paginas_por_PID = dictionary_create();
 
-    initialize_queue_and_semaphore_memoria();
+    //initialize_queue_and_semaphore_memoria();
 
     // SERVER
     int server_fd = initialize_server(logger, "memory_server", IP, PORT);
