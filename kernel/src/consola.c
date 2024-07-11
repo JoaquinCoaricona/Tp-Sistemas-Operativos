@@ -61,6 +61,7 @@ void levantar_consola(t_log *logger) {
 			listarProcesos();
 		} else {
 			log_error(logger,"Comando desconocido campeon, leete la documentacion de nuevo :p");
+			log_error(logOficialKernel,"COMANDO INVALIDO");
 		}
 
 		free(linea);

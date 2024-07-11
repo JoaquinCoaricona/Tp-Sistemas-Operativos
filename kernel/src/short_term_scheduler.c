@@ -65,6 +65,7 @@ void planificador_corto_plazo_FIFO() {
     pthread_mutex_unlock(&mutex_state_ready);
 
     proceso->state = EXEC;
+    log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: READY - Estado Actual: EXEC ",proceso->pid);
     log_info(logger, "Cambio De Estado Proceso %d a %d\n", proceso->pid,proceso->state);
     
     pthread_mutex_lock(&m_procesoEjectuandoActualmente);
@@ -125,6 +126,7 @@ void planificador_corto_plazo_RoundRobin() {
     pthread_mutex_unlock(&mutex_state_ready);
 
     proceso->state = EXEC;
+    log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: READY - Estado Actual: EXEC ",proceso->pid);
     log_info(logger, "Cambio De Estado Proceso %d a %i\n", proceso->pid,proceso->state);
 
     pthread_mutex_lock(&m_procesoEjectuandoActualmente);
@@ -278,6 +280,7 @@ void planificador_corto_plazo_Virtual_RoundRobin(){
 
 
     proceso->state = EXEC;
+    log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: READY - Estado Actual: EXEC ",proceso->pid);
     log_info(logger, "Cambio De Estado Proceso %d a %i\n", proceso->pid,proceso->state);
 
     pthread_mutex_lock(&m_procesoEjectuandoActualmente);

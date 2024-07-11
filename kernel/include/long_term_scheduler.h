@@ -15,6 +15,7 @@ extern t_queue* queue_block;
 extern char* scheduler_algorithm;
 
 extern t_log *logger;
+extern t_log *logOficialKernel;
 extern int gradoMultiprogramacion;
 extern int cpu_dispatch_socket;
 extern int cpu_interrupt_socket;

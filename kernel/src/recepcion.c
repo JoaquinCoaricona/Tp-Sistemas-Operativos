@@ -544,10 +544,12 @@ void llamadas_io(t_interfaz_registrada *interfaz){
             //la explicacion de porque podria llegar a quantum Negativo esta en el case SLEEP_IO
             //en main.c Ahi se hace el control y esta la explicacion
             log_info(logger,"Como estoy en RoundRobin lo agrego a ready directamente");
+            log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: BLOCK - Estado Actual: READY ",pcbEnviado->PCB->pid);
             addEstadoReady(pcbEnviado->PCB);//meto en ready el pcb 
             sem_post(&sem_ready); 
         }else{
             log_info(logger,"Como estoy en Virtual RoundRobin lo agrego a la cola prioridad");
+            log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: BLOCK - Estado Actual: READY ",pcbEnviado->PCB->pid);
             addColaPrioridad(pcbEnviado->PCB);
             sem_post(&sem_ready); 
         }
@@ -642,10 +644,12 @@ void llamadasIOstdout(t_interfaz_registrada *interfaz){
             //la explicacion de porque podria llegar a quantum Negativo esta en el case SLEEP_IO
             //en main.c Ahi se hace el control y esta la explicacion
             log_info(logger,"Como estoy en RoundRobin lo agrego a ready directamente");
+            log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: BLOCK - Estado Actual: READY ",pcbEnviado->PCB->pid);
             addEstadoReady(pcbEnviado->PCB);//meto en ready el pcb 
             sem_post(&sem_ready); 
         }else{
             log_info(logger,"Como estoy en Virtual RoundRobin lo agrego a la cola prioridad");
+            log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: BLOCK - Estado Actual: READY ",pcbEnviado->PCB->pid);
             addColaPrioridad(pcbEnviado->PCB);
             sem_post(&sem_ready); 
         }
@@ -724,10 +728,12 @@ void llamadasIOstdin(t_interfaz_registrada *interfaz){
             //la explicacion de porque podria llegar a quantum Negativo esta en el case SLEEP_IO
             //en main.c Ahi se hace el control y esta la explicacion
             log_info(logger,"Como estoy en RoundRobin lo agrego a ready directamente");
+            log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: BLOCK - Estado Actual: READY ",pcbEnviado->PCB->pid);
             addEstadoReady(pcbEnviado->PCB);//meto en ready el pcb 
             sem_post(&sem_ready); 
         }else{
             log_info(logger,"Como estoy en Virtual RoundRobin lo agrego a la cola prioridad");
+            log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: BLOCK - Estado Actual: READY ",pcbEnviado->PCB->pid);
             addColaPrioridad(pcbEnviado->PCB);
             sem_post(&sem_ready); 
         }
@@ -851,10 +857,12 @@ void llamadasFS(t_interfaz_registrada *interfaz){
         if(pcbEnviado->PCB->quantum == quantumGlobal){
             
             log_info(logger,"Como estoy en RoundRobin lo agrego a ready directamente");
+            log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: BLOCK - Estado Actual: READY ",pcbEnviado->PCB->pid);
             addEstadoReady(pcbEnviado->PCB);//meto en ready el pcb 
             sem_post(&sem_ready); 
         }else{
             log_info(logger,"Como estoy en Virtual RoundRobin lo agrego a la cola prioridad");
+            log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: BLOCK - Estado Actual: READY ",pcbEnviado->PCB->pid);
             addColaPrioridad(pcbEnviado->PCB);
             sem_post(&sem_ready); 
         }
