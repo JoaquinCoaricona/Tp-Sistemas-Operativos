@@ -22,6 +22,7 @@ char *recursoBuscado;
 int totalRecursos;
 char *buscarInterfazYaRegistrada;
 bool yaEstaRegistrada;
+int pidFinalizadoPorConsola;
 int main(int argc, char *argv[])
 {
 
@@ -35,6 +36,7 @@ int main(int argc, char *argv[])
     t_buffer *buffer;
     t_packet *packet_handshake;
     PID = 0;
+    pidFinalizadoPorConsola = -1;
     salteoPostAlSemaforo = 0;
     planificacion_detenida = false;
     listaInterfaces = list_create();
@@ -783,11 +785,44 @@ void fetch_pcb_actualizado_fin_quantum(int server_socket)
     // aca le cambio el estado a REady porque fue desalojado por fin de quantum
     pcbEJECUTANDO->state = READY;
 
-    addEstadoReady(pcbEJECUTANDO); // meto en ready el pcb
-    sem_post(&sem_ready); //esto es para avisar que hay procesos en ready
-    //porque el planificador de corto plazo tiene un semaforo para saber que por lo menos hay
-    //algun proceso en ready, sino no sabe si hay y podrian pedirle que envie algo y no haya procesos
-    //para enviar, por eso esto es un contador de cuantos procesos hay en ready
+    //Hago esto por un caso muy borde que es cuando estoy en RR o VRR
+    //si el proceso tiene una interrupcion de FIN de quantum entonces quizas ya esta volviendo
+    //osea esta siendo enviado por CPU, entonces aca kernel al recibirlo tiene la etiqueta
+    //del paquete y dice que es fin de quantum pero en realidad deberia haberse finalizado
+    //porque lo finalizamos por consola (ese es el caso borde). Osea que seria que yo finalizo
+    //un proceso y justo estaba siendo enviado entonces al llegar aca
+    //entrar como fin de quantum y vuelve a ready. Entonces no se finaliza realmente
+    //probe una vez y me paso 3 veces seguidas esto. Pero despues
+    //cuando quise que pase para poder probar esta solucion tuve que probar varias veces
+    //para generar ese caso borde y la solucion funciona bien.
+
+    //La solucion fue crear otra variable global que solo le asigno un valor
+    //Cuanod finalizo un proceso y es el que esta en CPU
+    //solo en ese caso. Uso los semaforos para evitar condiciones de carrera
+    //entonces llego aca y controlo si es el mismo pid que justo vuelve de consola
+    //por fin de quantum. Si es ese entonces lo agrego a la cola exit sino a ready normalmente
+    //hago la prueba aca que es el ultimo lugar previo a que se agregue a ready
+    //Funciona bien
+    
+    pthread_mutex_lock(&m_pidFinalizadoPorConsola);
+    if(pidFinalizadoPorConsola == pcbEJECUTANDO->pid){
+        pidFinalizadoPorConsola = -1;
+	    pthread_mutex_unlock(&m_pidFinalizadoPorConsola);
+        pcbEJECUTANDO->state = EXIT;
+        addEstadoExit(pcbEJECUTANDO); // meto en ready el pcb
+        controlGradoMultiprogramacion();
+        log_info(logger,"El proceso se elimino por consola y estaba en cpu ya se habia mandado a kernel pero lo eliminamos aca");
+    }else{
+        pidFinalizadoPorConsola = -1;
+        pthread_mutex_unlock(&m_pidFinalizadoPorConsola);
+
+        addEstadoReady(pcbEJECUTANDO); // meto en ready el pcb
+        sem_post(&sem_ready); //esto es para avisar que hay procesos en ready
+        //porque el planificador de corto plazo tiene un semaforo para saber que por lo menos hay
+        //algun proceso en ready, sino no sabe si hay y podrian pedirle que envie algo y no haya procesos
+        //para enviar, por eso esto es un contador de cuantos procesos hay en ready
+        log_info(logger,"Sigo con normalidad");
+    }
 
     // el puntero pcb global lo dejo en null
     // este no es el PID ejecutando, es el puntero al pcb que se envio
@@ -1030,7 +1065,11 @@ void finalizar_proceso(char *parametro)
         //ASI QUE LE PASO LA DIRECCION
         send_packet(eliminarProceso, cpu_interrupt_socket);
         destroy_packet(eliminarProceso);
-    
+
+	    pthread_mutex_lock(&m_pidFinalizadoPorConsola);
+        pidFinalizadoPorConsola = pidAeliminar;
+	    pthread_mutex_unlock(&m_pidFinalizadoPorConsola);
+
     }else{ 
 
         // ACLARACION IMPORTANTE: T_QUEUE ES UNA ESTRUCTURA QUE DENTRO TIENE UN T_LIST QUE SE LLAMA

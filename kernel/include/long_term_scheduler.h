@@ -58,6 +58,7 @@ extern pthread_mutex_t m_add_estado_readyPlus;
 extern pthread_mutex_t procesosBloqueados;
 extern pthread_mutex_t m_procesoEjectuandoActualmente;
 extern pthread_mutex_t m_dispatch_kernel_Llegada_Procesos;
+extern pthread_mutex_t m_pidFinalizadoPorConsola;
 
 
 

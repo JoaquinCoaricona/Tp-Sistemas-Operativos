@@ -19,6 +19,7 @@ pthread_mutex_t m_add_estado_readyPlus;
 pthread_mutex_t procesosBloqueados;
 pthread_mutex_t m_procesoEjectuandoActualmente;
 pthread_mutex_t m_dispatch_kernel_Llegada_Procesos;
+pthread_mutex_t m_pidFinalizadoPorConsola;
 
 
 //Estado EXEC y BLOCKED no usan queue
@@ -57,6 +58,7 @@ void initialize_queue_and_semaphore() {
 	pthread_mutex_init(&m_add_estado_ready, NULL);
 	pthread_mutex_init(&m_add_estado_readyPlus, NULL);
 	pthread_mutex_init(&m_dispatch_kernel_Llegada_Procesos, NULL);
+	pthread_mutex_init(&m_pidFinalizadoPorConsola, NULL);
 
 
 }
