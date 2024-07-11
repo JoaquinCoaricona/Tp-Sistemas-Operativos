@@ -1097,6 +1097,7 @@ void detener_planificacion()
     if (planificacion_detenida == true)
     {
         log_info(logger, "La planificacion ya se encuentra detenida");
+        log_info(logOficialKernel, "La planificacion ya se encuentra detenida");
     }
     else
     {
@@ -1108,6 +1109,7 @@ void detener_planificacion()
         pthread_mutex_lock(&m_dispatch_kernel_Llegada_Procesos);
         planificacion_detenida = true;
         log_info(logger, "Pausa planificación: “PAUSA DE PLANIFICACIÓN“");
+        log_info(logOficialKernel, "Pausa planificación: “PAUSA DE PLANIFICACIÓN“");
     }
 }
 
@@ -1117,6 +1119,7 @@ void iniciar_planificacion()
     if (planificacion_detenida == false)
     {
         log_info(logger, "La planificacion ya se encuentra activa");
+        log_info(logOficialKernel, "La planificacion ya se encuentra activa");
     }
     else
     {
@@ -1128,6 +1131,7 @@ void iniciar_planificacion()
         pthread_mutex_unlock(&m_dispatch_kernel_Llegada_Procesos);
         planificacion_detenida = false;
         log_info(logger, "Inicio de planificación: “INICIO DE PLANIFICACIÓN“");
+        log_info(logOficialKernel, "Inicio de planificación: “INICIO DE PLANIFICACIÓN“");
     }
 }
 void finalizar_proceso(char *parametro)
