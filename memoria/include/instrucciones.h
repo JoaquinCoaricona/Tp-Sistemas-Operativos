@@ -4,6 +4,7 @@
 #include "../../utils/include/protocol.h" //estas dos lineas estaban aca pero no se porque funciona al sacarlas
 //----- Estas dos son del main de memoria pero las declaro aca para poder usarla en la funcion leer_pseudo
 extern t_log *logger;
+extern t_log *logOficialMemoria;
 extern t_dictionary* tabla_paginas_por_PID;
 //----------
 void leer_pseudo();

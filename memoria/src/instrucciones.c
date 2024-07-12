@@ -63,6 +63,7 @@ void leer_pseudo(int client_socket){
 	dictionary_put(tabla_paginas_por_PID,pidrec,tablaDePaginas);
 	free(pidrec);
 	log_info(logger,"Creacion Tabla De Paginas PID: %i Tam: 0",instruccionREC->pid);
+	log_info(logOficialMemoria,"Creación de Tabla de Páginas: PID: <%i> - Tamaño: 0",instruccionREC->pid);
 	//Aca directamente puse el 0 porque como es nueva su tamaño va a ser 0
 	//**************************************************************
 
