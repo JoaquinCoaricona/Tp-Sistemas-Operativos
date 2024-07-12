@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
     // procesos en ready se traba ahi pero ya tiene el post del semaforo corto plazo
 
     // LOGGER
-    logger = initialize_logger("kernel.log", "kernel", false, LOG_LEVEL_INFO);
+    logger = initialize_logger("kernel.log", "kernel", true, LOG_LEVEL_INFO);
     //Log para la entrega con los logs obligatorios
     //Importante lo del nivel del log y con el tercer parametro decimos si se muestra
     //o no por consola. El cuarto parametro es el nivel del logger
@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
 
     // send_packet(packetPCB, cpu_dispatch_socket);
 
-    int server_fd = initialize_server(logger, "kernel_server", kernel_IP, kernel_PORT);
+    int server_fd = initialize_server(logger, "kernel_server", "localhost", kernel_PORT);
     log_info(logger, "Server initialized");
 
     // HILO IO

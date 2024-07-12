@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
     t_packet *packet;
 
     // LOGGER
-    logger = initialize_logger("cpu.log", "cpu", false, LOG_LEVEL_INFO);
+    logger = initialize_logger("cpu.log", "cpu", true, LOG_LEVEL_INFO);
     logOficialCpu = initialize_logger("cpuLogOficial.log","CPU",true,LOG_LEVEL_INFO);
 
     // CONFIG
@@ -68,11 +68,11 @@ int main(int argc, char *argv[])
 
     pthread_mutex_init(&mutex_interrupcion, NULL);
 
-    server_dispatch_fd = initialize_server(logger, "cpu_dispatch_server", memory_IP, dispatch_PORT); //ACA CPU Y MEMORIA  
+    server_dispatch_fd = initialize_server(logger, "cpu_dispatch_server", "localhost", dispatch_PORT); //ACA CPU Y MEMORIA  
     log_info(logger, "Server dispatch initialized");   //TIENEN LA MISMA IP PERO NO SON LA MISMA EN PC DISTINTIAS, TENER CUIDADO
 
 
-    int server_interrupt_fd = initialize_server(logger, "cpu_interrupt_server", memory_IP, interrupt_PORT);
+    int server_interrupt_fd = initialize_server(logger, "cpu_interrupt_server", "localhost", interrupt_PORT);
     log_info(logger, "Server interrupt initialized");
 
     pthread_t thread_memory_peticions;
