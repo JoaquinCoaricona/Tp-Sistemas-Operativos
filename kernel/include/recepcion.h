@@ -8,6 +8,7 @@ extern t_queue* queue_ready;
 extern char *buscarInterfazYaRegistrada;
 
 extern t_log *logger;
+extern t_log *logOficialKernel;
 extern sem_t procesosEsperandoIO;
 
 

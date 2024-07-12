@@ -29,6 +29,6 @@ void compactar(t_bitarray *bitarray, char* nombre_archivo_a_truncar, int tamano_
 void agregar_a_lista_archivos(char* path_archivos, t_list* lista_archivos);
 void escribir_archivo(int socket_kernel);
 void leer_archivo(int socket_kernel);
-
+void free_lista(t_list* lista_archivos);
 
 #endif /* MAIN_H_ */

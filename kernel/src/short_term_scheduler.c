@@ -66,7 +66,7 @@ void planificador_corto_plazo_FIFO() {
 
     proceso->state = EXEC;
     log_info(logger, "Cambio De Estado Proceso %d a %d\n", proceso->pid,proceso->state);
-    
+    log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: READY - Estado Actual: EXEC ",proceso->pid);
     pthread_mutex_lock(&m_procesoEjectuandoActualmente);
     procesoEjectuandoActualmente = proceso ->pid;
     pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
@@ -126,7 +126,7 @@ void planificador_corto_plazo_RoundRobin() {
 
     proceso->state = EXEC;
     log_info(logger, "Cambio De Estado Proceso %d a %i\n", proceso->pid,proceso->state);
-
+    log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: READY - Estado Actual: EXEC ",proceso->pid);
     pthread_mutex_lock(&m_procesoEjectuandoActualmente);
     procesoEjectuandoActualmente = proceso->pid;
     pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
@@ -279,7 +279,7 @@ void planificador_corto_plazo_Virtual_RoundRobin(){
 
     proceso->state = EXEC;
     log_info(logger, "Cambio De Estado Proceso %d a %i\n", proceso->pid,proceso->state);
-
+    log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: READY - Estado Actual: EXEC ",proceso->pid);
     pthread_mutex_lock(&m_procesoEjectuandoActualmente);
     procesoEjectuandoActualmente = proceso->pid;
     pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
@@ -334,9 +334,8 @@ void manejoHiloQuantumVRR(void *pcb){
 void obtenerDatosTemporal(){
     //Detengo el Temporal y guardo el tiempo transcurrido en la variable global
     temporal_stop(timer);
-    ms_transcurridos = temporal_gettime(timer);
-    log_info(logger,"Tiempo Transcurrido: %i",ms_transcurridos * 1000); //Multiplico Por mil porque me interesan
-    //los microsegundos que son los que usa usleep y no milisegundos que es lo que devuelve t_temporal
+    ms_transcurridos = temporal_gettime(timer); //Antes se multiplicaba por mil abajo
+    log_info(logger,"Tiempo Transcurrido: %i",ms_transcurridos); 
     temporal_destroy(timer);
 }
 
@@ -369,7 +368,24 @@ t_pcb *initializePCB(int PID){
         //pcb->registers = malloc(sizeof( t_cpu_registers));
         //pcb->instruction = malloc(sizeof( t_instruction));
         // pcb->prueba=5;
-        
+
+        //Hago esto porque valgrind decia que estabamos mandando memoria sin inicializar
+        //entonces mostraba un error. Por eso lo inicializo asi.
+        //Igual dijeron que siempre le van a hacer set a un registro
+        //antes de usarlo no deberia haber problemas
+        pcb->registers.PC = 1;     // Program Counter
+        pcb->registers.AX = 1;     // Registro AX
+        pcb->registers.BX = 1;     // Registro BX
+        pcb->registers.CX = 1;     // Registro CX
+        pcb->registers.DX = 1;     // Registro DX
+        pcb->registers.EAX = 1;    // Registro EAX
+        pcb->registers.EBX = 1;    // Registro EBX
+        pcb->registers.ECX = 1;    // Registro ECX
+        pcb->registers.EDX = 1;    // Registro EDX
+        pcb->registers.SI = 1;     // Source Index
+        pcb->registers.DI = 1;   
+        //Se arreglo el error    
+
         return pcb;
 }
 

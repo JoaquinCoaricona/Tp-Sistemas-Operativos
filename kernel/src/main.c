@@ -5,6 +5,7 @@ int cpu_dispatch_socket;
 int cpu_interrupt_socket;
 int PID; // Global
 t_log *logger;
+t_log *logOficialKernel;
 t_pcb *pcbEJECUTANDO;
 t_list *listaInterfaces;
 int gradoMultiprogramacion;
@@ -52,7 +53,7 @@ int main(int argc, char *argv[])
 
     // LOGGER
     logger = initialize_logger("kernel.log", "kernel", true, LOG_LEVEL_INFO);
-
+    logOficialKernel = initialize_logger("kernelLogOficial.log","KERNEL",true,LOG_LEVEL_INFO);
     // CONFIG
     // t_config *config = initialize_config(logger, "../kernel.config");
     t_config *config = initialize_config(logger, "kernel.config");
@@ -114,7 +115,7 @@ int main(int argc, char *argv[])
 
     // send_packet(packetPCB, cpu_dispatch_socket);
 
-    int server_fd = initialize_server(logger, "kernel_server", kernel_IP, kernel_PORT);
+    int server_fd = initialize_server(logger, "kernel_server", "localhost", kernel_PORT);
     log_info(logger, "Server initialized");
 
     // HILO IO
@@ -268,6 +269,7 @@ void *manage_request_from_dispatch(void *args)
             //sem_post(&sem_multiprogramacion);
         break;
         case INTERRUPCION_FIN_QUANTUM:
+            log_info(logOficialKernel,"PID: %i - Desalojado por fin de Quantum",procesoEjectuandoActualmente);
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
@@ -299,6 +301,7 @@ void *manage_request_from_dispatch(void *args)
             //ACA SI MULTIPROGRAMACION PORQUE ELIMINAMOS A UN PROCESO
         break;
         case SLEEP_IO:
+            log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: EXEC - Estado Actual: BLOCK ",procesoEjectuandoActualmente); 
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
@@ -318,7 +321,7 @@ void *manage_request_from_dispatch(void *args)
             obtenerDatosTemporal();
             //la multiplicacion es para pasarlo a microsegundos, que es lo usa usleep
             //t_temporal devuelve milisegundos. El quantumglobal esta en microsegundos
-            receptorPCB->quantum = receptorPCB->quantum - (ms_transcurridos * 1000);
+            receptorPCB->quantum = receptorPCB->quantum - (ms_transcurridos);
             //Hago Control de que el quantumRestante no sea negativo, en caso que sea neagativo, le cargo el original
             //para que al volver de IO, lo carguen a la cola de ready y no a la prioritaria
             //Esto pasaba cuando enviabamos varias veces a IO dentro de un mismo quantum, quizas entre que envia la 
@@ -331,6 +334,7 @@ void *manage_request_from_dispatch(void *args)
             }
             }
             interfaz = buscar_interfaz(nombreInter);
+            log_info(logOficialKernel,"PID: <PID> - Bloqueado por: %s",nombreInter);
             cargarEnListaIO(receptorPCB, interfaz, tiempoDormir);
             sem_post(&short_term_scheduler_semaphore);
             // sem_post(&sem_multiprogramacion);
@@ -339,6 +343,7 @@ void *manage_request_from_dispatch(void *args)
             free(nombreInter); //Lo libero porque solo lo uso para buscar la intefaz
             break;
             case STDOUT_ESCRIBIR:
+            log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: EXEC - Estado Actual: BLOCK ",procesoEjectuandoActualmente);
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
@@ -360,7 +365,7 @@ void *manage_request_from_dispatch(void *args)
             obtenerDatosTemporal();
             //la multiplicacion es para pasarlo a microsegundos, que es lo usa usleep
             //t_temporal devuelve milisegundos. El quantumglobal esta en microsegundos
-            receptorPCBOUT->quantum = receptorPCBOUT->quantum - (ms_transcurridos * 1000);
+            receptorPCBOUT->quantum = receptorPCBOUT->quantum - (ms_transcurridos);
             //Hago Control de que el quantumRestante no sea negativo, en caso que sea neagativo, le cargo el original
             //para que al volver de IO, lo carguen a la cola de ready y no a la prioritaria
             //Esto pasaba cuando enviabamos varias veces a IO dentro de un mismo quantum, quizas entre que envia la 
@@ -373,6 +378,7 @@ void *manage_request_from_dispatch(void *args)
             }
             }
             interfazOUT = buscar_interfaz(nombreInterOUT);
+            log_info(logOficialKernel,"PID: <PID> - Bloqueado por: %s",nombreInterOUT);
             cargarEnListaSTDOUT(receptorPCBOUT, interfazOUT,&contenido,tamanio,bytesMalloc);
             sem_post(&short_term_scheduler_semaphore);
             // sem_post(&sem_multiprogramacion);
@@ -381,6 +387,7 @@ void *manage_request_from_dispatch(void *args)
             free(nombreInterOUT);
             break;
             case STDIN_LEER:
+            log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: EXEC - Estado Actual: BLOCK ",procesoEjectuandoActualmente);
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
@@ -403,7 +410,7 @@ void *manage_request_from_dispatch(void *args)
             obtenerDatosTemporal();
             //la multiplicacion es para pasarlo a microsegundos, que es lo usa usleep
             //t_temporal devuelve milisegundos. El quantumglobal esta en microsegundos
-            receptorPCBIN->quantum = receptorPCBIN->quantum - (ms_transcurridos * 1000);
+            receptorPCBIN->quantum = receptorPCBIN->quantum - (ms_transcurridos);
             //Hago Control de que el quantumRestante no sea negativo, en caso que sea neagativo, le cargo el original
             //para que al volver de IO, lo carguen a la cola de ready y no a la prioritaria
             //Esto pasaba cuando enviabamos varias veces a IO dentro de un mismo quantum, quizas entre que envia la 
@@ -416,6 +423,7 @@ void *manage_request_from_dispatch(void *args)
             }
             }
             interfazIN = buscar_interfaz(nombreInterIN);
+            log_info(logOficialKernel,"PID: <PID> - Bloqueado por: %s",nombreInterIN);
             //ACA TAMBIEN SIEMPRE QUE PASO UN PUNTERO TENGO QUE PASAR EL &puntero y no el puntero solo
             //una vez dentro lo desreferencio con *puntero y lo recibo como **puntero
             cargarEnListaSTDIN(receptorPCBIN, interfazIN, &contenidoIN,tamanioIN);
@@ -437,7 +445,7 @@ void *manage_request_from_dispatch(void *args)
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
             // printf("Llego Un PCB");
             log_info(logger, "LLEGO UN PCB POR OUT OF MEMORY");
-            fetch_pcb_actualizado(server_socket);
+            fetch_pcb_actualizadoOutOfMemory(server_socket);
             //Aca Controlo que solamente en VRR hago destroy al t_temporal
             if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
             temporal_destroy(timer);
@@ -446,15 +454,16 @@ void *manage_request_from_dispatch(void *args)
             controlGradoMultiprogramacion();
             //sem_post(&sem_multiprogramacion);
             break;
-
         case DIALFS_CREATE:
         case DIALFS_DELETE:
         case DIALFS_TRUNCATE:
-            
+
             int nuevoTamaArchivo = 0;
             if(operation_code == DIALFS_TRUNCATE){
                 nuevoTamaArchivo = 1;
             }
+
+            log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: EXEC - Estado Actual: BLOCK ",procesoEjectuandoActualmente);
 
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
@@ -469,16 +478,16 @@ void *manage_request_from_dispatch(void *args)
 
             if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
                 obtenerDatosTemporal();
-                receptorPCBFS->quantum = receptorPCBFS->quantum - (ms_transcurridos * 1000);
+                receptorPCBFS->quantum = receptorPCBFS->quantum - (ms_transcurridos);
                 if(receptorPCBFS->quantum < 0){
                     receptorPCBFS->quantum = quantumGlobal;
                     log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
                 }
             }
-
             interfazFS = buscar_interfaz(nombreInterFS);
-            
-            t_colaDialFS *guardarFS = malloc(sizeof(t_colaDialFS)); 
+            log_info(logOficialKernel,"PID: <PID> - Bloqueado por: %s",nombreInterFS);
+
+            t_colaFS *guardarFS = malloc(sizeof(t_colaFS)); 
 
             guardarFS->tipoOperacion = operation_code;
             guardarFS->PCB = receptorPCBFS;
@@ -487,7 +496,6 @@ void *manage_request_from_dispatch(void *args)
             if(operation_code == DIALFS_TRUNCATE){
                 guardarFS->nuevoTamaArchivo = nuevoTamaArchivo;
             }
-
             cargarEnListaFS(guardarFS,interfazFS);
 
             sem_post(&short_term_scheduler_semaphore);
@@ -496,6 +504,7 @@ void *manage_request_from_dispatch(void *args)
 
         case DIALFS_READ:
         case DIALFS_WRITE:
+            log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: EXEC - Estado Actual: BLOCK ",procesoEjectuandoActualmente);
 
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
@@ -511,7 +520,7 @@ void *manage_request_from_dispatch(void *args)
 
             if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
                 obtenerDatosTemporal();
-                receptorPCBFSwr->quantum = receptorPCBFSwr->quantum - (ms_transcurridos * 1000);
+                receptorPCBFSwr->quantum = receptorPCBFSwr->quantum - (ms_transcurridos);
                 if(receptorPCBFSwr->quantum < 0){
                     receptorPCBFSwr->quantum = quantumGlobal;
                     log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
@@ -520,7 +529,9 @@ void *manage_request_from_dispatch(void *args)
 
             interfazFSwr = buscar_interfaz(nombreInterFSwr);
             
-            t_colaDialFS *guardarFSwr = malloc(sizeof(t_colaDialFS)); 
+            log_info(logOficialKernel,"PID: <PID> - Bloqueado por: %s",nombreInterFSwr);
+
+            t_colaFS *guardarFSwr = malloc(sizeof(t_colaFS)); 
 
             guardarFSwr->tipoOperacion = operation_code;
             guardarFSwr->PCB = receptorPCBFSwr;
@@ -531,7 +542,7 @@ void *manage_request_from_dispatch(void *args)
 
             sem_post(&short_term_scheduler_semaphore);
             free(nombreInterFSwr);
-        break; 
+            break; 
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
             return;
@@ -687,14 +698,101 @@ void fetch_pcb_actualizado(int server_socket)
 
     // aca le cambio el estado a exit
     pcbEJECUTANDO->state = EXIT;
-
+    log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: EXEC - Estado Actual: EXIT ",pcbEJECUTANDO->pid);
     addEstadoExit(pcbEJECUTANDO);
 
+    log_info(logOficialKernel,"Finaliza el proceso <%i> - Motivo: SUCCESS",pcbEJECUTANDO->pid);
     log_info(logger, "Finaliza el Proceso  %i, por SUCCESS", pcbEJECUTANDO->pid);
     // log_info(logger, "estado proceso %i",pcbEJECUTANDO->state);
 
     pcbEJECUTANDO = NULL;
 
+    free(buffer);
+    free(motivo);
+}
+
+//es la misma que arriba pero para out of memory
+void fetch_pcb_actualizadoOutOfMemory(int server_socket){
+    int total_size;
+    int offset = 0;
+    t_pcb *PCBrec = pcbEJECUTANDO;
+    void *buffer;
+    int length_motivo;
+    char *motivo;
+    int tama; // Solo para recibir el size que esta al principio del buffer
+
+    buffer = fetch_buffer(&total_size, server_socket);
+
+    memcpy(&length_motivo, buffer + offset, sizeof(int));
+    offset += sizeof(int);
+
+    motivo = malloc(length_motivo);
+    memcpy(motivo, buffer + offset, length_motivo); // SI TENGO QUE COPIAR EL LENGTH, NO TENGO QUE PONER SIZEOF(LENGTH)
+    offset += length_motivo;                        // tengo que poner directamente el length en el ultimo param de memcpy
+                             //  y lo mismo en el offset al sumarle, tengo que sumar lo que copie en memcpy
+
+    offset += sizeof(int); // Salteo El tamaño del PCB
+    // aca uso el puntero global que apunta al pcb actual: pcbEJECUTANDO
+    // y actualizo ese pcb y despues lo pongo en NUll
+
+    memcpy(&(pcbEJECUTANDO->pid), buffer + offset, sizeof(int)); // RECIBO EL PID
+    offset += sizeof(int);
+
+    memcpy(&(pcbEJECUTANDO->program_counter), buffer + offset, sizeof(int)); // RECIBO EL PROGRAM COUNTER
+    offset += sizeof(int);
+
+    memcpy(&(pcbEJECUTANDO->quantum), buffer + offset, sizeof(int)); // RECIBO EL QUANTUM
+    offset += sizeof(int);
+
+    memcpy(&(pcbEJECUTANDO->state), buffer + offset, sizeof(t_process_state)); // RECIBO EL PROCESS STATE
+    offset += sizeof(t_process_state);
+
+    memcpy(&(pcbEJECUTANDO->registers.PC), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(pcbEJECUTANDO->registers.AX), buffer + offset, sizeof(uint8_t)); // RECIBO CPUREG
+    offset += sizeof(uint8_t);
+    memcpy(&(pcbEJECUTANDO->registers.BX), buffer + offset, sizeof(uint8_t)); // RECIBO CPUREG
+    offset += sizeof(uint8_t);
+    memcpy(&(pcbEJECUTANDO->registers.CX), buffer + offset, sizeof(uint8_t)); // RECIBO CPUREG
+    offset += sizeof(uint8_t);
+    memcpy(&(pcbEJECUTANDO->registers.DX), buffer + offset, sizeof(uint8_t)); // RECIBO CPUREG
+    offset += sizeof(uint8_t);
+    memcpy(&(pcbEJECUTANDO->registers.EAX), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(pcbEJECUTANDO->registers.EBX), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(pcbEJECUTANDO->registers.ECX), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(pcbEJECUTANDO->registers.EDX), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(pcbEJECUTANDO->registers.SI), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
+    offset += sizeof(uint32_t);
+    memcpy(&(pcbEJECUTANDO->registers.DI), buffer + offset, sizeof(uint32_t)); // RECIBO CPUREG
+    offset += sizeof(uint32_t);
+
+    log_info(logger, "Motivo Recibido : %s", motivo);
+    log_info(logger, "PID RECIBIDO : %i", pcbEJECUTANDO->pid);
+    log_info(logger, "PC RECIBIDO : %i", pcbEJECUTANDO->program_counter);
+    log_info(logger, "ESTADO PROCESO: %i", pcbEJECUTANDO->state);
+    log_info(logger, "REGISTRO AX : %i", pcbEJECUTANDO->registers.AX);
+    log_info(logger, "REGISTRO BX : %i", pcbEJECUTANDO->registers.BX);
+    log_info(logger, "REGISTRO CX : %i", pcbEJECUTANDO->registers.CX);
+    log_info(logger, "REGISTRO DX : %i", pcbEJECUTANDO->registers.DX);
+    log_info(logger, "REGISTRO EAX : %i", pcbEJECUTANDO->registers.EAX);
+    log_info(logger, "REGISTRO EBX : %i", pcbEJECUTANDO->registers.EBX);
+    log_info(logger, "REGISTRO ECX : %i", pcbEJECUTANDO->registers.ECX);
+    log_info(logger, "REGISTRO EDX : %i", pcbEJECUTANDO->registers.EDX);
+
+    // aca le cambio el estado a exit
+    pcbEJECUTANDO->state = EXIT;
+    log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: EXEC - Estado Actual: EXIT ",pcbEJECUTANDO->pid);
+    addEstadoExit(pcbEJECUTANDO);
+
+    log_info(logOficialKernel,"Finaliza el proceso <%i> - Motivo: OUT_OF_MEMORY ",pcbEJECUTANDO->pid);
+    log_info(logger, "Finaliza el Proceso  %i, por SUCCESS", pcbEJECUTANDO->pid);
+    // log_info(logger, "estado proceso %i",pcbEJECUTANDO->state);
+
+    pcbEJECUTANDO = NULL;
     free(buffer);
     free(motivo);
 }
@@ -795,13 +893,15 @@ void fetch_pcb_actualizado_fin_quantum(int server_socket)
         pidFinalizadoPorConsola = -1;
 	    pthread_mutex_unlock(&m_pidFinalizadoPorConsola);
         pcbEJECUTANDO->state = EXIT;
+        log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: EXEC - Estado Actual: EXIT ",pcbEJECUTANDO->pid);
         addEstadoExit(pcbEJECUTANDO); // meto en ready el pcb
         controlGradoMultiprogramacion();
         log_info(logger,"El proceso se elimino por consola y estaba en cpu ya se habia mandado a kernel pero lo eliminamos aca");
+        log_info(logOficialKernel,"Finaliza el proceso <%i> - Motivo: INTERRUPTED_BY_USER",pcbEJECUTANDO->pid);
     }else{
         pidFinalizadoPorConsola = -1;
         pthread_mutex_unlock(&m_pidFinalizadoPorConsola);
-
+        log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: EXEC - Estado Actual: READY ",pcbEJECUTANDO->pid);
         addEstadoReady(pcbEJECUTANDO); // meto en ready el pcb
         sem_post(&sem_ready); //esto es para avisar que hay procesos en ready
         //porque el planificador de corto plazo tiene un semaforo para saber que por lo menos hay
@@ -885,10 +985,12 @@ void fetch_pcb_actualizado_A_eliminar(int server_socket){
 
     // aca le cambio el estado a exit
     pcbEJECUTANDO->state = EXIT;
+    log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: EXEC - Estado Actual: EXIT ",pcbEJECUTANDO->pid);
 
     addEstadoExit(pcbEJECUTANDO); // meto en ready el pcb
     
     log_info(logger, "Finaliza el Proceso  %i, por SUCCESS", pcbEJECUTANDO->pid);
+    log_info(logOficialKernel,"Finaliza el proceso <%i> - Motivo: INTERRUPTED_BY_USER",pcbEJECUTANDO->pid);
 
     // el puntero pcb global lo dejo en null
     // este no es el PID ejecutando, es el puntero al pcb que se envio
@@ -976,6 +1078,7 @@ void detener_planificacion()
     if (planificacion_detenida == true)
     {
         log_info(logger, "La planificacion ya se encuentra detenida");
+        log_info(logOficialKernel, "La planificacion ya se encuentra detenida");
     }
     else
     {
@@ -987,6 +1090,7 @@ void detener_planificacion()
         pthread_mutex_lock(&m_dispatch_kernel_Llegada_Procesos);
         planificacion_detenida = true;
         log_info(logger, "Pausa planificación: “PAUSA DE PLANIFICACIÓN“");
+        log_info(logOficialKernel, "Pausa planificación: “PAUSA DE PLANIFICACIÓN“");
     }
 }
 
@@ -996,6 +1100,7 @@ void iniciar_planificacion()
     if (planificacion_detenida == false)
     {
         log_info(logger, "La planificacion ya se encuentra activa");
+        log_info(logOficialKernel, "La planificacion ya se encuentra activa");
     }
     else
     {
@@ -1007,6 +1112,7 @@ void iniciar_planificacion()
         pthread_mutex_unlock(&m_dispatch_kernel_Llegada_Procesos);
         planificacion_detenida = false;
         log_info(logger, "Inicio de planificación: “INICIO DE PLANIFICACIÓN“");
+        log_info(logOficialKernel, "Inicio de planificación: “INICIO DE PLANIFICACIÓN“");
     }
 }
 void finalizar_proceso(char *parametro)
@@ -1074,8 +1180,10 @@ void finalizar_proceso(char *parametro)
             //Lo Borro De NEW
             list_remove_element(queue_new->elements,punteroAEliminar);
             log_info(logger,"PID: %i encontrado en cola NEW",pidAeliminar);
+            log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: NEW - Estado Actual: EXIT ",pidAeliminar);
             //Lo Agrego A
             addEstadoExit(punteroAEliminar);
+            log_info(logOficialKernel,"Finaliza el proceso <%i> - Motivo: INTERRUPTED_BY_USER",pidAeliminar);
             encontrado = true;
             //sem_wait(&sem_hay_pcb_esperando_ready);
             // Aca voy a comentar este wait por lo mismo que en el short term schuduerl
@@ -1095,8 +1203,10 @@ void finalizar_proceso(char *parametro)
                 //Lo Borro De READY
                 list_remove_element(queue_ready->elements,punteroAEliminar);
                 log_info(logger,"PID: %i encontrado en cola READY",pidAeliminar);
+                log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: READY - Estado Actual: EXIT ",pidAeliminar);
                 //Lo Agrego A
                 addEstadoExit(punteroAEliminar);
+                log_info(logOficialKernel,"Finaliza el proceso <%i> - Motivo: INTERRUPTED_BY_USER",pidAeliminar);
                 encontrado = true;
 
                 //hago esto de multiprogramacion porque elimine un proceso de READY
@@ -1126,7 +1236,9 @@ void finalizar_proceso(char *parametro)
                 list_remove_element(queue_prioridad->elements,punteroAEliminar);
                 log_info(logger,"PID: %i encontrado en cola Prioridad",pidAeliminar);
                 //Lo Agrego A
+                log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: READY - Estado Actual: EXIT ",pidAeliminar);
                 addEstadoExit(punteroAEliminar);
+                log_info(logOficialKernel,"Finaliza el proceso <%i> - Motivo: INTERRUPTED_BY_USER",pidAeliminar);
                 encontrado = true;
      
                 //hago esto de multiprogramacion porque elimine un proceso de READY
@@ -1175,8 +1287,10 @@ void finalizar_proceso(char *parametro)
                 list_remove_element(colaABuscar->elements,punteroAEliminar);
                 log_info(logger,"PID: %i encontrado en cola de bloqueo de %s",pidAeliminar,recursos[i]);
                 
+                log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: BLOCK - Estado Actual: EXIT ",pidAeliminar);
                 //Lo Agrego A
                 addEstadoExit(punteroAEliminar);
+                log_info(logOficialKernel,"Finaliza el proceso <%i> - Motivo: INTERRUPTED_BY_USER",pidAeliminar);
                 encontrado = true;
      
                 //hago esto de multiprogramacion porque elimine un proceso de BLOCK
@@ -1288,8 +1402,10 @@ void apropiarRecursos(int socket){
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
 
             PCBrec->state = EXIT;
+            log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: EXEC - Estado Actual: EXIT ",PCBrec->pid);
             addEstadoExit(PCBrec);
 
+            log_info(logOficialKernel,"Finaliza el proceso <%i> - Motivo: INVALID_RESOURCE ",PCBrec->pid);
             //Aca Controlo que solamente en VRR hago destroy al t_temporal
             if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
             temporal_destroy(timer);
@@ -1324,6 +1440,8 @@ void apropiarRecursos(int socket){
             procesoEjectuandoActualmente = -1;
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
 
+            log_info(logOficialKernel,"PID: %i - Estado Anterior: EXEC - Estado Actual: BLOCK",PCBrec->pid);
+            log_info(logOficialKernel, "Motivo de Bloqueo: PID: %i - Bloqueado por: %s",PCBrec->pid,recurso);
             //Aca Controlo que solamente en VRR hago destroy al t_temporal
             if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
             temporal_destroy(timer);
@@ -1393,9 +1511,11 @@ void liberarRecursos(int socket){
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
-
+            
             PCBrec->state = EXIT;
+            log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: EXEC - Estado Actual: EXIT ",PCBrec->pid);
             addEstadoExit(PCBrec);
+            log_info(logOficialKernel,"Finaliza el proceso <%i> - Motivo: INVALID_RESOURCE ",PCBrec->pid);
 
             //Aca Controlo que solamente en VRR hago destroy al t_temporal
             if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
@@ -1444,6 +1564,7 @@ void liberarRecursos(int socket){
         asignado->nombreRecurso = strdup(recurso);
         list_add(recursosAsignados,asignado);
 
+        log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: BLOCK - Estado Actual: READY ",PCBliberado->pid);
         addEstadoReady(PCBliberado);
         sem_post(&sem_ready); 
 
@@ -1551,7 +1672,7 @@ void liberacionProceso(void *cola){
     
     //----------------------------------------------------------
 
-
+    log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: BLOCK - Estado Actual: READY ",PCBliberado->pid);
     addEstadoReady(PCBliberado);
     sem_post(&sem_ready);
     pthread_mutex_unlock(&procesosBloqueados);
@@ -1647,6 +1768,7 @@ void ejecutar_script(char *path){
 void listar(void *arg_pcb_n){
 	t_pcb *pcb = (t_pcb *) arg_pcb_n;
     log_info(logger,"Pid: %i",pcb->pid);
+    log_info(logOficialKernel,"Pid: %i",pcb->pid);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1662,21 +1784,25 @@ void listar(void *arg_pcb_n){
 void pidsInterfazSleep(void *interRegis){
 	t_pcbYtiempo *inter = (t_pcbYtiempo *) interRegis;
     log_info(logger,"Pid: %i",inter->PCB->pid);
+    log_info(logOficialKernel,"Pid: %i",inter->PCB->pid);
 }
 //Funcion para listar PID dentro de la cola de la interfaz
 void pidsInterfazStdOut(void *interRegis){
 	t_colaStdOUT *inter = (t_colaStdOUT *) interRegis;
     log_info(logger,"Pid: %i",inter->PCB->pid);
+    log_info(logOficialKernel,"Pid: %i",inter->PCB->pid);
 }
 //Funcion para listar PID dentro de la cola de la interfaz
 void pidsInterfazStdin(void *interRegis){
 	t_colaStdIN *inter = (t_colaStdIN *) interRegis;
     log_info(logger,"Pid: %i",inter->PCB->pid);
+    log_info(logOficialKernel,"Pid: %i",inter->PCB->pid);
 }
 //Funcion para listar PID dentro de la cola de la interfaz
 void pidsInterfazFs(void *interRegis){
-	t_colaDialFS *inter = (t_colaDialFS *) interRegis;
+	t_colaFS *inter = (t_colaFS *) interRegis;
     log_info(logger,"Pid: %i",inter->PCB->pid);
+    log_info(logOficialKernel,"Pid: %i",inter->PCB->pid);
 }
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //
@@ -1688,6 +1814,7 @@ void listarPidInterfaz(void *interfazIterate){
     //Agarro la interfaz e imprimo su nombre 
 	t_interfaz_registrada *interfaz = (t_interfaz_registrada *) interfazIterate;
     log_info(logger,"Nombre: %s Tipo: %s",interfaz->nombre,interfaz->tipo);
+    log_info(logOficialKernel,"Nombre: %s Tipo: %s",interfaz->nombre,interfaz->tipo);
 
     //Activo el semaforo para acceder a la cola de procesos
     pthread_mutex_lock(&(interfaz->mutexColaIO));
@@ -1695,6 +1822,7 @@ void listarPidInterfaz(void *interfazIterate){
     //separo en casos porque dependiendo el caso tiene structs diferentes
         if(list_size(interfaz->listaProcesosEsperando->elements) == 0){
             log_info(logger,"La interfaz no tiene elementos esperando");
+            log_info(logOficialKernel,"La interfaz no tiene elementos esperando");
         }else{
             if(string_equals_ignore_case(interfaz->tipo,"GENERICA")){
                 list_iterate(interfaz->listaProcesosEsperando->elements,pidsInterfazSleep);
@@ -1718,10 +1846,11 @@ void listarProcesos(){
 
     //Listo la cola READY bloqueandola con el semaforo por las dudas
     log_info(logger,"Lista Cola READY");
-    
+    log_info(logOficialKernel,"Lista Cola READY");
     pthread_mutex_lock(&mutex_state_ready);
     if(list_size(queue_ready->elements) <= 0){
         log_info(logger,"Lista Vacia");
+        log_info(logOficialKernel,"Lista Vacia");
     }else{
         list_iterate(queue_ready->elements, listar);
     }
@@ -1729,10 +1858,11 @@ void listarProcesos(){
 
     //Listo la cola READY+ DEL VRR bloqueandola con el semaforo por las dudas
     log_info(logger,"Lista Cola READY+ VRR");
-    
+    log_info(logOficialKernel,"Lista Cola READY+ VRR");
     pthread_mutex_lock(&mutex_state_prioridad);
     if(list_size(queue_prioridad->elements) <= 0){
         log_info(logger,"Lista Vacia");
+        log_info(logOficialKernel,"Lista Vacia");
     }else{
         list_iterate(queue_prioridad->elements, listar);
     }
@@ -1740,10 +1870,12 @@ void listarProcesos(){
 
     //Listo la cola NEW bloqueandola con el semaforo por las dudas
     log_info(logger,"Lista Cola NEW");
+    log_info(logOficialKernel,"Lista Cola NEW");
     
     pthread_mutex_lock(&mutex_state_new);
     if(list_size(queue_new->elements) <= 0){
         log_info(logger,"Lista Vacia");
+        log_info(logOficialKernel,"Lista Vacia");
     }else{
         list_iterate(queue_new->elements, listar);
     }
@@ -1751,7 +1883,7 @@ void listarProcesos(){
 
     //Listo la cola EXIT bloqueandola con el semaforo por las dudas
     log_info(logger,"Lista Cola EXIT");
-    
+    log_info(logOficialKernel,"Lista Cola EXIT");
     //NO SE PORQUE CUANDO HAGO LIST SIZE QUEUEEXIT DA NEGATIVO
     //ANTES TENIA UN == 0 Y LO SALTABA Y ENTRABA POR EL ELSE Y DABA SEG FAULT
     //AHORA QUE PUSE MENOR O IGUAL A 0 FUNCIONA BIEN. NO SE PORQUE PASA BUSQUE
@@ -1761,6 +1893,7 @@ void listarProcesos(){
     pthread_mutex_lock(&mutex_state_exit);
     if(list_size(queue_exit->elements) <= 0){
         log_info(logger,"Lista Vacia");
+        log_info(logOficialKernel,"Lista Vacia");
     }else{
         list_iterate(queue_exit->elements, listar);
     }
@@ -1768,19 +1901,24 @@ void listarProcesos(){
 
     //Proceso Ejecutando
     log_info(logger,"Estado EXEC");
+    log_info(logOficialKernel,"Estado EXEC");
     if(pcbEJECUTANDO == NULL){
         log_info(logger,"No hay ningun proceso en EXEC");
+        log_info(logOficialKernel,"No hay ningun proceso en EXEC");
     }else{
         log_info(logger,"Proceso en EXEC: %i",pcbEJECUTANDO->pid);
+        log_info(logOficialKernel,"Proceso en EXEC: %i",pcbEJECUTANDO->pid);
     }
 
 
     //Listo la cola Block
     log_info(logger,"Lista cola BLOCK");
-    
+    log_info(logOficialKernel,"Lista cola BLOCK");
+
     //Primero listo las interfaces
     if(list_size(listaInterfaces) == 0){
         log_info(logger,"No hay interfaces cargadas");
+        log_info(logOficialKernel,"No hay interfaces cargadas");
     }else{
         list_iterate(listaInterfaces,listarPidInterfaz);
     }
@@ -1789,11 +1927,12 @@ void listarProcesos(){
     for (int i = 0; i < totalRecursos; i++){
         t_recurso *recurso = dictionary_get(recursosActuales,recursos[i]);
         log_info(logger,"Recurso: %s",recursos[i]);
-
+        log_info(logOficialKernel,"Recurso: %s",recursos[i]);
         //ACA NO TENGO SEMAFORO, CREO QUE NO ES NECESARIO, SERIA UN CASO MUY BORDE
         //Me fijo si la lista esta vacia o no 
         if(list_size(recurso->colaBloqueo->elements) == 0){
             log_info(logger,"Cola Bloqueo Vacia");
+            log_info(logOficialKernel,"Cola Bloqueo Vacia");
         }else{
             //Para esta iteracion usa la misma funcion que para ready new y esas
             //porque esta cola tiene struct pcb normales y no structs mas grandes con pcb dentro

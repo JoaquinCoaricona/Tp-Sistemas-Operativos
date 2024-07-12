@@ -3,6 +3,7 @@
 int socket_kernel;
 int socket_memoria ;
 t_log *logger;
+t_log *logOficialIO;
 char *PORT_memoria;
 char *IP_memoria;
 char *PORT_kernel;
@@ -50,7 +51,8 @@ int main(int argc, char *argv[])
     t_packet *packet;
     char *tipo;
 
-    logger = initialize_logger("entradasalida.log", "entradasalida", true, LOG_LEVEL_INFO);
+    logger = initialize_logger("entradasalida.log", "entradasalida", false, LOG_LEVEL_INFO);
+    logOficialIO = initialize_logger("logOficialIO.log",nombreInterfaz,true,LOG_LEVEL_INFO);
 
     config = initialize_config(logger, configRecibido);
 
@@ -107,6 +109,7 @@ void interfazGenerica(){
             log_info(logger, "RECIBI UN SLEEP DE %i",tiempo);
             usleep(tiempoUnidad * tiempo * 1000); 
             log_info(logger, "TERMINE UN SLEEP DE %i",tiempo);
+            log_info(logOficialIO, "TERMINE EL SLEEP");
             enviarAvisoAKernel(socket_kernel,CONFIRMACION_SLEEP_COMPLETO);
             //aca antes pasaba que me decia algun error inesperado, no se porque
             //lo debugee y empezo a funcionar, pero pasaba que se iba por el default
@@ -133,15 +136,20 @@ int fetch_tiempoDormir(int socket_kernel){
     int total_size;
     int offset = 0;
 
+    int pid;
     int tiempoSleep;
    
     void *buffer2;
     buffer2 = fetch_buffer(&total_size, socket_kernel);
 
+    offset += sizeof(int);
+    memcpy(&pid,buffer2 + offset, sizeof(int));
+
     offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
     
     memcpy(&tiempoSleep,buffer2 + offset, sizeof(int)); //RECIBO EL TAMAÑO
     
+    log_info(logOficialIO,"PID: %i - Operacion: SLEEP",pid);
 
     free(buffer2);
     return tiempoSleep;
@@ -214,7 +222,8 @@ void recibirYejecutarDireccionesFisicas(int socket_kernel){
 
     memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
     offset += sizeof(int);
-    
+    log_info(logOficialIO,"PID: <%i> - Operacion: STDOUT",pid);
+
     offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
 
     memcpy(&cantidadBytesMalloc,buffer2 + offset, sizeof(int)); //RECIBO LA CANTIDAD DE BYTES MALLOC
@@ -246,6 +255,7 @@ void recibirYejecutarDireccionesFisicas(int socket_kernel){
     cadena[cantidadBytesMalloc] = '\0'; // Asegúrate de que el string esté terminado en '\0'
 
     log_info(logger,"%s",cadena);
+    log_info(logOficialIO,"Leido: %s",cadena);
 
     free(contenido);
     free(buffer2);
@@ -292,8 +302,6 @@ void interfazStdin(){
 
 void recibirYejecutarDireccionesFisicasSTDIN(int socket_kernel){
     //char *cadenaPrueba = "hola como estas";
-    log_info(logger,"Ingrese cadena a escribir. No se va escribir todo (solo lo indicado en la instruccion)");
-    char *cadenaPrueba = readline(">");
     
     int limiteAEscribir;
 
@@ -314,6 +322,11 @@ void recibirYejecutarDireccionesFisicasSTDIN(int socket_kernel){
 
     memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
     offset += sizeof(int);
+
+    log_info(logOficialIO,"PID: <%i> - Operacion: STDIN",pid);
+    log_info(logOficialIO,"Ingrese cadena a escribir. No se va escribir todo (solo lo indicado en la instruccion)");
+    log_info(logger,"Ingrese cadena a escribir. No se va escribir todo (solo lo indicado en la instruccion)");
+    char *cadenaPrueba = readline(">");
 
     int observador;
     memcpy(&observador,buffer2 + offset, sizeof(int)); 
@@ -515,13 +528,23 @@ void interfazDialFS(){
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion");
             close_conection(socket_kernel);
+            free_lista(lista_archivos);
             return;
         default:
             log_error(logger, "Algun error inesperado");
             close_conection(socket_kernel);
+            free_lista(lista_archivos);
             return;
         }
     }
+}
+
+void free_lista(t_list* lista_archivos) {
+    int tamano = list_size(lista_archivos);
+    for(int i = 0; i < tamano; i++) {
+        free(list_get(lista_archivos, i));
+    }
+    list_destroy(lista_archivos);
 }
 
 void crear_archivo_bloques(){
@@ -608,8 +631,9 @@ void crear_archivo(int socket_kernel){
     offset += sizeof(int);
 
     //Nombre de Archivo
-    nombre_archivo = malloc(tamano_nombre_archivo);
+    nombre_archivo = malloc(tamano_nombre_archivo + 1);
     memcpy(nombre_archivo,buffer2 + offset, tamano_nombre_archivo);
+    nombre_archivo[tamano_nombre_archivo] = '\0';
     offset += tamano_nombre_archivo;
 
     //Saltar tamano de PID que no es necesario
@@ -619,6 +643,8 @@ void crear_archivo(int socket_kernel){
     memcpy(&pid,buffer2 + offset, sizeof(int));
 
     log_info(logger, "PID: %i - Crear Archivo: %s", pid, nombre_archivo);
+    log_info(logOficialIO,"PID: <%i> - Operacion: CREAR ARCHIVO",pid);
+    log_info(logOficialIO,"PID: <%i> - Crear Archivo: %s",pid,nombre_archivo);
 
     //Solo en caso donde la lista no contiene este archivo agregar a lista
 
@@ -626,11 +652,13 @@ void crear_archivo(int socket_kernel){
     nombre_archivo_a_buscar = nombre_archivo;
     char* nombre_archivo_a_crear = list_find(lista_archivos, buscar_de_lista);
 
+    char* nombre_archivo_lista = strdup(nombre_archivo);
+    
     if(nombre_archivo_a_crear == NULL) {
         //necesita para compactar 
         //Agregar nombre es suficiente pq despues hay que abrir el archivo de metadata
-        list_add(lista_archivos, nombre_archivo);
-        log_info(logger, "Agregando el archivo %s a la lista", nombre_archivo);
+        list_add(lista_archivos, nombre_archivo_lista);
+        log_info(logger, "Agregando el archivo %s a la lista", nombre_archivo_lista);
     }else{
         yaExiste = true;
         log_info(logger, "Ya existe el archivo a crear.");
@@ -669,6 +697,8 @@ void crear_archivo(int socket_kernel){
         fprintf(archivo, "TAMANIO_ARCHIVO=0\n");
     }
 
+    free(path_archivo);
+    free(nombre_archivo);
     free(buffer2);
     fclose(archivo);
 }
@@ -717,6 +747,8 @@ void borrar_archivo(int socket_kernel){
     nombre_archivo_a_buscar = nombre_archivo;
 
     log_info(logger, "PID: %i - Eliminar Archivo: %s", pid, nombre_archivo);
+    log_info(logOficialIO,"PID: %i - Operacion: BORRAR ARCHIVO",pid);
+    log_info(logOficialIO,"PID: <%i> - Eliminar Archivo: %s",pid,nombre_archivo);
 
     //necesita para compactar 
     //Busco el nombre de archivo desde la lista y borro dicho nombre
@@ -725,21 +757,11 @@ void borrar_archivo(int socket_kernel){
     log_info(logger, "Nombre de Archivo a Borrar: %s", nombre_archivo_a_borrar);
 
     int cantidad_archivos_en_lista = list_size(lista_archivos);
-
+    
     //Solo si existe el archivo en lista se borra
     if(nombre_archivo_a_borrar != NULL) {
-        for(int i = 0; i < cantidad_archivos_en_lista; i++) {
-            char* archivo_actual = list_get(lista_archivos, i);
-
-            log_info(logger, "Nombre de Archivo buscado de la lista: %s", archivo_actual);
-
-            if (strcmp(archivo_actual, nombre_archivo_a_borrar) == 0) {
-                list_remove(lista_archivos, i);
-                //free(archivo_actual);
-                cantidad_archivos_en_lista--;
-                i--; 
-            }
-        }
+        list_remove_element(lista_archivos, nombre_archivo_a_borrar);
+        free(nombre_archivo_a_borrar);
     }
 
     //Path de archivo a Borrar
@@ -770,6 +792,8 @@ void borrar_archivo(int socket_kernel){
         log_info(logger,"Error borrando el archivo");
     }
 
+    free(path_archivo);
+    free(nombre_archivo);
     free(buffer2);
     fclose(archivo);
 }
@@ -826,11 +850,15 @@ void truncar_archivo(int socket_kernel){
     memcpy(&pid,buffer2 + offset, sizeof(int));
     offset += sizeof(int);
 
+    log_info(logOficialIO,"PID: %i - Operacion: TRUNCAR ARCHIVO",pid);
+
     //Saltar el tamano de tamano_nuevo que no es necesario
     offset += sizeof(int);
 
     //Tamano Nuevo de archivo a truncar
     memcpy(&tamano_nuevo,buffer2 + offset, sizeof(int));
+
+    log_info(logOficialIO,"PID: <%i> - Truncar Archivo: %s - Tamaño: %i",pid,nombre_archivo,tamano_nuevo);
 
     //Necesito para buscar_de_lista
     nombre_archivo_a_buscar = nombre_archivo;
@@ -968,6 +996,7 @@ void truncar_archivo(int socket_kernel){
             log_info(logger, "No hay suficiente espacio para truncar el archivo. Inicio compactacion");
 
             log_info(logger, "PID: %i - Inicio Compactacion", pid);
+            log_info(logOficialIO,"PID: <%i> - Inicio Compactación.",pid);
 
             fclose(archivo);
 
@@ -978,6 +1007,7 @@ void truncar_archivo(int socket_kernel){
 
             usleep(retraso_compactacion);
 
+            log_info(logOficialIO,"PID: <%i> - Fin Compactación.",pid);
             log_info(logger, "PID: %i - Fin Compactacion", pid);
         }
     }else{
@@ -987,6 +1017,8 @@ void truncar_archivo(int socket_kernel){
         fclose(archivo);
     }
 
+    free(path_archivo);
+    free(nombre_archivo);
     free(buffer2);
 
 }
@@ -1030,17 +1062,14 @@ void verifcar_los_bits_ocupado(t_bitarray *bitarray){
 /*Compactar el bitarray y bloques_map y tener en cuenta dejar el archivo buscado en bloque_inicial con su tamano al fin.
 Si fue 00 11 0 111(Archivo a agrandar) 1 00 moverlo a 111 111(Archivo a agrandar) 00000*/
 void compactar(t_bitarray *bitarray, char* nombre_archivo_a_truncar, int tamano_nuevo, int tamano_actual){
-    
-    char* nombre_archivo;
-    char* path_archivo;
+
+    char *path_archivo_truncar;
     int cantidad_archivos_en_lista = list_size(lista_archivos);
     int cant_archivos_leidos = 0;
     int bloque_inicial = 1;
     int bloque_fin_ocupado;
     int tamano;
     int bloques_ocupados;
-
-    t_list* lista_temp = list_create();
 
     log_info(logger, "Liberando todos los bits en el bitarray.");
 
@@ -1052,13 +1081,12 @@ void compactar(t_bitarray *bitarray, char* nombre_archivo_a_truncar, int tamano_
     log_info(logger, "Bits en el Bitarray liberado.");
 
     while(cantidad_archivos_en_lista > cant_archivos_leidos){
-
-        nombre_archivo = (char *)list_get(lista_archivos, cant_archivos_leidos);
+        char *nombre_archivo = (char *)list_get(lista_archivos, cant_archivos_leidos);
 
         if(strcmp(nombre_archivo, nombre_archivo_a_truncar) == 0){
             cant_archivos_leidos++;
         }else{
-            log_info(logger, "Archivo a mover: %s", nombre_archivo);
+            char* path_archivo;
 
             //Path de archivo a Borrar
             asprintf(&path_archivo, "%s/%s", path_archivo_comun, nombre_archivo);
@@ -1072,8 +1100,6 @@ void compactar(t_bitarray *bitarray, char* nombre_archivo_a_truncar, int tamano_
 
             //Leer y guardar Bloque Inicial
             fprintf(archivo, "BLOQUE_INICIAL=%i\n", bloque_inicial);
-
-            log_info(logger, "Nuevo bloque incial de archivo %s: %i", nombre_archivo, bloque_inicial);
 
             //Leer tamano
             fscanf(archivo, "TAMANIO_ARCHIVO=%i\n", &tamano);
@@ -1107,13 +1133,10 @@ void compactar(t_bitarray *bitarray, char* nombre_archivo_a_truncar, int tamano_
 
             //Agregar en lista_temp y borrar de la lista principal ya que hizo lo que tengo que a este archivo
             //Despues se agrega de nuevo hasi que no hay problema
-            list_add(lista_temp, nombre_archivo);
 
             cant_archivos_leidos++;
 
-            //Para proxima loop hago null dichos variables
-            path_archivo = NULL;
-
+            free(path_archivo);
             fclose(archivo);
         }
 
@@ -1122,10 +1145,10 @@ void compactar(t_bitarray *bitarray, char* nombre_archivo_a_truncar, int tamano_
     log_info(logger, "Archivo a mover: %s", nombre_archivo_a_truncar);
 
     //Path de archivo a Borrar
-    asprintf(&path_archivo, "%s/%s", path_archivo_comun, nombre_archivo_a_truncar);
+    asprintf(&path_archivo_truncar, "%s/%s", path_archivo_comun, nombre_archivo_a_truncar);
 
     //Abrir archivo para leer el bloque inicial y tamano 
-    FILE *archivo_a_truncar = fopen(path_archivo, "r+");
+    FILE *archivo_a_truncar = fopen(path_archivo_truncar, "r+");
     if (archivo_a_truncar == NULL) {
         log_info(logger,"Error abriendo el archivo");
         exit(EXIT_FAILURE);
@@ -1163,11 +1186,6 @@ void compactar(t_bitarray *bitarray, char* nombre_archivo_a_truncar, int tamano_
             bloques_libres = bloques_libres - 1;
         }
 
-        //Agrego el archivo a truncar devuelta a la lista
-        list_add(lista_temp, nombre_archivo_a_truncar);
-
-        //Como despues de while es vacio hago esto para volver a contener los archivos que tenia anteriormente actualizado
-        lista_archivos = lista_temp;
     }else{
         log_info(logger, "No hay suficiente espacio despues de compactar tambien.");
         ftruncate(fileno(archivo_a_truncar), 0);
@@ -1181,7 +1199,7 @@ void compactar(t_bitarray *bitarray, char* nombre_archivo_a_truncar, int tamano_
     }
 
     fclose(archivo_a_truncar);
-    free(path_archivo);
+    free(path_archivo_truncar);
 
 }
 
@@ -1282,6 +1300,9 @@ void escribir_archivo(int socket_kernel){
     offset += sizeof(int);
 
     log_info(logger, "PID: %i - Escribir Archivo: %s - Tamaño a Escribir: %i - Puntero Archivo: %i", pid, nombre_archivo, cantidad_bytes_cdf, puntero_archivo);
+    log_info(logOficialIO,"PID: %i - Operacion: ESCRIBIR ARCHIVO",pid);
+    log_info(logOficialIO,"PID: <%i> - Escribir Archivo: %s - Tamaño a Leer: %i - Puntero Archivo: %i",pid,nombre_archivo,cantidad_bytes_cdf,puntero_archivo);
+
 
     //Necesito para buscar_de_lista
     nombre_archivo_a_buscar = nombre_archivo;
@@ -1343,6 +1364,8 @@ void escribir_archivo(int socket_kernel){
         desplazamiento += cantidad_bytes;
     }
 
+    free(path_archivo);
+    free(nombre_archivo);
     free(buffer2);
     fclose(archivo);
 }
@@ -1414,6 +1437,8 @@ void leer_archivo(int socket_kernel){
     offset += sizeof(int);
 
     log_info(logger, "PID: %i - Leer Archivo: %s - Tamaño a Leer: %i - Puntero Archivo: %i", pid, nombre_archivo, cantidad_bytes_cdf, puntero_archivo);
+    log_info(logOficialIO,"PID: %i - Operacion: LEER ARCHIVO",pid);
+    log_info(logOficialIO,"PID: <%i> - Leer Archivo: %s - Tamaño a Leer: %i - Puntero Archivo: %i",pid,nombre_archivo,cantidad_bytes_cdf,puntero_archivo);
 
     //Necesito para buscar_de_lista
     nombre_archivo_a_buscar = nombre_archivo;
@@ -1473,6 +1498,8 @@ void leer_archivo(int socket_kernel){
         desplazamiento += cantidad_bytes;
     }
 
+    free(path_archivo);
+    free(nombre_archivo);
     free(buffer2);
     fclose(archivo);
 }

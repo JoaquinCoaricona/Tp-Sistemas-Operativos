@@ -122,7 +122,7 @@ typedef struct{
     int nuevoTamaArchivo;
     void *contenido;
     int tamaContenido;
-}t_colaDialFS;    
+}t_colaFS;    
 
 
 typedef struct

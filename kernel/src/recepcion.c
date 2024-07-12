@@ -313,41 +313,45 @@ t_pcb *fetchPCBfileSystem(int server_socket,char **nomrebInterfaz,char **nombreA
     void *buffer;
     int length_nombre_inter;
     
-    buffer = fetch_buffer(&total_size, server_socket);
 
-    //Tamano de nombre interfaz
-    memcpy(&length_nombre_inter,buffer + offset, sizeof(int)); 
-    offset += sizeof(int);
+    buffer = fetch_buffer(&total_size, server_socket); //RECIBO EL BUFFER 
 
-    //Nombre de Interfaz
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++     
+                //RECIBO EL NOMBRE DE LA INTERFAZ
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+
+    memcpy(&length_nombre_inter,buffer + offset, sizeof(int));  //RECIBO EL LENGTH DEL NOMBRE  DE LA INTERFAZ
+    offset += sizeof(int); 
     *nomrebInterfaz = malloc(length_nombre_inter);
-    memcpy(*nomrebInterfaz,buffer + offset,length_nombre_inter);
+    memcpy(*nomrebInterfaz,buffer + offset,length_nombre_inter); //RECIBO EL NOMBRE DE LA INTERFAZ
     offset += length_nombre_inter;
 
-    //Tamano de nombre de Archivo
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++     
+                //RECIBO EL NOMBRE DEL ARCHIVO
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
     int length_nombre_archivo;
-    memcpy(&length_nombre_archivo,buffer + offset, sizeof(int));
+    memcpy(&length_nombre_archivo,buffer + offset, sizeof(int));  //RECIBO EL LENGTH DEL NOMBRE DEL ARCHIVO
     offset += sizeof(int); 
-
-    //Nombre de Archivo
     *nombreArchivo = malloc(length_nombre_archivo);
-    memcpy(*nombreArchivo,buffer + offset,length_nombre_archivo); 
+    memcpy(*nombreArchivo,buffer + offset,length_nombre_archivo); //RECIBO EL NOMBRE DEL ARCHIVO
     offset += length_nombre_archivo;
-
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++     
+    //EN CASO QUE SEA UNA INSTRUCCION DE TRUNCAR, RECIBO EL NUEVO TAMAÑO ARCHIVO
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+   //Hago la comprobacion asi, porque cuando entro por este case hizo una comprobacion
+   //si era un truncate puso un 1, si es distinto de 1 entonces no es truncate y no hacemos 
+   // nada aca
     if(*nuevoTamaArchivo == 1){
-        //Tamano de Nuevo Tamano
-        offset += sizeof(int);
-
-        //Nuevo Tamano
-        memcpy(nuevoTamaArchivo,buffer + offset,sizeof(int));
-        offset += sizeof(int);
+        offset += sizeof(int);//Salteo el tamaño del int
+        memcpy(nuevoTamaArchivo,buffer + offset,sizeof(int)); //RECIBO EL NUEVO TAMAÑO
+        offset += sizeof(int);//Salteo el int
     }
 
-    //Tamano de PCB
-    offset += sizeof(int); 
-
-    //PCB
-    memcpy((PCBrec),buffer + offset, sizeof(t_pcb));
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++     
+                //RECIBO EL PCB
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+    offset += sizeof(int); //Salteo El tamaño del PCB
+    memcpy((PCBrec),buffer + offset, sizeof(t_pcb)); //RECIBO EL PID
 
     log_info(logger, "SE RECIBIO UN PCB PARA IR A FS");
     log_info(logger, "PID RECIBIDO : %i",PCBrec->pid);
@@ -369,32 +373,31 @@ t_pcb *fetchPCBfileSystemWR(int server_socket,char **nomrebInterfaz,void **conte
     int length_nombre_inter;
     
 
-    buffer = fetch_buffer(&total_size, server_socket); 
+    buffer = fetch_buffer(&total_size, server_socket); //RECIBO EL BUFFER 
 
-    //Tamano de nombre interfaz
-    memcpy(&length_nombre_inter,buffer + offset, sizeof(int)); 
-    offset += sizeof(int);
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++     
+                //RECIBO EL NOMBRE DE LA INTERFAZ
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 
-    //Nombre de Interfaz
+    memcpy(&length_nombre_inter,buffer + offset, sizeof(int));  //RECIBO EL LENGTH DEL NOMBRE  DE LA INTERFAZ
+    offset += sizeof(int); 
     *nomrebInterfaz = malloc(length_nombre_inter);
-    memcpy(*nomrebInterfaz,buffer + offset,length_nombre_inter);
+    memcpy(*nomrebInterfaz,buffer + offset,length_nombre_inter); //RECIBO EL NOMBRE DE LA INTERFAZ
     offset += length_nombre_inter;
-
-    //Tamano de Void
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++     
+                //RECIBO EL VOID
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+    //Hago los calculos y copio el contenido del void
     int tamaVoid = total_size - offset - sizeof(int) -sizeof(t_pcb);
-
-    //Void
     *contenido = malloc(tamaVoid);
     memcpy(*contenido,buffer + offset,tamaVoid);
     offset += tamaVoid;
-
     *tamaContenidowr = tamaVoid;
-
-    //Tamano de PCB
-    offset += sizeof(int); 
-    
-    //PCB
-    memcpy((PCBrec),buffer + offset, sizeof(t_pcb));
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++     
+                //RECIBO EL PCB
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+    offset += sizeof(int); //Salteo El tamaño del PCB
+    memcpy((PCBrec),buffer + offset, sizeof(t_pcb)); //RECIBO EL PID
 
     log_info(logger, "SE RECIBIO UN PCB PARA IR A FS");
     log_info(logger, "PID RECIBIDO : %i",PCBrec->pid);
@@ -402,7 +405,7 @@ t_pcb *fetchPCBfileSystemWR(int server_socket,char **nomrebInterfaz,void **conte
     log_info(logger, "REGISTRO AX : %i",PCBrec->registers.AX);
     log_info(logger, "REGISTRO BX : %i",PCBrec->registers.BX);
 
-    free(buffer);
+    free(buffer); //Libero por valgrind
     return PCBrec;
 
 }
@@ -460,13 +463,18 @@ void cargarEnListaSTDIN(t_pcb *receptorPCB,t_interfaz_registrada *interfaz,void 
     sem_post(&(interfaz->semaforoContadorIO)); //aca solo le hago el post porque sume un pcb a la lista
 
 }
-void cargarEnListaFS(t_colaDialFS *aCargar,t_interfaz_registrada *interfaz){
+void cargarEnListaFS(t_colaFS *aCargar,t_interfaz_registrada *interfaz){
+     //la cola tiene el mismo tipo de dato, osea es una cola de todos
+     //esos structs, pero dependiendo el opcode hay campos que lleno y otros que no
+     //pero puedo hacer eso porque meti todos los campos en el mismo struct y guardo el opcode
 
+    //Directamente cargo el struct colaFS
+    //Despues antes de enviar es cuando separo en casos
     pthread_mutex_lock(&(interfaz->mutexColaIO));
     queue_push(interfaz->listaProcesosEsperando, aCargar);
     pthread_mutex_unlock(&(interfaz->mutexColaIO));
 
-    sem_post(&(interfaz->semaforoContadorIO)); 
+    sem_post(&(interfaz->semaforoContadorIO)); //aca solo le hago el post porque sume un pcb a la lista
 
 }
 
@@ -503,6 +511,7 @@ void llamadas_io(t_interfaz_registrada *interfaz){
         
         bufferTiempoDormir = create_buffer();
         packetTiempoDormir = create_packet(TIEMPO_DORMIR, bufferTiempoDormir);
+        add_to_packet(packetTiempoDormir,&(pcbEnviado->PCB->pid), sizeof(int));
         add_to_packet(packetTiempoDormir,&(pcbEnviado->tiempoDormir), sizeof(int));
         send_packet(packetTiempoDormir,interfaz->socket_de_conexion);     //armo el paquete para enviar a la IO 
         log_info(logger, "SE ENVIO SLEEP DE %i A LA INTERFAZ: %s\n",pcbEnviado->tiempoDormir,interfaz->nombre); 
@@ -536,10 +545,12 @@ void llamadas_io(t_interfaz_registrada *interfaz){
             //la explicacion de porque podria llegar a quantum Negativo esta en el case SLEEP_IO
             //en main.c Ahi se hace el control y esta la explicacion
             log_info(logger,"Como estoy en RoundRobin lo agrego a ready directamente");
+            log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: BLOCK - Estado Actual: READY ",pcbEnviado->PCB->pid);
             addEstadoReady(pcbEnviado->PCB);//meto en ready el pcb 
             sem_post(&sem_ready); 
         }else{
             log_info(logger,"Como estoy en Virtual RoundRobin lo agrego a la cola prioridad");
+            log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: BLOCK - Estado Actual: READY ",pcbEnviado->PCB->pid);
             addColaPrioridad(pcbEnviado->PCB);
             sem_post(&sem_ready); 
         }
@@ -634,10 +645,12 @@ void llamadasIOstdout(t_interfaz_registrada *interfaz){
             //la explicacion de porque podria llegar a quantum Negativo esta en el case SLEEP_IO
             //en main.c Ahi se hace el control y esta la explicacion
             log_info(logger,"Como estoy en RoundRobin lo agrego a ready directamente");
+            log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: BLOCK - Estado Actual: READY ",pcbEnviado->PCB->pid);
             addEstadoReady(pcbEnviado->PCB);//meto en ready el pcb 
             sem_post(&sem_ready); 
         }else{
             log_info(logger,"Como estoy en Virtual RoundRobin lo agrego a la cola prioridad");
+            log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: BLOCK - Estado Actual: READY ",pcbEnviado->PCB->pid);
             addColaPrioridad(pcbEnviado->PCB);
             sem_post(&sem_ready); 
         }
@@ -716,10 +729,12 @@ void llamadasIOstdin(t_interfaz_registrada *interfaz){
             //la explicacion de porque podria llegar a quantum Negativo esta en el case SLEEP_IO
             //en main.c Ahi se hace el control y esta la explicacion
             log_info(logger,"Como estoy en RoundRobin lo agrego a ready directamente");
+            log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: BLOCK - Estado Actual: READY ",pcbEnviado->PCB->pid);
             addEstadoReady(pcbEnviado->PCB);//meto en ready el pcb 
             sem_post(&sem_ready); 
         }else{
             log_info(logger,"Como estoy en Virtual RoundRobin lo agrego a la cola prioridad");
+            log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: BLOCK - Estado Actual: READY ",pcbEnviado->PCB->pid);
             addColaPrioridad(pcbEnviado->PCB);
             sem_post(&sem_ready); 
         }
@@ -735,32 +750,39 @@ void llamadasIOstdin(t_interfaz_registrada *interfaz){
 
 void llamadasFS(t_interfaz_registrada *interfaz){
     
-    t_colaDialFS *pcbEnviado = NULL;
+    t_colaFS *pcbEnviado = NULL;
     sem_t soloUnoEnvia;
-    sem_init(&(soloUnoEnvia), 0, 1); 
-
+    sem_init(&(soloUnoEnvia), 0, 1); //ESTE SEMAFORO ES PARA QUE SOLO UNO HAGA EL ENVIO
     while(1){
         
         t_buffer *bufferFS;
         t_packet *packetFS;
         
-        sem_wait(&(interfaz->semaforoContadorIO));
+        sem_wait(&(interfaz->semaforoContadorIO));//a este solo le hago signal cuando entra un Nuevo PCB, no al final de esto
         sem_wait(&(soloUnoEnvia));
+        //aca el semaforo soloUnoEnvia lo que hace es bloquear que solo uno envie a IO, pero 
+        //el mutex de abajo es para que a la cola solo entre uno, ese es mas chico porque bloquea el acceso a la cola
+        //y si solamente uso soloUnoEnvia entonces me quedaria esperando el recv de la IO y no se podrian merter
+        //mas cosas a la cola y congelaria todo el kernel. Por eso uso dos, este que cube todo el envio y
+        //el mutex que una vez que saco lo que queria ya hace el unlock
         
         pthread_mutex_lock(&(interfaz->mutexColaIO));
-        pcbEnviado = queue_pop(interfaz->listaProcesosEsperando);
+        pcbEnviado = queue_pop(interfaz->listaProcesosEsperando); //ENCAPSULO ENTRE DOS MUTEX SACAR DE LA COLA
         pthread_mutex_unlock(&(interfaz->mutexColaIO));
-
+        //Aca este struct t_colaFS que es el tipo de puntero pcbEnviado, tiene varios
+        //campos, pero yo guardo el struct en la cola, entonces 
+        //en la cola guardo varios structy y no hay diferencia entre los tipos
+        //de datos de la cola porque son todos el mismo struct, pero
+        //como me guardo el opcode entonces aca filtro y voy mandando 
+        //diferentes campos segundo el opcode. No todos
+        //los cmpos estan llenos, solo los necesarios para ese case
         bufferFS = create_buffer();
         if(pcbEnviado->tipoOperacion == DIALFS_CREATE){
             packetFS = create_packet(DIALFS_CREATE,bufferFS);
 
             int tamaNombre = strlen(pcbEnviado->nombreArchivo) + 1;
             
-            //Nombre de Archivo
             add_to_packet(packetFS,pcbEnviado->nombreArchivo,tamaNombre);
-
-            //PID
             add_to_packet(packetFS,&(pcbEnviado->PCB->pid), sizeof(int));
 
             send_packet(packetFS,interfaz->socket_de_conexion);
@@ -772,10 +794,7 @@ void llamadasFS(t_interfaz_registrada *interfaz){
 
             int tamaNombre = strlen(pcbEnviado->nombreArchivo) + 1;
             
-            //Nombre de Archivo
             add_to_packet(packetFS,pcbEnviado->nombreArchivo,tamaNombre);
-
-            //PID
             add_to_packet(packetFS,&(pcbEnviado->PCB->pid), sizeof(int));
 
             send_packet(packetFS,interfaz->socket_de_conexion);
@@ -787,13 +806,8 @@ void llamadasFS(t_interfaz_registrada *interfaz){
 
             int tamaNombre = strlen(pcbEnviado->nombreArchivo) + 1;
             
-            //Nombre de Archivo
             add_to_packet(packetFS,pcbEnviado->nombreArchivo,tamaNombre);
-
-            //PID
             add_to_packet(packetFS,&(pcbEnviado->PCB->pid), sizeof(int));
-
-            //Nuevo Tamano de Archivo
             add_to_packet(packetFS,&(pcbEnviado->nuevoTamaArchivo), sizeof(int));
 
             send_packet(packetFS,interfaz->socket_de_conexion);
@@ -803,10 +817,7 @@ void llamadasFS(t_interfaz_registrada *interfaz){
         if(pcbEnviado->tipoOperacion == DIALFS_WRITE){
             packetFS = create_packet(DIALFS_WRITE,bufferFS);
 
-            //PID
             add_to_packet(packetFS,&(pcbEnviado->PCB->pid), sizeof(int));
-
-            //Void Contenido
             add_to_packet(packetFS,pcbEnviado->contenido,pcbEnviado->tamaContenido);
 
             send_packet(packetFS,interfaz->socket_de_conexion);
@@ -814,55 +825,58 @@ void llamadasFS(t_interfaz_registrada *interfaz){
         }
         if(pcbEnviado->tipoOperacion == DIALFS_READ){
             packetFS = create_packet(DIALFS_READ,bufferFS);
-
-            //PID
             add_to_packet(packetFS,&(pcbEnviado->PCB->pid), sizeof(int));
-
-            //Void COntenido
             add_to_packet(packetFS,pcbEnviado->contenido,pcbEnviado->tamaContenido);
 
             send_packet(packetFS,interfaz->socket_de_conexion);
             free(pcbEnviado->contenido);
         }
 
-        int operation_code = fetch_codop(interfaz->socket_de_conexion); 
+        int operation_code = fetch_codop(interfaz->socket_de_conexion); //aca se queda bloqueante esperando la respuesta
     
         int total_size;
-
-        void *buffer2 = fetch_buffer(&total_size,interfaz->socket_de_conexion);
-        free(buffer2); 
+        //ACLARACION: es fetch_buffer de protocol.c , no es fetch pcb, solo recibe el numero que se envio para confirmar 
+        void *buffer2 = fetch_buffer(&total_size,interfaz->socket_de_conexion); // recibo porque puse un numero en el buffer
+        free(buffer2);  //para no enviarlo vacio
         
         if(operation_code == CONFIRMACION_DIALFS_CREATE){
-            log_info(logger, "Creacion de Archivo Exitoso"); 
+            log_info(logger, "CONFIRMACION CREACION ARCHIVO"); 
         }
         if(operation_code == CONFIRMACION_DIALFS_DELETE){
-            log_info(logger, "Eliminacion de Archivo Exitoso"); 
+            log_info(logger, "CONFIRMACION ELIMINACION ARCHIVO"); 
         }
         if(operation_code == CONFIRMACION_DIALFS_TRUNCATE){
-            log_info(logger, "Truncar el Archivo Exitoso"); 
+            log_info(logger, "CONFIRMACION TRUNCAMIENTO ARCHIVO"); 
         }
         if(operation_code == CONFIRMACION_DIALFS_WRITE){
-            log_info(logger, "Escritura a Archivo Exitoso"); 
+            log_info(logger, "CONFIRMACION WRITE FS"); 
         }
         if(operation_code == CONFIRMACION_DIALFS_READ){
-            log_info(logger, "Lectura de Archivo Exitoso"); 
+            log_info(logger, "CONFIRMACION READ FS"); 
         }                       
 
         if(pcbEnviado->PCB->quantum == quantumGlobal){
+            
             log_info(logger,"Como estoy en RoundRobin lo agrego a ready directamente");
-            addEstadoReady(pcbEnviado->PCB);
+            log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: BLOCK - Estado Actual: READY ",pcbEnviado->PCB->pid);
+            addEstadoReady(pcbEnviado->PCB);//meto en ready el pcb 
             sem_post(&sem_ready); 
         }else{
             log_info(logger,"Como estoy en Virtual RoundRobin lo agrego a la cola prioridad");
+            log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: BLOCK - Estado Actual: READY ",pcbEnviado->PCB->pid);
             addColaPrioridad(pcbEnviado->PCB);
             sem_post(&sem_ready); 
         }
 
+        
+        
         sem_post(&(soloUnoEnvia));
         destroy_packet(packetFS);
 
         pcbEnviado->PCB = NULL;
         free(pcbEnviado);
+
+
 
     }
 }

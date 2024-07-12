@@ -12,7 +12,7 @@ void liberarRecursos(int socket);
 bool buscarRecursoUsado(void* args);
 void liberacionProceso(void *cola);
 
-
+void fetch_pcb_actualizadoOutOfMemory(int server_socket);
 bool BuscarinterfazYaRegistrada(void* interfazPrueba);
 void* manage_request_from_input_output(void *args);
 void* manage_request_from_dispatch(void *args);

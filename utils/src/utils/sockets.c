@@ -51,7 +51,7 @@ int initialize_server(t_log *logger, const char *name, char *ip, char *port)
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    getaddrinfo(ip, port, &hints, &server_info);
+    getaddrinfo(NULL, port, &hints, &server_info);
 
     if (server_info == NULL)
     {

@@ -32,6 +32,11 @@ t_queue* queue_exit;
 //FIFO, RR, VRR
 char* scheduler_algorithm;
 
+void listarOficial(void *arg_pcb_n){
+	t_pcb *pcb = (t_pcb *) arg_pcb_n;
+    log_info(logOficialKernel,"Pid: %i",pcb->pid);
+}
+
 //Asignar valores principales a colas y semaforos
 void initialize_queue_and_semaphore() {
 
@@ -77,6 +82,7 @@ void agregarANew(t_pcb *pcb) //t_log *logger
 	pthread_mutex_unlock(&mutex_state_new);
 
 	log_info(logger, "Se agrega el proceso: %d a new \n", pcb->pid);
+	log_info(logOficialKernel,"Se crea el proceso %i en NEW",pcb->pid);
 	sem_post(&sem_hay_pcb_esperando_ready); //SEMAFORO CONTADOR
 }
 
@@ -103,8 +109,10 @@ void addEstadoReady(t_pcb *pcb){
 	//Este semaforo es el propio de la cola ready por las condiciones de carrera
 	pthread_mutex_lock(&mutex_state_ready);
 	queue_push(queue_ready,pcb);
+	log_info(logOficialKernel,"Cola Ready");
+	list_iterate(queue_ready->elements, listarOficial);
 	pthread_mutex_unlock(&mutex_state_ready);
-
+	
 	pthread_mutex_unlock(&m_add_estado_ready);
 
 	log_info(logger, "Se agrega el proceso: %d a ready \n", pcb->pid);
@@ -165,6 +173,7 @@ void *Aready(void *arg)
 		
     	t_pcb *pcb = obtenerSiguienteAready();
 		pcb->state = READY;
+		log_info(logOficialKernel,"Cambio de Estado: PID: <%i> - Estado Anterior: NEW - Estado Actual: READY ",pcb->pid);
     	addEstadoReady(pcb);
     	log_info(logger, "Se elimino el proceso %d de New y se agrego a Ready", pcb->pid);
 
@@ -224,6 +233,8 @@ void addColaPrioridad(t_pcb *pcb){
 	//Este es el propio de la cola por las condiciones de carrera
     pthread_mutex_lock(&mutex_state_prioridad);
 	queue_push(queue_prioridad,pcb);
+	log_info(logOficialKernel,"Cola Prioridad");
+	list_iterate(queue_prioridad->elements, listarOficial);
 	pthread_mutex_unlock(&mutex_state_prioridad);
 
 	pthread_mutex_unlock(&m_add_estado_readyPlus);

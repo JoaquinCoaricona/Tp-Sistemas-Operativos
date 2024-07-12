@@ -2,6 +2,7 @@
 // #include "../include/utils.h"
 
 t_log *logger;
+t_log *logOficialCpu;
 int server_dispatch_fd;
 int client_fd_memoria;
 bool continuar_con_el_ciclo_instruccion;
@@ -26,7 +27,7 @@ int main(int argc, char *argv[])
 
     // LOGGER
     logger = initialize_logger("cpu.log", "cpu", true, LOG_LEVEL_INFO);
-
+    logOficialCpu = initialize_logger("cpuLogOficial.log","CPU",true,LOG_LEVEL_INFO);
     // CONFIG
    
    // t_config *config = initialize_config(logger, "../cpu.config");
@@ -66,11 +67,11 @@ int main(int argc, char *argv[])
 
     pthread_mutex_init(&mutex_interrupcion, NULL);
 
-    server_dispatch_fd = initialize_server(logger, "cpu_dispatch_server", memory_IP, dispatch_PORT); //ACA CPU Y MEMORIA  
+    server_dispatch_fd = initialize_server(logger, "cpu_dispatch_server", "localhost", dispatch_PORT); //ACA CPU Y MEMORIA  
     log_info(logger, "Server dispatch initialized");   //TIENEN LA MISMA IP PERO NO SON LA MISMA EN PC DISTINTIAS, TENER CUIDADO
 
 
-    int server_interrupt_fd = initialize_server(logger, "cpu_interrupt_server", memory_IP, interrupt_PORT);
+    int server_interrupt_fd = initialize_server(logger, "cpu_interrupt_server", "localhost", interrupt_PORT);
     log_info(logger, "Server interrupt initialized");
 
     pthread_t thread_memory_peticions;
@@ -327,9 +328,8 @@ void ciclo_de_instruccion(int socket_kernel){
         //INICIO FASE FETCH
         
         instruccion_ACTUAL = pedirInstruccion(pid_ejecutando,PCBACTUAL->program_counter,client_fd_memoria);
-		//log_info(logger, "Fetch Instrucción: PID: %d - FETCH - Program Counter: %d",contexto_actual->pid, contexto_actual->program_counter);
+        log_info(logOficialCpu, "Fetch Instrucción: PID: %d - FETCH - Program Counter: %d",PCBACTUAL->pid,PCBACTUAL->program_counter);     
         PCBACTUAL->program_counter++;
-        
         //INICIO FASES DECODE y EXECUTE
         if (strcmp(instruccion_ACTUAL->opcode, "SET") == 0) {
 			operacion_set(PCBACTUAL, instruccion_ACTUAL);

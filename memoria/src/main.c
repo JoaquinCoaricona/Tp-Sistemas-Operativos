@@ -7,6 +7,7 @@ void *espacioUsuario;
 t_list* situacionMarcos;
 t_dictionary* tabla_paginas_por_PID;
 t_log *logger;
+t_log *logOficialMemoria;
 int memoriaDisponible;
 int cantidadMarcos;
 int memoriaTotal;
@@ -27,6 +28,7 @@ int main(int argc, char *argv[])
 
     // LOGGER
     logger = initialize_logger("memoria.log", "memoria", true, LOG_LEVEL_INFO);
+    logOficialMemoria = initialize_logger("memoriaLogOficial.log","MEMORIA",true,LOG_LEVEL_INFO);
 
     // CONFIG
     //t_config *config = initialize_config(logger, "../memoria.config"); // TODO: Arreglar path en makefiles
@@ -149,10 +151,12 @@ void resizePaginas(int client_socket){
         resizeExitoso = true;
     }else if(nuevaCantidadPaginas > tamaActualProceso && (cantidadMarcos >= (nuevaCantidadPaginas - tamaActualProceso)) ){
         log_info(logger, "Ampliacion de Proceso PID: %i Tamaño Actual: %i Tamaño a Ampliar: %i",pid,tamaActualProceso,nuevaCantidadPaginas - tamaActualProceso);
+        log_info(logOficialMemoria, "Ampliacion de Proceso PID: %i Tamaño Actual: %i Tamaño a Ampliar: %i",pid,tamaActualProceso,nuevaCantidadPaginas - tamaActualProceso);
         ampliarProceso(pid , nuevaCantidadPaginas - tamaActualProceso);
         resizeExitoso = true;
     }else if(nuevaCantidadPaginas < tamaActualProceso){
         log_info(logger, "Reduccion de Proceso PID: %i Tamaño Actual: %i Tamaño a Reducir: %i",pid,tamaActualProceso,tamaActualProceso - nuevaCantidadPaginas);
+        log_info(logOficialMemoria, "Reduccion de Proceso PID: %i Tamaño Actual: %i Tamaño a Reducir: %i",pid,tamaActualProceso,tamaActualProceso - nuevaCantidadPaginas);
         reducirProceso(pid , tamaActualProceso - nuevaCantidadPaginas);
         resizeExitoso = true;
         numeroConfirmacion = 1;
@@ -345,7 +349,7 @@ void buscarMarco(int client_socket){
     
     send_packet(packetMarco, client_socket);
     destroy_packet(packetMarco);
-
+    log_info(logOficialMemoria,"Acceso a Tabla de Páginas: PID: %d - Pagina: %d - Marco: %d",pid,paginaBuscada,paginaEncontrada->numeroMarco);
     log_info(logger,"Acceso a Tabla de Páginas: PID: %d - Pagina: %d - Marco: %d",pid,paginaBuscada,paginaEncontrada->numeroMarco);
     void *pointer = espacioUsuario;
 
@@ -393,7 +397,7 @@ void escribirMemoria(int client_socket){
     //+++++++++++Realizo la escritura+++++++++++++++++++++++
     memcpy(espacioUsuario+dirFisica,contenidoAescribir,cantBits);
     log_info(logger,"Acceso a espacio de usuario: PID: %d - Accion: ESCRIBIR - Direccion fisica: %d",pid,dirFisica);
-
+    log_info(logOficialMemoria,"Acceso a espacio de usuario: PID: %d - Accion: ESCRIBIR - Direccion fisica: %d",pid,dirFisica);
     //+++++++++++Log para saber si lo que escribi esta bien+++++++++++++++++++
     char *contenidoEscrito = malloc(cantBits + 1);
     contenidoEscrito[cantBits] = '\0'; // Asegúrate de que el string esté terminado en '\0'
@@ -449,7 +453,7 @@ void leerMemoria(int client_socket){
     //+++++++++++Copio el contenido+++++++++++++++++++++++
     memcpy(contenido,espacioUsuario+dirFisica,cantBits);
 	log_info(logger,"Acceso a espacio de usuario: “PID: %d - Accion: LEER - Direccion fisica: %d“",pid,dirFisica);
-
+    log_info(logOficialMemoria,"Acceso a espacio de usuario: “PID: %d - Accion: LEER - Direccion fisica: %d“",pid,dirFisica);
     //+++++++++++Mando lo leido a CPU+++++++++++++++++++
     t_buffer *bufferConfirmacion;
     t_packet *packetConfirmacion;
@@ -520,6 +524,7 @@ void liberarEstructuras(int client_socket){
     if(tablaDePaginasBuscada == NULL){
         log_info(logger,"Error al buscar la tabla de paginas");
     }
+    log_info(logOficialMemoria,"Destruccion de Tabla de Páginas: PID: <%i> - Tamaño:%i",pid,list_size(tablaDePaginasBuscada));
     //Borro todas las estructuras t_paginaMarco que tiene dentro de la tabla
     //esta funcion que le paso al iterate, libera la estrcutura y tambien
     //libera el marco que ocupaba
