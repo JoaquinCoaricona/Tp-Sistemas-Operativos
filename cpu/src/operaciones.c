@@ -4,7 +4,8 @@
 int paginaTLB = -1;
 int pidTLB = -1;
 char *tlbAlgoritmo;
-
+uint32_t numeroGlobalLog = 0;
+char *auxiliarLog = NULL;
 void setear_registro(t_pcb *contexto, char* registro, uint32_t valor)
 {
 	if(strcmp(registro,"AX")==0)
@@ -119,7 +120,7 @@ void operacion_set(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 	char* registro = strdup(instruccion->parametros[0]); //No copiar la direccion, usar en lo posible strdup
 	uint32_t valor = atoi(instruccion->parametros[1]);
 	setear_registro(contexto, registro, valor);
-
+	log_info(logOficialCpu,"Instrucción Ejecutada: PID: %i - Ejecutando: SET - %s %s",contexto->pid,instruccion->parametros[0],instruccion->parametros[1]);
 	free(registro);
 }
 
@@ -135,6 +136,7 @@ void operacion_sum(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 
     destino_valor += origen_valor; 
     setear_registro(contexto,destino,destino_valor);
+	log_info(logOficialCpu,"Instrucción Ejecutada: PID: %i - Ejecutando: SUM - %s %s",contexto->pid,instruccion->parametros[0],instruccion->parametros[1]);
     free(origen);
     free(destino);
 
@@ -154,6 +156,7 @@ void operacion_sub(t_pcb* contexto, t_instruccion_unitaria* instruccion)
     destino_valor -= origen_valor; 
 
     setear_registro(contexto,destino,destino_valor);
+	log_info(logOficialCpu,"Instrucción Ejecutada: PID: %i - Ejecutando: SUB - %s %s",contexto->pid,instruccion->parametros[0],instruccion->parametros[1]);
     free(origen);
     free(destino);
 
@@ -169,6 +172,7 @@ void operacion_jnz(t_pcb* contexto, t_instruccion_unitaria* instruccion)
     if(obtener_valor_del_registro(cadena,contexto) != 0){
         contexto->program_counter = valor;
     }
+	log_info(logOficialCpu,"Instrucción Ejecutada: PID: %i - Ejecutando: JNZ - %s %s",contexto->pid,instruccion->parametros[0],instruccion->parametros[1]);
     free(cadena);
 
 }
@@ -180,7 +184,7 @@ void operacion_resize(t_pcb* contexto, t_instruccion_unitaria* instruccion,int s
 {	
 	//Recibo el nuevo tamaño del proceso que es el unico parametro de la instruccion
 	int nuevoTamaProceso = atoi(instruccion->parametros[0]);
-
+	log_info(logOficialCpu,"Instrucción Ejecutada: PID: %i - Ejecutando: RESIZE - %s",contexto->pid,instruccion->parametros[0]);
 	//Envio el Pid y el nuevo tamaño a memoria
 	t_buffer *buffer_resize;
     t_packet *packet_resize;
@@ -310,6 +314,7 @@ void operacion_sleep(t_pcb *contexto,int socket,t_instruccion_unitaria* instrucc
 	
 	send_packet(packet_rta, socket);		//ENVIO EL PAQUETE
 	destroy_packet(packet_rta);
+	log_info(logOficialCpu,"Instrucción Ejecutada: PID: %i - Ejecutando: IO_GEN_SLEEP - %s %s",contexto->pid,instruccion->parametros[0],instruccion->parametros[1]);
 
 }
 bool busqueda_tlb(void *entradaTLB){
@@ -335,7 +340,7 @@ int solicitarMarco(int numeroPagina, int pid){
 		pidTLB = -1;
 		paginaTLB = -1;
 		log_info(logger,"PID: %i - TLB HIT - Pagina: %i",pid,numeroPagina);
-
+		log_info(logOficialCpu,"PID: %i - TLB HIT - Pagina: %i",pid,numeroPagina);
 		//++++++++++++Si es LRU Actualizo la tabla+++++++++++++++++++++
 		//Hago esto porque en LRU voy a borrar el que no se usa o el que se uso 
 		//por ultima vez hace mucho tiempo. Priorizo guardar los que
@@ -356,6 +361,7 @@ int solicitarMarco(int numeroPagina, int pid){
 		return nuevaEntrada->marco;
 	}
 	log_info(logger,"PID: %i - TLB MISS - Pagina: %i",pid,numeroPagina);
+	log_info(logOficialCpu,"PID: %i - TLB MISS - Pagina: %i",pid,numeroPagina);
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 	
 
@@ -395,7 +401,7 @@ int solicitarMarco(int numeroPagina, int pid){
 		nuevaEntrada->marco = marcoEncontrado;
 		agregarALaTLB(TLB,nuevaEntrada);
 		log_info(logger, "Obtener Marco: PID: %d - OBTENER MARCO - Página: %d - Marco: %d", pid, numeroPagina, marcoEncontrado);
-
+		log_info(logOficialCpu, "Obtener Marco: PID: %d - OBTENER MARCO - Página: %d - Marco: %d", pid, numeroPagina, marcoEncontrado);
 		return marcoEncontrado;
 	}else{
 		int total_size;
@@ -457,6 +463,7 @@ int obtenerDesplazamiento(int pid, int direccion_logica){
 // partir de la Dirección Lógica almacenada en el Registro Dirección.
 void operacion_mov_out(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 {   
+	log_info(logOficialCpu,"Instrucción Ejecutada: PID: %i - Ejecutando: MOV_OUT - %s %s",contexto->pid,instruccion->parametros[0],instruccion->parametros[1]);
 	//La cantidad de bits que voy a escribir en memoria es esto
 	int cantidadBits;
 	//Variable que va guardar lo que voy a escribir
@@ -514,10 +521,12 @@ void operacion_mov_out(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 			//Escribo la cantidad diferencia porque es lo que falta de la primer pagina
 			//osea el cachito que queda entre el desplazamineto y el fin de la pagina
 			mandarAescribirEnMemoria(dirFisica,contenidoAescribir,diferencia,contexto);
+			memcpy(&numeroGlobalLog,contenidoAescribir,diferencia);
+			log_info(logOficialCpu,"PID: <%i> - Acción: ESCRIBIR - Dirección Física: %i - Valor: %i",contexto->pid,dirFisica,numeroGlobalLog);
 			//Despues actualizo el desplazamietno contenido que es el delimitador entre
 			//lo que ya escribir y lo que falta escribir del void (cadena de bytes)
 			desplazamientoContenido = desplazamientoContenido + diferencia;
-			//tambien actualizo la cantiydad de bytes que falta escribir
+			//tambien actualizo la cantiydad de bytes que falta escribirS
 			cantidadBits = cantidadBits - diferencia;
 			//Aumento el numero de pagina porque es la que sigue
 			numeroPagina++;
@@ -536,6 +545,8 @@ void operacion_mov_out(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 				//No hay desplazamiento porque arranco la pagina nueva de 0
 				//ahora mando a escribir la pagina completa
 				mandarAescribirEnMemoria(nuevaDirFisica,contenidoAescribir + desplazamientoContenido,tamaPagina,contexto);
+				memcpy(&numeroGlobalLog,contenidoAescribir + desplazamientoContenido,tamaPagina);
+				log_info(logOficialCpu,"PID: <%i> - Acción: ESCRIBIR - Dirección Física: %i - Valor: %i",contexto->pid,nuevaDirFisica,numeroGlobalLog);
 				//actualizo el desplazamiento sumando el tamaño de pagina que fue lo que escribi
 				desplazamientoContenido = desplazamientoContenido + tamaPagina;
 				//lo mismo, actualizo la cantidad de bytes que falta escribir
@@ -552,10 +563,13 @@ void operacion_mov_out(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 			//No hay desplazamiento porque arranco la pagina nueva de 0
 			//Mando a escribir lo que falta
 			mandarAescribirEnMemoria(nuevaDirFisica,contenidoAescribir + desplazamientoContenido,cantidadBits,contexto);
+			memcpy(&numeroGlobalLog,contenidoAescribir + desplazamientoContenido,cantidadBits);
+			log_info(logOficialCpu,"PID: <%i> - Acción: ESCRIBIR - Dirección Física: %i - Valor: %i",contexto->pid,nuevaDirFisica,numeroGlobalLog);
 		}else{
 			//En este caso es que todo entra en una pagina y no hay que hacer nada extra
 			mandarAescribirEnMemoria(dirFisica,contenidoAescribir,cantidadBits,contexto);
-
+			memcpy(&numeroGlobalLog,contenidoAescribir,cantidadBits);
+			log_info(logOficialCpu,"PID: <%i> - Acción: ESCRIBIR - Dirección Física: %i - Valor: %i",contexto->pid,dirFisica,numeroGlobalLog);
 		}
 	free(contenidoAescribir); //Libero por valgrind
 	
@@ -566,6 +580,7 @@ void operacion_mov_out(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 // Dirección y lo almacena en el Registro Datos.
 void operacion_mov_in(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 {   
+	log_info(logOficialCpu,"Instrucción Ejecutada: PID: %i - Ejecutando: MOV_IN - %s %s",contexto->pid,instruccion->parametros[0],instruccion->parametros[1]);
 	//La cantidad de bits que voy a escribir en memoria es esto
 	int cantidadBits;
 	int tamaRegistro;
@@ -601,6 +616,10 @@ void operacion_mov_in(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 	if((desplazamiento + cantidadBits) > tamaPagina){
 		//mando a leer lo que resta de la primera pagina y actualizo los contadores
 		mandarALeer(dirFisica,diferencia,contexto,contenidoLeido);
+		//++++++++++++Solo para el LOG+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+		memcpy(&numeroGlobalLog,contenidoLeido,diferencia);
+		log_info(logOficialCpu,"PID: <%i> - Acción: LEER - Dirección Física: %i - Valor: %d",contexto->pid,dirFisica,numeroGlobalLog);
+		//++++++++++++++++++++++++++++++++++++++++
 		cantidadBits = cantidadBits - diferencia;
 		desplazamientoContenido = desplazamientoContenido + diferencia;
 		numeroPagina++;
@@ -609,6 +628,10 @@ void operacion_mov_in(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 			nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
 			nuevaDirFisica = nuevoMarco * tamaPagina;
 			mandarALeer(nuevaDirFisica,tamaPagina,contexto,contenidoLeido + desplazamientoContenido);
+			//++++++++++++++++++++++SOLO PARA EL LOG++++++++++++++++++++++++++++++++
+			memcpy(&numeroGlobalLog,contenidoLeido + desplazamientoContenido,tamaPagina);
+			log_info(logOficialCpu,"PID: <%i> - Acción: LEER - Dirección Física: %i - Valor: %d",contexto->pid,nuevaDirFisica,numeroGlobalLog);
+			//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 			cantidadBits = cantidadBits - tamaPagina;
 			desplazamientoContenido = desplazamientoContenido + tamaPagina;
 			numeroPagina++;
@@ -618,10 +641,18 @@ void operacion_mov_in(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 		nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
 		nuevaDirFisica = nuevoMarco * tamaPagina;
 		mandarALeer(nuevaDirFisica,cantidadBits,contexto,contenidoLeido + desplazamientoContenido);
+		//++++++++++++++++++++++SOLO PARA EL LOG++++++++++++++++++++++++++++++++
+		memcpy(&numeroGlobalLog + desplazamientoContenido,contenidoLeido + desplazamientoContenido,cantidadBits);
+		log_info(logOficialCpu,"PID: <%i> - Acción: LEER - Dirección Física: %i - Valor: %d",contexto->pid,nuevaDirFisica,numeroGlobalLog);
+		//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		
 	}else{
 		//Se va por este caso cuando no tengo que leer dos paginas, todo de una
 		mandarALeer(dirFisica,cantidadBits,contexto,contenidoLeido);
+		//++++++++++++++++++++++SOLO PARA EL LOG++++++++++++++++++++++++++++++++
+		memcpy(&numeroGlobalLog,contenidoLeido,cantidadBits);
+		log_info(logOficialCpu,"PID: <%i> - Acción: LEER - Dirección Física: %i - Valor: %d",contexto->pid,dirFisica,numeroGlobalLog);
+		//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 	}
 
 	//Una vez terminado de leer, guardamos el contenido en el registro
@@ -717,7 +748,7 @@ void mandarALeer(int dirFisica, int cantidadBits, t_pcb *contexto, void *conteni
 // cantidad de bytes indicadas en el parámetro tamaño a la posición de memoria apuntada
 // por el registro DI. 
 void operacion_copy_string(t_pcb* contexto, t_instruccion_unitaria* instruccion){
-
+log_info(logOficialCpu,"Instrucción Ejecutada: PID: %i - Ejecutando: COPY_STRING - %s",contexto->pid,instruccion->parametros[0]);
 //*********************************************************************************************
 //***********************PRIMERA ETAPA: LECTURA*************************************
 //*********************************************************************************************
@@ -746,6 +777,15 @@ void operacion_copy_string(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 
 	if((desplazamiento + cantidadBits) > tamaPagina){
 		mandarALeer(dirFisica,diferencia,contexto,contenidoLeido);
+		
+		//++++++++++++++++++Esto es solo para el log++++++++++++++++++++
+		auxiliarLog = malloc(diferencia + 1);
+		memcpy(auxiliarLog,contenidoLeido,diferencia);
+		auxiliarLog[diferencia] = '\0';
+		log_info(logOficialCpu,"PID: <%i> - Acción: LEER - Dirección Física: %i - Valor: %s",contexto->pid,dirFisica,auxiliarLog);
+		free(auxiliarLog);
+		//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 		cantidadBits = cantidadBits - diferencia;
 		desplazamientoContenido = desplazamientoContenido + diferencia;
 		numeroPagina++;
@@ -754,6 +794,15 @@ void operacion_copy_string(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 			nuevoMarco = solicitarMarco(numeroPagina,contexto->pid);
 			nuevaDirFisica = nuevoMarco * tamaPagina;
 			mandarALeer(nuevaDirFisica,tamaPagina,contexto,contenidoLeido + desplazamientoContenido);
+			
+			//++++++++++++++++++Esto es solo para el log++++++++++++++++++++
+			auxiliarLog = malloc(tamaPagina + 1);
+			memcpy(auxiliarLog,contenidoLeido + desplazamientoContenido,tamaPagina);
+			auxiliarLog[tamaPagina] = '\0';
+			log_info(logOficialCpu,"PID: <%i> - Acción: LEER - Dirección Física: %i - Valor: %s",contexto->pid,nuevaDirFisica,auxiliarLog);
+			free(auxiliarLog);
+			//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 			cantidadBits = cantidadBits - tamaPagina;
 			desplazamientoContenido = desplazamientoContenido + tamaPagina;
 			numeroPagina++;
@@ -762,8 +811,23 @@ void operacion_copy_string(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 		nuevaDirFisica = nuevoMarco * tamaPagina;
 		mandarALeer(nuevaDirFisica,cantidadBits,contexto,contenidoLeido + desplazamientoContenido);
 		
+		//++++++++++++++++++Esto es solo para el log++++++++++++++++++++
+		auxiliarLog = malloc(cantidadBits + 1);
+		memcpy(auxiliarLog,contenidoLeido + desplazamientoContenido,cantidadBits);
+		auxiliarLog[cantidadBits] = '\0';
+		log_info(logOficialCpu,"PID: <%i> - Acción: LEER - Dirección Física: %i - Valor: %s",contexto->pid,nuevaDirFisica,auxiliarLog);
+		free(auxiliarLog);
+		//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+		
 	}else{
 		mandarALeer(dirFisica,cantidadBits,contexto,contenidoLeido);
+		//++++++++++++++++++Esto es solo para el log++++++++++++++++++++
+		auxiliarLog = malloc(cantidadBits + 1);
+		memcpy(auxiliarLog,contenidoLeido,cantidadBits);
+		auxiliarLog[cantidadBits] = '\0';
+		log_info(logOficialCpu,"PID: <%i> - Acción: LEER - Dirección Física: %i - Valor: %s",contexto->pid,dirFisica,auxiliarLog);
+		free(auxiliarLog);
+		//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 	}
 //*********************************************************************************************
 //***********************SEGUNDA ETAPA: ESCRITURA**********************************************
@@ -794,6 +858,15 @@ void operacion_copy_string(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 			//Como entro por este if significa que ...
 			//Primero escribo lo que falta de la primera pagina
 			mandarAescribirEnMemoria(dirFisicaEscritura,contenidoLeido,diferenciaEscritura,contexto);
+			
+			//++++++++++++++++++Esto es solo para el log++++++++++++++++++++
+			auxiliarLog = malloc(diferenciaEscritura + 1);
+			memcpy(auxiliarLog,contenidoLeido,diferenciaEscritura);
+			auxiliarLog[diferenciaEscritura] = '\0';
+			log_info(logOficialCpu,"PID: <%i> - Acción: ESCRIBIR - Dirección Física: %i - Valor: %s",contexto->pid,dirFisicaEscritura,auxiliarLog);
+			free(auxiliarLog);
+			//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 			desplazamientoContenido = desplazamientoContenido + diferenciaEscritura;
 			cantidadBits = cantidadBits - diferenciaEscritura;
 			numeroPaginaEscritura++;
@@ -804,6 +877,13 @@ void operacion_copy_string(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 				nuevaDirFisicaEscritura = nuevoMarcoEscritura * tamaPagina;
 				//No hay desplazamiento porque arranco la pagina nueva de 0
 				mandarAescribirEnMemoria(nuevaDirFisicaEscritura,contenidoLeido + desplazamientoContenido,tamaPagina,contexto);
+				//++++++++++++++++++Esto es solo para el log++++++++++++++++++++
+				auxiliarLog = malloc(tamaPagina + 1);
+				memcpy(auxiliarLog,contenidoLeido + desplazamientoContenido,tamaPagina);
+				auxiliarLog[tamaPagina] = '\0';
+				log_info(logOficialCpu,"PID: <%i> - Acción: ESCRIBIR - Dirección Física: %i - Valor: %s",contexto->pid,nuevaDirFisicaEscritura,auxiliarLog);
+				free(auxiliarLog);
+				//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 				desplazamientoContenido = desplazamientoContenido + tamaPagina;
 				cantidadBits = cantidadBits - tamaPagina;
 				numeroPaginaEscritura++;
@@ -813,9 +893,24 @@ void operacion_copy_string(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 			nuevaDirFisicaEscritura = nuevoMarcoEscritura * tamaPagina;
 			//No hay desplazamiento porque arranco la pagina nueva de 0
 			mandarAescribirEnMemoria(nuevaDirFisicaEscritura,contenidoLeido + desplazamientoContenido,cantidadBits,contexto);
+			//++++++++++++++++++Esto es solo para el log++++++++++++++++++++
+			auxiliarLog = malloc(cantidadBits + 1);
+			memcpy(auxiliarLog,contenidoLeido + desplazamientoContenido,cantidadBits);
+			auxiliarLog[cantidadBits] = '\0';
+			log_info(logOficialCpu,"PID: <%i> - Acción: ESCRIBIR - Dirección Física: %i - Valor: %s",contexto->pid,nuevaDirFisicaEscritura,auxiliarLog);
+			free(auxiliarLog);
+			//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		}else{
 			//En este caso es que todo entra en una pagina y no hay que hacer nada extra
 			mandarAescribirEnMemoria(dirFisicaEscritura,contenidoLeido,cantidadBits,contexto);
+			
+			//++++++++++++++++++Esto es solo para el log++++++++++++++++++++
+			auxiliarLog = malloc(cantidadBits + 1);
+			memcpy(auxiliarLog,contenidoLeido,cantidadBits);
+			auxiliarLog[cantidadBits] = '\0';
+			log_info(logOficialCpu,"PID: <%i> - Acción: ESCRIBIR - Dirección Física: %i - Valor: %s",contexto->pid,dirFisicaEscritura,auxiliarLog);
+			free(auxiliarLog);
+			//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 		}
 		free(contenidoLeido); //Libero por valgrind
@@ -830,7 +925,7 @@ void operacion_copy_string(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 
 
 void operacion_io_stdout_write(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
-	
+	log_info(logOficialCpu,"Instrucción Ejecutada: PID: %i - Ejecutando: IO_STDOUT_WRITE - %s %s %s",contexto->pid,instruccion->parametros[0],instruccion->parametros[1],instruccion->parametros[2]);
 	t_buffer *buffer_rta;
 	t_packet *packet_rta;
 	buffer_rta = create_buffer();
@@ -928,7 +1023,7 @@ int calcularCantDirFisicas(int desplazamiento, int cantidadBytes){
 // a partir de la Dirección Lógica almacenada en el Registro Dirección.
 
 void operacion_io_stdin_read(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
-	
+	log_info(logOficialCpu,"Instrucción Ejecutada: PID: %i - Ejecutando: IO_STDIN_READ - %s %s %s",contexto->pid,instruccion->parametros[0],instruccion->parametros[1],instruccion->parametros[2]);
 	t_buffer *buffer_rta;
 	t_packet *packet_rta;
 	buffer_rta = create_buffer();
@@ -995,6 +1090,7 @@ void operacion_io_stdin_read(t_pcb *contexto,int socket,t_instruccion_unitaria* 
 // WAIT (Recurso): Esta instrucción solicita al Kernel que se asigne una
 // instancia del recurso indicado por parámetro.
 void operacion_wait(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
+	log_info(logOficialCpu,"Instrucción Ejecutada: PID: %i - Ejecutando: WAIT - %s",contexto->pid,instruccion->parametros[0]);
 	t_buffer *bufferWait;
 	t_packet *packetWait;
 	bufferWait = create_buffer();
@@ -1022,6 +1118,7 @@ void operacion_wait(t_pcb *contexto,int socket,t_instruccion_unitaria* instrucci
 // SIGNAL (Recurso): Esta instrucción solicita al Kernel que se libere
 // una instancia del recurso indicado por parámetro.
 void operacion_signal(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
+	log_info(logOficialCpu,"Instrucción Ejecutada: PID: %i - Ejecutando: SIGNAL - %s",contexto->pid,instruccion->parametros[0]);
 	t_buffer *bufferSignal;
 	t_packet *packetSignal;
 	bufferSignal = create_buffer();
@@ -1051,6 +1148,7 @@ void operacion_signal(t_pcb *contexto,int socket,t_instruccion_unitaria* instruc
 // solicita al Kernel que mediante la interfaz seleccionada, se cree un
 // archivo en el FS montado en dicha interfaz.
 void operacion_io_fs_create(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
+	log_info(logOficialCpu,"Instrucción Ejecutada: PID: %i - Ejecutando: IO_FS_CREATE - %s %s",contexto->pid,instruccion->parametros[0],instruccion->parametros[1]);
 	t_buffer *bufferCreate;
 	t_packet *packetCreate;
 	bufferCreate = create_buffer();
@@ -1072,6 +1170,7 @@ void operacion_io_fs_create(t_pcb *contexto,int socket,t_instruccion_unitaria* i
 // Kernel que mediante la interfaz seleccionada, se elimine un archivo en el
 // FS montado en dicha interfaz
 void operacion_io_fs_delete(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
+	log_info(logOficialCpu,"Instrucción Ejecutada: PID: %i - Ejecutando: IO_FS_DELETE - %s %s",contexto->pid,instruccion->parametros[0],instruccion->parametros[1]);
 	t_buffer *bufferDelete;
 	t_packet *packetDelete;
 	bufferDelete = create_buffer();
@@ -1093,6 +1192,7 @@ void operacion_io_fs_delete(t_pcb *contexto,int socket,t_instruccion_unitaria* i
 // del archivo en el FS montado en dicha interfaz, actualizando al valor que se encuentra
 // en el registro indicado por Registro Tamaño.
 void operacion_io_fs_truncate(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
+	log_info(logOficialCpu,"Instrucción Ejecutada: PID: %i - Ejecutando: IO_FS_TRUNCATE - %s %s %s",contexto->pid,instruccion->parametros[0],instruccion->parametros[1],instruccion->parametros[2]);
 	//LEO EL NUEVO TAMAÑO DEL ARCHIVO
 	int  nuevoTamaArchivo =   obtener_valor_del_registro(instruccion->parametros[2],contexto);
 	//CREACION DE BUFFER Y PAQUETE PARA ENVIAR
@@ -1118,7 +1218,7 @@ void operacion_io_fs_truncate(t_pcb *contexto,int socket,t_instruccion_unitaria*
 // Registro Tamaño a partir de la dirección lógica que se encuentra en el Registro Dirección
 // y se escriban en el archivo a partir del valor del Registro Puntero Archivo.
 void operacion_io_fs_write(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
-	
+	log_info(logOficialCpu,"Instrucción Ejecutada: PID: %i - Ejecutando: IO_FS_WRITE - %s %s %s %s %s",contexto->pid,instruccion->parametros[0],instruccion->parametros[1],instruccion->parametros[2],instruccion->parametros[3],instruccion->parametros[4]);
 	int registroPuntero = obtener_valor_del_registro(instruccion->parametros[4],contexto);
 	
 	t_buffer *buffer_rta;
@@ -1189,7 +1289,7 @@ void operacion_io_fs_write(t_pcb *contexto,int socket,t_instruccion_unitaria* in
 // Puntero Archivo la cantidad de bytes indicada por Registro Tamaño y se escriban en
 // la Memoria a partir de la dirección lógica indicada en el Registro Dirección.
 void operacion_io_fs_read(t_pcb *contexto,int socket,t_instruccion_unitaria* instruccion){
-
+	log_info(logOficialCpu,"Instrucción Ejecutada: PID: %i - Ejecutando: IO_FS_READ - %s %s %s %s %s",contexto->pid,instruccion->parametros[0],instruccion->parametros[1],instruccion->parametros[2],instruccion->parametros[3],instruccion->parametros[4]);
 	int registroPuntero = obtener_valor_del_registro(instruccion->parametros[4],contexto);
 	
 	t_buffer *buffer_rta;

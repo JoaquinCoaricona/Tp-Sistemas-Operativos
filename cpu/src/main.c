@@ -2,6 +2,7 @@
 // #include "../include/utils.h"
 
 t_log *logger;
+t_log *logOficialCpu;
 int server_dispatch_fd;
 int client_fd_memoria;
 bool continuar_con_el_ciclo_instruccion;
@@ -25,7 +26,8 @@ int main(int argc, char *argv[])
     t_packet *packet;
 
     // LOGGER
-    logger = initialize_logger("cpu.log", "cpu", true, LOG_LEVEL_INFO);
+    logger = initialize_logger("cpu.log", "cpu", false, LOG_LEVEL_INFO);
+    logOficialCpu = initialize_logger("cpuLogOficial.log","CPU",true,LOG_LEVEL_INFO);
 
     // CONFIG
    
@@ -327,7 +329,7 @@ void ciclo_de_instruccion(int socket_kernel){
         //INICIO FASE FETCH
         
         instruccion_ACTUAL = pedirInstruccion(pid_ejecutando,PCBACTUAL->program_counter,client_fd_memoria);
-		//log_info(logger, "Fetch Instrucción: PID: %d - FETCH - Program Counter: %d",contexto_actual->pid, contexto_actual->program_counter);
+		log_info(logOficialCpu, "Fetch Instrucción: PID: %d - FETCH - Program Counter: %d",PCBACTUAL->pid,PCBACTUAL->program_counter);
         PCBACTUAL->program_counter++;
         
         //INICIO FASES DECODE y EXECUTE
