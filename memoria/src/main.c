@@ -11,6 +11,10 @@ int memoriaDisponible;
 int cantidadMarcos;
 int memoriaTotal;
 int tamaPagina;
+int retardoRespuesta;
+int pidBuscadoParaLiberar;
+t_list* paginasBorradas;//Esto es para Limpiar la TLB
+//Para evitar TLB Hits de mas en la prueba FINAL
 int main(int argc, char *argv[])
 {
     char *PORT;
@@ -35,10 +39,14 @@ int main(int argc, char *argv[])
     //Estos dos van con atoi porque esta funcion devuelve string
     memoriaTotal = atoi(config_get_string_value(config, "TAM_MEMORIA"));
     tamaPagina = atoi(config_get_string_value(config, "TAM_PAGINA"));
+    retardoRespuesta = atoi(config_get_string_value(config, "RETARDO_RESPUESTA"));
 
     //Creacion de Tabla De Marcos 
     cantidadMarcos = memoriaTotal/tamaPagina;
     situacionMarcos = list_create();
+
+    //Lista para limpiar la TLB
+    paginasBorradas = list_create();
 
     for(int i =0; i<cantidadMarcos; i++){
 		t_situacion_marco * marco_n = malloc(sizeof(t_situacion_marco));
@@ -66,7 +74,7 @@ int main(int argc, char *argv[])
     //Y despues cuando quiero agregar una fila a la tabla de paginas pido la lista con la llave
     tabla_paginas_por_PID = dictionary_create();
 
-    initialize_queue_and_semaphore_memoria();
+    //initialize_queue_and_semaphore_memoria();
 
     // SERVER
     int server_fd = initialize_server(logger, "memory_server", IP, PORT);
@@ -97,6 +105,7 @@ void resizePaginas(int client_socket){
    int pid;
    int tamaActualProceso; //la cuento en cantidad de paginas
    t_list *tablaPaginasBuscada; 
+   int numeroConfirmacion = 0; //Para limpiar la TLB, si hay reduccion cambia a 1 y entrar por un if, sino no
 //--------Recibo El Nuevo Tamaño y el Pid---------------
     int total_size;
     int offset = 0;
@@ -122,7 +131,9 @@ void resizePaginas(int client_socket){
 //--------------------------------------
 
 //--------Calculo el tamaño del proceso-----
-    tablaPaginasBuscada = dictionary_get(tabla_paginas_por_PID,string_itoa(pid));
+    char *pidbuscc = string_itoa(pid); //hago esto por valgrind
+    tablaPaginasBuscada = dictionary_get(tabla_paginas_por_PID,pidbuscc);
+    free(pidbuscc);
     tamaActualProceso = list_size(tablaPaginasBuscada); //Obtengo su tamaño en cantidad de paginas
 //-----------------------------------------
 
@@ -144,6 +155,7 @@ void resizePaginas(int client_socket){
         log_info(logger, "Reduccion de Proceso PID: %i Tamaño Actual: %i Tamaño a Reducir: %i",pid,tamaActualProceso,tamaActualProceso - nuevaCantidadPaginas);
         reducirProceso(pid , tamaActualProceso - nuevaCantidadPaginas);
         resizeExitoso = true;
+        numeroConfirmacion = 1;
     }
     //La unica forma en que no entre por ninguno es que deba entrar por el segundo
     //pero que no haya marcos disponibles, entonces devuelvo out of memory
@@ -154,13 +166,55 @@ void resizePaginas(int client_socket){
     buffer_resize = create_buffer();
     if(resizeExitoso){
         packet_resize = create_packet(RESIZE_EXITOSO, buffer_resize);
+        //Aca en caso que se haya reducido el proceso tengo que borrar algunas
+        //Paginas de la TLB, osea puede ser que algunas de las paginas que se borraron
+        //estaban en la TLB y tengo qeu borrarlas para que no haga HITS de mas
+        //este numero lo pongo en 1 solo si hice reuduccion
+        if(numeroConfirmacion == 1){
+            //LE CARGO EL NUMERO DE CONFIRMACION AL PRINCIPIO DEL PAQUETE
+            add_to_packet(packet_resize,&numeroConfirmacion,sizeof(int));
+
+            int cantRegistros = list_size(paginasBorradas);
+            //Agrego la cantidad de paginas borradas
+            add_to_packet(packet_resize,&cantRegistros,sizeof(int));
+
+            //Aca agrego todos los numeros de paginas que borre para limpiar la TLB
+            for (int i = 0;i < cantRegistros;i++){
+                //como las posiciones de la lista arrancan en 0
+                //hago list get desde 0 hasta el total -1 
+                t_registroTLB* registroActual = list_get(paginasBorradas,i);
+                int paginaNumero = registroActual->numeroPagina;
+                add_to_packet(packet_resize,&paginaNumero,sizeof(int));
+            }
+            //La funcion que le paso le hace free a los registros
+            list_iterate(paginasBorradas,limpiarRegistrosTLB);
+            //Por las dudas lo borro asi tambien
+            list_clean(paginasBorradas);
+        }else{
+            //ACLARACION MUY IMPORTANTE, LO HAGO ACA Y TAMBIEN EN EL FFETCHCODOP
+            //DE OPERACIONES.C DE LA FUNCION RESIZE. 
+            //CUANDO YO CREO UN PAQUETE LE PONGO UN CODOP QUE ES COMO EL SELLO DEL SOBRE
+            //ENTONCES SI YO LO MANDO SIN ENVIARLE NADA (OSEA CON BUFFER VACIO)
+            //DEL OTRO LADO CUANDO YO HAGA FETCH BUFFER SE VA TRABAR Y SE VA A BLOQUEAR AHI
+            //PORQUE SI BIEN AL CREAR EL PAQUETE LE ASOCIO UN BUFFER, DESPUES SI NO
+            //LE HAGO NINGUN ADD TO PACKET ENTONCES EL BUFFER LLEGA VACIO Y 
+            //SI LLEGA VACIO LA FUNCION FETCHBUFFER NO RECIBE NADA Y SE QUEAD BLOQUEADO AHI
+            //PORQUE ESA FUNCION (PARECE, NO ESTOY SEGURO) ES BLOQUEANTE
+
+            //ENTONCES POR ESO ACA HICE ESTE ELSE. PORQUE SI SE DABA EL CASO 
+            //QUE NO ENTRABA POR EL IF, OSEA QUE NO HUBO REDUCCION ENTONCES NO SE HACIA NINGUN
+            //ADD TO PACKET DE NADA Y DEL OTRO LADO SE QUEDABA BLOQUEADO EN FETCH BUFFER PORQUE
+            //ENVIE UN BUFFER VACIO
+            //POR ESO LE CARGO ESTO QUE ES BASURA. DEL OTRO LADO RECIBO EL NUMERO DE CONFIRMACION
+            //Y SOLO SI ES IGUAL A UNO RECIBO LAS PAGINAS BORRADAS, SINO NO
+            add_to_packet(packet_resize,&numeroConfirmacion,sizeof(int));
+        }
+    
     }else{
         packet_resize = create_packet(OUT_MEMORY, buffer_resize);
+        add_to_packet(packet_resize,&numeroConfirmacion,sizeof(int)); //Agrego algo para enviar
+        //por las dudas por la misma explicacion de arriba.
     }
-    //+++++++++++++++SOLO PARA ENVIAR ALGO+++++++++++++++++++++++++++++
-    int numeroConfirmacion;
-    add_to_packet(packet_resize,&numeroConfirmacion,sizeof(int));
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     send_packet(packet_resize, client_socket);
     destroy_packet(packet_resize);
@@ -168,8 +222,9 @@ void resizePaginas(int client_socket){
 }
 
 void ampliarProceso(int pid, int cantidadAgregar){
-    t_list *tablaPagina = dictionary_get(tabla_paginas_por_PID,string_itoa(pid));
-
+    char *pidAmpliar = string_itoa(pid); //Hago esto por valgrind
+    t_list *tablaPagina = dictionary_get(tabla_paginas_por_PID,pidAmpliar);
+    free(pidAmpliar);
     for (int i = 0; i < cantidadAgregar ; i++){
         //Busco un marco libre y tambien creo un puntero a una variable paginaMarco
         t_situacion_marco *marcoLibre = buscarMarcoLibre();
@@ -192,13 +247,25 @@ void ampliarProceso(int pid, int cantidadAgregar){
     }
 }
 void reducirProceso(int pid, int cantidadReducir){
-    t_list *tablaPagina = dictionary_get(tabla_paginas_por_PID,string_itoa(pid));
+    char *pidReducir = string_itoa(pid);
+    t_list *tablaPagina = dictionary_get(tabla_paginas_por_PID,pidReducir);
+    free(pidReducir);
 
     for (int i = 0; i < cantidadReducir; i++){
         int cantPaginas = list_size(tablaPagina);
         
         //Busco la ultima pagina de la tabla del Proceso
         t_paginaMarco *paginaBuscada = list_get(tablaPagina,cantPaginas - 1);
+
+        //Aca guardo las paginas que se borraron en una lista
+        //Para enviarselas a la TLB
+        t_registroTLB *guardarRegistro = malloc(sizeof(t_registroTLB));
+        //Aca me guardo el cantPaginas -1 porque en las paginas 
+        //empece a contar desde 0. Sino si hubiese emmpezado en 1 entonces
+        //tendria que manddarlo sin el -1 pero como empece con las paginas en 
+        //0 entonces lo mando asi.
+        guardarRegistro->numeroPagina = cantPaginas-1;
+        list_add(paginasBorradas,guardarRegistro);
 
         //De la tabla de Situacion de marcos busco el marco donde estaba la pagina que voy a borrar
         //Aca no hago el -1 en el indice porque los numeros de marco arrancan en 0
@@ -215,8 +282,10 @@ void reducirProceso(int pid, int cantidadReducir){
         //Una vez libre el marco ya puedo borrar la pagina de la tabla del proceso
         //Borro la ultima pagina que agregue porque hay que borrar del final hacia adelante 
         list_remove(tablaPagina, cantPaginas - 1);
+        free(paginaBuscada); //borro por valgrind
         log_info(logger,"Elimino Pagina de la lista de paginas PID: %i",pid);
     }
+
 }
 
 //Funcion Para usar en el list_find de buscarMarcoLibre
@@ -258,7 +327,9 @@ void buscarMarco(int client_socket){
 
     //+++++++++++++++++++Busqueda++++++++++++++++++++++++++++
     //Busco la tabla de paginas
-    t_list *tablaPaginas = dictionary_get(tabla_paginas_por_PID,string_itoa(pid));
+    char *pidV = string_itoa(pid); //Pongo esto por valgrind
+    t_list *tablaPaginas = dictionary_get(tabla_paginas_por_PID,pidV);
+    free(pidV); //porque stringItoa si lo pongo directo ahi se pierde la referencia
     //Busco Dentro de la tabla de paginas
     t_paginaMarco *paginaEncontrada = list_get(tablaPaginas,paginaBuscada);
 
@@ -341,6 +412,7 @@ void escribirMemoria(int client_socket){
     send_packet(packetConfirmacion, client_socket);
     destroy_packet(packetConfirmacion);
 
+    free(contenidoAescribir);
 
 }
 
@@ -388,6 +460,131 @@ void leerMemoria(int client_socket){
 
     send_packet(packetConfirmacion, client_socket);
     destroy_packet(packetConfirmacion);
+    free(contenido); //Borro por valgrind
 
 
+}
+//Solo la uso para liberar memoria de los elementos
+void limpiarRegistrosTLB(void *registro){
+    t_registroTLB *registroTLB = (t_registroTLB *) registro;
+    free(registroTLB);
+}
+
+void liberarEstructuras(int client_socket){
+    
+    int pid;
+    //+++++++++++++++++Recibo los datos+++++++++++++++++++
+    int total_size;
+    int offset = 0;
+    void *buffer2;
+
+    buffer2 = fetch_buffer(&total_size, client_socket);
+
+    offset += sizeof(int); //Salteo el tamaño del INT
+    
+    memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
+    offset += sizeof(int);
+    free(buffer2);
+
+    //Primero tengo que eliminar la estructura que lee las intrucciones y lo que guardo al 
+    //crear el proceso, en el primer llamado
+    pidBuscadoParaLiberar = pid;
+    //Le pongo ese nombre
+    //Porque en realidad es un proceso, no una instruccion. Puse mal el nombre. Lo hice al principio
+    t_instrucciones *procesoBuscado = list_find(listaINSTRUCCIONES,encontrarPidALiberar);
+
+    if(procesoBuscado != NULL){
+        log_info(logger,"Se encontro el proceso para liberar estructuras");
+        list_remove_element(listaINSTRUCCIONES,procesoBuscado);
+        //Libero el path
+        free(procesoBuscado->path);
+        //Itero esa funcion en la lista, esa funcion libera cada campo de instruccion
+        //unitaria. Porque tiene muchos campos
+        list_iterate(procesoBuscado->lista_de_instrucciones,destroy_instuccion_unitaria);
+        //Por las dudas le paso list_clean
+        list_clean(procesoBuscado->lista_de_instrucciones);
+        //Destruyo la lista
+        list_destroy(procesoBuscado->lista_de_instrucciones);
+        
+        //Ahora al final le hago free al puntero que tenia este struct
+        free(procesoBuscado);
+
+    }else{
+        log_info(logger,"No encontro el proceso Para liberar Estructuras Iniciales");
+    }
+    
+    //Ahora tengo que liberar la tabla de paginas del proceso
+    char *pidTablaBuscada = string_itoa(pid); //Hago esto por valgrind
+    t_list *tablaDePaginasBuscada = dictionary_get(tabla_paginas_por_PID,pidTablaBuscada);
+    free(pidTablaBuscada);
+    if(tablaDePaginasBuscada == NULL){
+        log_info(logger,"Error al buscar la tabla de paginas");
+    }
+    //Borro todas las estructuras t_paginaMarco que tiene dentro de la tabla
+    //esta funcion que le paso al iterate, libera la estrcutura y tambien
+    //libera el marco que ocupaba
+    list_iterate(tablaDePaginasBuscada,destroyPaginasYLiberarMarco);
+    //Borro la tabla de paginas del diccionario
+    char *pidRemover = string_itoa(pid); //Hago esto por valgrind
+    dictionary_remove(tabla_paginas_por_PID,pidRemover);
+    free(pidRemover);
+    //Hago el list_clean por las dudas aunque no se si sirve algo
+    list_clean(tablaDePaginasBuscada);
+    //Ahora destruyo la lista
+    list_destroy(tablaDePaginasBuscada);
+    
+
+}
+
+bool encontrarPidALiberar(void *registrado){
+
+	t_instrucciones *procesoRegistrado = (t_instrucciones*) registrado;
+	
+	return procesoRegistrado->pid == pidBuscadoParaLiberar;
+	
+}
+
+//Para borrar instrucciones unitarias con los campos de adentro
+void destroy_instuccion_unitaria(t_instruccion_unitaria *instruccion){
+    
+    free(instruccion->opcode);
+    if(instruccion->parametro1_lenght != 0){
+
+        free(instruccion->parametros[0]);
+
+          if(instruccion->parametro2_lenght != 0){
+            free(instruccion->parametros[1]);
+            if(instruccion->parametro3_lenght != 0){
+                	free(instruccion->parametros[2]);
+                    if(instruccion->parametro4_lenght != 0){
+                	    free(instruccion->parametros[3]);
+                        if(instruccion->parametro5_lenght != 0){
+                	        free(instruccion->parametros[4]);
+                            }
+                    }
+                }
+            } 
+        }
+    
+    free(instruccion);
+    log_info(logger,"Destruyo instruccion unitaria");
+}
+void destroyPaginasYLiberarMarco(void *pagina){
+    t_paginaMarco *paginaBorrar = (t_paginaMarco*) pagina;
+
+    //De la tabla de Situacion de marcos busco el marco donde estaba la pagina que voy a borrar
+    //Aca no hago el -1 en el indice porque los numeros de marco arrancan en 0
+    //Cuando cree la lita de marcos la primera tiene su campo numeroMarco = 0
+    //Por eso recomendaban usar una lista para esto para directamente buscar el marco por el indice
+    t_situacion_marco *marcoBuscado = list_get(situacionMarcos,paginaBorrar->numeroMarco);
+    log_info(logger,"Elimino Pagina de la lista de paginas PID: %i",marcoBuscado->pid);
+
+    //Libero el Marco
+    marcoBuscado->esLibre = true;
+    marcoBuscado->pid = -1;
+    //Actualizo contador de marcos libres
+    cantidadMarcos = cantidadMarcos + 1;
+
+
+    free(paginaBorrar);
 }

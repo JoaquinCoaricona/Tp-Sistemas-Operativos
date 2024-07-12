@@ -36,6 +36,7 @@ static void process_conection(void *args)
         case HANDSHAKE_CPU:
             log_info(logger, "handshake %d recibido %s",operation_code, server_name);
             packet = fetch_packet(client_socket);
+            list_destroy(packet);
             log_info(logger, "Packet received");
 
             //close_conection(client_socket);
@@ -76,6 +77,9 @@ static void process_conection(void *args)
         break;
         case SOLICITUD_LECTURA:
             leerMemoria(client_socket);
+        break;
+        case LIBERAR_ESTRUCTURAS:
+            liberarEstructuras(client_socket);
         break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);

@@ -398,8 +398,7 @@ void ciclo_de_instruccion(int socket_kernel){
         }
         if (strcmp(instruccion_ACTUAL->opcode, "IO_FS_READ") == 0){
 			operacion_io_fs_read(PCBACTUAL,socket_kernel,instruccion_ACTUAL);
-            continuar_con_el_ciclo_instruccion = 
-            false;
+            continuar_con_el_ciclo_instruccion = false;
         }
         if (strcmp(instruccion_ACTUAL->opcode, "EXIT") == 0) {
             

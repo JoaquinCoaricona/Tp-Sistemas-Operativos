@@ -83,7 +83,7 @@ void manejoHiloQuantum(void *pcb){
 
     t_quantum *proceso = (t_quantum *)pcb;
     
-    usleep(quantumGlobal);
+    usleep(quantumGlobal * 1000);
 
     pthread_mutex_lock(&m_procesoEjectuandoActualmente);
     if(procesoEjectuandoActualmente == proceso->pid){
@@ -311,7 +311,7 @@ void manejoHiloQuantumVRR(void *pcb){
 //que funciona 
     t_quantum *proceso = (t_quantum *)pcb;
     
-    usleep(proceso->quantum);
+    usleep(proceso->quantum * 1000);
 
     pthread_mutex_lock(&m_procesoEjectuandoActualmente);
     if(procesoEjectuandoActualmente == proceso->pid){

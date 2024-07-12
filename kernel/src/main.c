@@ -20,6 +20,9 @@ t_list *recursosAsignados;
 int pidBuscadoRecurso;
 char *recursoBuscado;
 int totalRecursos;
+char *buscarInterfazYaRegistrada;
+bool yaEstaRegistrada;
+int pidFinalizadoPorConsola;
 int main(int argc, char *argv[])
 {
 
@@ -33,6 +36,7 @@ int main(int argc, char *argv[])
     t_buffer *buffer;
     t_packet *packet_handshake;
     PID = 0;
+    pidFinalizadoPorConsola = -1;
     salteoPostAlSemaforo = 0;
     planificacion_detenida = false;
     listaInterfaces = list_create();
@@ -178,8 +182,27 @@ void *manage_request_from_input_output(void *args)
         {
         case NUEVA_INTERFAZ:
             t_interfaz_registrada *recibida = NULL;
+            //La pongo en falso para que se pueda hacer la busqueda y si se encuentra devuelva true
+            //por las dudas que haya estado en otro valor o se ponga en true por no inicializarla
+            yaEstaRegistrada = false;
+            //Tengo que hacer una comprobacion porque puede ser que la interfaz se haya desconectado
+            //y se este volviendo a conectar, entonces en ese caso solo tendria que actualizar el socket
+            //porque por como esta hecha la funcion, cuando manda las cosas desde el hilo de la interfaz
+            //al mandarlas busca el socket en la estructura, si lo actualizamos ya se cambia automaticamente
+            //en la funcion y se puede mandar bien sin tener que ceerrar el hilo y volver a crear otro
+            //Esto sirve para las interfaces FS que se levantaban y cerraban para probar la persistencia
+            //de los datos
+            //Dentro de la funcion recibir interfaz se hace la prueba con el list find
             recibida = recibir_interfaz(client_socket);
-            crear_hilo_interfaz(recibida); // ESTA EN RECEPCION.C CREO EL HILO
+            //si ya esta registrada liber la memoria de lo que devolvi porque como ya estaba registrada
+            //devuelvo el struct vacio solo con el nombre cargado y como no le voy a armar un hilo
+            //entonces ese strcut no sirve y lo libero
+            if(yaEstaRegistrada){
+                log_info(logger,"La interfaz ya estaba registrada, no creo hilo");
+                free(recibida);
+            }else{
+                crear_hilo_interfaz(recibida); // ESTA EN RECEPCION.C CREO EL HILO
+            }
             break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
@@ -217,6 +240,14 @@ void *manage_request_from_dispatch(void *args)
         // entonces cuando vuelva a entrar al bucle y lea fetchcodop de vuelta lo que va a hacer el leer el codop
         // pero leyendo lo que falto deserializar del buffer y si tenia que quedar esperando no va a esperar
         // porque el socket todavia tiene algo cargado
+
+        //Hago esto porque voy a agregar un semaforo, porque en la consigna dice que
+        //cuando detenemos la planificacion, el proceso que esta ejecutando actualmente
+        //no se elimina pero cuando vuelve pausa su transicion al otro estado y el motivo del
+        //desalojo tambien se pausa. Por eso para ahorar un monton de semaforos
+        //pongo uno general aca. No queria tocar esta parte pero es para ahorrar muchos semaforos
+        log_info(logger,"<%i> Llego a kernel",procesoEjectuandoActualmente);
+        pthread_mutex_lock(&m_dispatch_kernel_Llegada_Procesos);
 
         switch (operation_code)
         {
@@ -305,8 +336,9 @@ void *manage_request_from_dispatch(void *args)
             // sem_post(&sem_multiprogramacion);
             // aca el grado de multiprogramacion no cambia, porque los procesos en block tambien entratran dentro del
             // grado de multiprogramacion, solo cuando sale por exit se aumenta el grado de multiprogramacion
+            free(nombreInter); //Lo libero porque solo lo uso para buscar la intefaz
             break;
-        case STDOUT_ESCRIBIR:
+            case STDOUT_ESCRIBIR:
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
@@ -336,7 +368,7 @@ void *manage_request_from_dispatch(void *args)
             //y al hacer las restas quedaba un valor negativo, y como al volver de IO solo se fije que sea igual al 
             //quantumgloabl entonces podias terminar en la cola prioritaria teniendo quantum negativo.
             if(receptorPCBOUT->quantum < 0){
-                receptorPCB->quantum = quantumGlobal;
+                receptorPCBOUT->quantum = quantumGlobal;
                 log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
             }
             }
@@ -346,8 +378,9 @@ void *manage_request_from_dispatch(void *args)
             // sem_post(&sem_multiprogramacion);
             // aca el grado de multiprogramacion no cambia, porque los procesos en block tambien entratran dentro del
             // grado de multiprogramacion, solo cuando sale por exit se aumenta el grado de multiprogramacion
+            free(nombreInterOUT);
             break;
-        case STDIN_LEER:
+            case STDIN_LEER:
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
@@ -390,181 +423,115 @@ void *manage_request_from_dispatch(void *args)
             // sem_post(&sem_multiprogramacion);
             // aca el grado de multiprogramacion no cambia, porque los procesos en block tambien entratran dentro del
             // grado de multiprogramacion, solo cuando sale por exit se aumenta el grado de multiprogramacion
+            free(nombreInterIN);
             break;
-        case WAIT_SOLICITUD:
+            case WAIT_SOLICITUD:
                 apropiarRecursos(server_socket);
             break;
-        case SIGNAL_SOLICITUD:
+            case SIGNAL_SOLICITUD:
                 liberarRecursos(server_socket);
             break;
-        case OUT_MEMORY:
-                pthread_mutex_lock(&m_procesoEjectuandoActualmente);
-                procesoEjectuandoActualmente = -1;
-                pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
-                // printf("Llego Un PCB");
-                log_info(logger, "LLEGO UN PCB POR OUT OF MEMORY");
-                fetch_pcb_actualizado(server_socket);
-                //Aca Controlo que solamente en VRR hago destroy al t_temporal
-                if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
-                temporal_destroy(timer);
-                }
-                sem_post(&short_term_scheduler_semaphore);
-                controlGradoMultiprogramacion();
-                //sem_post(&sem_multiprogramacion);
+            case OUT_MEMORY:
+            pthread_mutex_lock(&m_procesoEjectuandoActualmente);
+            procesoEjectuandoActualmente = -1;
+            pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
+            // printf("Llego Un PCB");
+            log_info(logger, "LLEGO UN PCB POR OUT OF MEMORY");
+            fetch_pcb_actualizado(server_socket);
+            //Aca Controlo que solamente en VRR hago destroy al t_temporal
+            if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
+            temporal_destroy(timer);
+            }
+            sem_post(&short_term_scheduler_semaphore);
+            controlGradoMultiprogramacion();
+            //sem_post(&sem_multiprogramacion);
             break;
+
         case DIALFS_CREATE:
-            pthread_mutex_lock(&m_procesoEjectuandoActualmente);
-            procesoEjectuandoActualmente = -1;
-            pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
-
-            t_pcb *receptorPCBDialFSC = NULL;
-            t_interfaz_registrada *interfazDialFSC = NULL;
-            char *nombreInterDialFSC = NULL;
-            char *nombreArchivoC = NULL;
-
-            receptorPCBDialFSC = fetch_pcb_dialfs_create_o_delete(server_socket, &nombreInterDialFSC,&nombreArchivoC);
-
-            if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
-                obtenerDatosTemporal();
-                receptorPCBDialFSC->quantum = receptorPCBDialFSC->quantum - (ms_transcurridos * 1000);
-                if(receptorPCBDialFSC->quantum < 0){
-                    receptorPCBDialFSC->quantum = quantumGlobal;
-                    log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
-                }
-            }
-            interfazDialFSC = buscar_interfaz(nombreInterDialFSC);
-
-            int tamanoNuevoC = -1;
-            void* contenidoDialFSC = NULL;
-            int tamaContenidoDialFSC = -1;
-            int punteroArchivoC = -1;
-            cargarEnListaDialFS(receptorPCBDialFSC, interfazDialFSC, nombreArchivoC, tamanoNuevoC, DIALFS_CREATE, &contenidoDialFSC, tamaContenidoDialFSC, punteroArchivoC);
-
-            sem_post(&short_term_scheduler_semaphore);
-            break;
         case DIALFS_DELETE:
-            pthread_mutex_lock(&m_procesoEjectuandoActualmente);
-            procesoEjectuandoActualmente = -1;
-            pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
-
-            t_pcb *receptorPCBDialFSD = NULL;
-            t_interfaz_registrada *interfazDialFSD = NULL;
-            char *nombreInterDialFSD = NULL;
-            char *nombreArchivoD = NULL;
-
-            receptorPCBDialFSD = fetch_pcb_dialfs_create_o_delete(server_socket, &nombreInterDialFSD,&nombreArchivoD);
-
-            if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
-                obtenerDatosTemporal();
-                receptorPCBDialFSD->quantum = receptorPCBDialFSD->quantum - (ms_transcurridos * 1000);
-                if(receptorPCBDialFSD->quantum < 0){
-                    receptorPCBDialFSD->quantum = quantumGlobal;
-                    log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
-                }
-            }
-            interfazDialFSD = buscar_interfaz(nombreInterDialFSD);
-
-            int tamanoNuevoD = -1;
-            void* contenidoDialFSD = NULL;
-            int tamaContenidoDialFSD = -1;
-            int punteroArchivoD = -1;
-            cargarEnListaDialFS(receptorPCBDialFSD, interfazDialFSD, nombreArchivoD, tamanoNuevoD, DIALFS_DELETE, &contenidoDialFSD, tamaContenidoDialFSD, punteroArchivoD);
-
-            sem_post(&short_term_scheduler_semaphore);
-            break;
         case DIALFS_TRUNCATE:
+            
+            int nuevoTamaArchivo = 0;
+            if(operation_code == DIALFS_TRUNCATE){
+                nuevoTamaArchivo = 1;
+            }
+
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
 
-            t_pcb *receptorPCBDialFST = NULL;
-            t_interfaz_registrada *interfazDialFST = NULL;
-            char *nombreInterDialFST = NULL;
-            char *nombreArchivoT = NULL;
-            int tamanoNuevoT = 0;
+            t_pcb *receptorPCBFS = NULL;
+            t_interfaz_registrada *interfazFS = NULL;
+            char *nombreInterFS = NULL;
+            char *nombreArchivo = NULL;
 
-            receptorPCBDialFST = fetch_pcb_dialfs_truncate(server_socket, &nombreInterDialFST,&nombreArchivoT,&tamanoNuevoT);
+            receptorPCBFS = fetchPCBfileSystem(server_socket, &nombreInterFS,&nombreArchivo,&nuevoTamaArchivo);
 
             if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
                 obtenerDatosTemporal();
-                receptorPCBDialFST->quantum = receptorPCBDialFST->quantum - (ms_transcurridos * 1000);
-                if(receptorPCBDialFST->quantum < 0){
-                    receptorPCBDialFST->quantum = quantumGlobal;
+                receptorPCBFS->quantum = receptorPCBFS->quantum - (ms_transcurridos * 1000);
+                if(receptorPCBFS->quantum < 0){
+                    receptorPCBFS->quantum = quantumGlobal;
                     log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
                 }
             }
-            interfazDialFST = buscar_interfaz(nombreInterDialFST);
 
-            void* contenidoDialFST = NULL;
-            int tamaContenidoDialFST = -1;
-            int punteroArchivoT = -1;
-            cargarEnListaDialFS(receptorPCBDialFST, interfazDialFST, nombreArchivoT, tamanoNuevoT, DIALFS_TRUNCATE, &contenidoDialFST, tamaContenidoDialFST, punteroArchivoT);
+            interfazFS = buscar_interfaz(nombreInterFS);
+            
+            t_colaDialFS *guardarFS = malloc(sizeof(t_colaDialFS)); 
+
+            guardarFS->tipoOperacion = operation_code;
+            guardarFS->PCB = receptorPCBFS;
+            guardarFS->nombreArchivo = nombreArchivo;
+
+            if(operation_code == DIALFS_TRUNCATE){
+                guardarFS->nuevoTamaArchivo = nuevoTamaArchivo;
+            }
+
+            cargarEnListaFS(guardarFS,interfazFS);
 
             sem_post(&short_term_scheduler_semaphore);
+            free(nombreInterFS);
             break;
+
         case DIALFS_READ:
+        case DIALFS_WRITE:
+
             pthread_mutex_lock(&m_procesoEjectuandoActualmente);
             procesoEjectuandoActualmente = -1;
             pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
 
-            t_pcb *receptorPCBDialFSR = NULL;
-            t_interfaz_registrada *interfazDialFSR = NULL;
-            char *nombreInterDialFSR = NULL;
-            char *nombreArchivoR = NULL;
+            void *contenidoWR = NULL;
+            t_pcb *receptorPCBFSwr = NULL;
+            t_interfaz_registrada *interfazFSwr = NULL;
+            char *nombreInterFSwr = NULL;
+            int tamaContenidowr;
 
-            int punteroArchivoR;
-            void *contenidoDialFSR;
-            int tamaContenidoDialFSR;
-
-            receptorPCBDialFSR = fetch_pcb_dialfs_read_o_write(server_socket, &nombreInterDialFSR, &nombreArchivoR, &punteroArchivoR, &contenidoDialFSR, &tamaContenidoDialFSR);
+            receptorPCBFSwr = fetchPCBfileSystemWR(server_socket, &nombreInterFSwr,&contenidoWR,&tamaContenidowr);
 
             if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
                 obtenerDatosTemporal();
-                receptorPCBDialFSR->quantum = receptorPCBDialFSR->quantum - (ms_transcurridos * 1000);
-                if(receptorPCBDialFSR->quantum < 0){
-                    receptorPCBDialFSR->quantum = quantumGlobal;
+                receptorPCBFSwr->quantum = receptorPCBFSwr->quantum - (ms_transcurridos * 1000);
+                if(receptorPCBFSwr->quantum < 0){
+                    receptorPCBFSwr->quantum = quantumGlobal;
                     log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
                 }
             }
-            interfazDialFSR = buscar_interfaz(nombreInterDialFSR);
 
-            int tamanoNuevoR = -1;
-            cargarEnListaDialFS(receptorPCBDialFSR, interfazDialFSR, nombreArchivoR, tamanoNuevoR, DIALFS_READ, &contenidoDialFSR, tamaContenidoDialFSR, punteroArchivoR);
+            interfazFSwr = buscar_interfaz(nombreInterFSwr);
+            
+            t_colaDialFS *guardarFSwr = malloc(sizeof(t_colaDialFS)); 
 
-            sem_post(&short_term_scheduler_semaphore);
-
-            break;
-        case DIALFS_WRITE :
-            pthread_mutex_lock(&m_procesoEjectuandoActualmente);
-            procesoEjectuandoActualmente = -1;
-            pthread_mutex_unlock(&m_procesoEjectuandoActualmente);
-
-            t_pcb *receptorPCBDialFSW = NULL;
-            t_interfaz_registrada *interfazDialFSW = NULL;
-            char *nombreInterDialFSW = NULL;
-            char *nombreArchivoW = NULL;
-
-            int punteroArchivoW;
-            void *contenidoDialFSW;
-            int tamaContenidoDialFSW;
-
-            receptorPCBDialFSW = fetch_pcb_dialfs_read_o_write(server_socket, &nombreInterDialFSW, &nombreArchivoW, &punteroArchivoW, &contenidoDialFSW, &tamaContenidoDialFSW);
-
-            if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
-                obtenerDatosTemporal();
-                receptorPCBDialFSW->quantum = receptorPCBDialFSW->quantum - (ms_transcurridos * 1000);
-                if(receptorPCBDialFSW->quantum < 0){
-                    receptorPCBDialFSW->quantum = quantumGlobal;
-                    log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
-                }
-            }
-            interfazDialFSW = buscar_interfaz(nombreInterDialFSW);
-
-            int tamanoNuevoW = -1;
-            cargarEnListaDialFS(receptorPCBDialFSW, interfazDialFSW,nombreArchivoW, tamanoNuevoW, DIALFS_WRITE, &contenidoDialFSW, tamaContenidoDialFSW, punteroArchivoW);
+            guardarFSwr->tipoOperacion = operation_code;
+            guardarFSwr->PCB = receptorPCBFSwr;
+            guardarFSwr->contenido = contenidoWR;
+            guardarFSwr->tamaContenido = tamaContenidowr;
+            
+            cargarEnListaFS(guardarFSwr,interfazFSwr);
 
             sem_post(&short_term_scheduler_semaphore);
-            break;
+            free(nombreInterFSwr);
+        break; 
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
             return;
@@ -573,6 +540,9 @@ void *manage_request_from_dispatch(void *args)
             log_error(logger, "Alguno error inesperado %s", server_name);
             return;
         }
+        //Aca desbloqueo el semaforo,este cambio solo esta hecho para detener planificacion
+        //y por lo que esta explicando donde bloqueo este semaforo
+        pthread_mutex_unlock(&m_dispatch_kernel_Llegada_Procesos);
     }
 
     log_warning(logger, "Conexion cerrada %s", server_name);
@@ -637,6 +607,10 @@ void create_process(char *path)
     // packetPCB = create_packet(PCB_REC, bufferPCB);
     // add_to_packet(packetPCB, PCB, sizePCB);
     // send_packet(packetPCB, cpu_dispatch_socket);
+}
+
+void end_process()
+{
 }
 
 void fetch_pcb_actualizado(int server_socket)
@@ -797,11 +771,44 @@ void fetch_pcb_actualizado_fin_quantum(int server_socket)
     // aca le cambio el estado a REady porque fue desalojado por fin de quantum
     pcbEJECUTANDO->state = READY;
 
-    addEstadoReady(pcbEJECUTANDO); // meto en ready el pcb
-    sem_post(&sem_ready); //esto es para avisar que hay procesos en ready
-    //porque el planificador de corto plazo tiene un semaforo para saber que por lo menos hay
-    //algun proceso en ready, sino no sabe si hay y podrian pedirle que envie algo y no haya procesos
-    //para enviar, por eso esto es un contador de cuantos procesos hay en ready
+    //Hago esto por un caso muy borde que es cuando estoy en RR o VRR
+    //si el proceso tiene una interrupcion de FIN de quantum entonces quizas ya esta volviendo
+    //osea esta siendo enviado por CPU, entonces aca kernel al recibirlo tiene la etiqueta
+    //del paquete y dice que es fin de quantum pero en realidad deberia haberse finalizado
+    //porque lo finalizamos por consola (ese es el caso borde). Osea que seria que yo finalizo
+    //un proceso y justo estaba siendo enviado entonces al llegar aca
+    //entrar como fin de quantum y vuelve a ready. Entonces no se finaliza realmente
+    //probe una vez y me paso 3 veces seguidas esto. Pero despues
+    //cuando quise que pase para poder probar esta solucion tuve que probar varias veces
+    //para generar ese caso borde y la solucion funciona bien.
+
+    //La solucion fue crear otra variable global que solo le asigno un valor
+    //Cuanod finalizo un proceso y es el que esta en CPU
+    //solo en ese caso. Uso los semaforos para evitar condiciones de carrera
+    //entonces llego aca y controlo si es el mismo pid que justo vuelve de consola
+    //por fin de quantum. Si es ese entonces lo agrego a la cola exit sino a ready normalmente
+    //hago la prueba aca que es el ultimo lugar previo a que se agregue a ready
+    //Funciona bien
+    
+    pthread_mutex_lock(&m_pidFinalizadoPorConsola);
+    if(pidFinalizadoPorConsola == pcbEJECUTANDO->pid){
+        pidFinalizadoPorConsola = -1;
+	    pthread_mutex_unlock(&m_pidFinalizadoPorConsola);
+        pcbEJECUTANDO->state = EXIT;
+        addEstadoExit(pcbEJECUTANDO); // meto en ready el pcb
+        controlGradoMultiprogramacion();
+        log_info(logger,"El proceso se elimino por consola y estaba en cpu ya se habia mandado a kernel pero lo eliminamos aca");
+    }else{
+        pidFinalizadoPorConsola = -1;
+        pthread_mutex_unlock(&m_pidFinalizadoPorConsola);
+
+        addEstadoReady(pcbEJECUTANDO); // meto en ready el pcb
+        sem_post(&sem_ready); //esto es para avisar que hay procesos en ready
+        //porque el planificador de corto plazo tiene un semaforo para saber que por lo menos hay
+        //algun proceso en ready, sino no sabe si hay y podrian pedirle que envie algo y no haya procesos
+        //para enviar, por eso esto es un contador de cuantos procesos hay en ready
+        log_info(logger,"Sigo con normalidad");
+    }
 
     // el puntero pcb global lo dejo en null
     // este no es el PID ejecutando, es el puntero al pcb que se envio
@@ -916,6 +923,29 @@ t_interfaz_registrada *recibir_interfaz(int client_socket)
     // por eso aca va sin el &
     offset += strlen_nombre;
 
+    //Aca empiezo la busqueda para ver si ya tengo la interfaz registrada
+    //Cargo en la variable global el nombre de la interfaz que llego
+    buscarInterfazYaRegistrada = interfazNueva->nombre;
+    //Uso la funcion bool que cree y busco en la lista de interfaces a ver si alguna
+    //coincide con el nombre
+    t_interfaz_registrada *intBuscada = list_find(listaInterfaces,BuscarinterfazYaRegistrada);
+    //En caso que esto devuelva algo, osea que no devuelva null, actualizo el socket que tenia cargado
+    //y por como esta implemendatado el hilo que manda las cosas a la interfaz con esto ya es suficiente
+    //y manda bien las cosas. No es necesario cerrar ese hilo y levantar otro
+    if(intBuscada != NULL){
+        //actualizo el socket
+        intBuscada->socket_de_conexion = client_socket;
+        log_info(logger,"Actualizo socket de la interfaz");
+        //marco el true en la variable global para loggear bien y entrar por el if al volver a la funcion
+        //que llamo a esta
+        yaEstaRegistrada = true;
+        //como voy a hacer el return antes llegar al final de esta funcion, libero el buffer aca
+        free(buffer);
+        //la estoy devolviendo incompleta porque no me interesa recibir el resto porque ya la tengo registrada
+        return interfazNueva;   
+    }
+
+
     memcpy(&strlen_nombre, buffer + offset, sizeof(int)); // RECIBO EL TAMAÑO DEL TIPO INTERFAZ
     offset += sizeof(int);
 
@@ -952,6 +982,9 @@ void detener_planificacion()
         pthread_mutex_lock(&m_planificador_largo_plazo);
         pthread_mutex_lock(&m_planificador_corto_plazo);
         pthread_mutex_lock(&procesosBloqueados);
+        pthread_mutex_lock(&m_add_estado_readyPlus);
+        pthread_mutex_lock(&m_add_estado_ready);
+        pthread_mutex_lock(&m_dispatch_kernel_Llegada_Procesos);
         planificacion_detenida = true;
         log_info(logger, "Pausa planificación: “PAUSA DE PLANIFICACIÓN“");
     }
@@ -969,6 +1002,9 @@ void iniciar_planificacion()
         pthread_mutex_unlock(&m_planificador_largo_plazo);
         pthread_mutex_unlock(&m_planificador_corto_plazo);
         pthread_mutex_unlock(&procesosBloqueados);
+        pthread_mutex_unlock(&m_add_estado_ready);
+        pthread_mutex_unlock(&m_add_estado_readyPlus);
+        pthread_mutex_unlock(&m_dispatch_kernel_Llegada_Procesos);
         planificacion_detenida = false;
         log_info(logger, "Inicio de planificación: “INICIO DE PLANIFICACIÓN“");
     }
@@ -1015,7 +1051,11 @@ void finalizar_proceso(char *parametro)
         //ASI QUE LE PASO LA DIRECCION
         send_packet(eliminarProceso, cpu_interrupt_socket);
         destroy_packet(eliminarProceso);
-    
+
+	    pthread_mutex_lock(&m_pidFinalizadoPorConsola);
+        pidFinalizadoPorConsola = pidAeliminar;
+	    pthread_mutex_unlock(&m_pidFinalizadoPorConsola);
+
     }else{ 
 
         // ACLARACION IMPORTANTE: T_QUEUE ES UNA ESTRUCTURA QUE DENTRO TIENE UN T_LIST QUE SE LLAMA
@@ -1309,7 +1349,7 @@ void apropiarRecursos(int socket){
 	    send_packet(packetRta,socket);		//ENVIO EL PAQUETE
 	    destroy_packet(packetRta);
     }
-
+    free(recurso);
     free(buffer);
 }
 
@@ -1415,6 +1455,7 @@ void liberarRecursos(int socket){
     }else{
         log_info(logger,"RECUERDO ENCONTRADO Y ELIMINADO DE LA TABLA DE ASIGNADOS");
         free(rec->nombreRecurso);
+        free(rec);
     }
 
      //Envio confirmacion que siga con el PCB
@@ -1424,7 +1465,7 @@ void liberarRecursos(int socket){
 	send_packet(packetRta,socket);		//ENVIO EL PAQUETE
 	destroy_packet(packetRta);
     
-
+    free(recurso);
     free(buffer);
 }
 
@@ -1475,6 +1516,7 @@ void liberarRecursosProceso(int pid){
         //en ese caso volveria a entrar al while, sino sale directamente
         log_info(logger,"Recurso %s liberado",rec->nombreRecurso);
         free(rec->nombreRecurso);
+        free(rec);
         rec = list_remove_by_condition(recursosAsignados,buscarRecursoUsadoPorPid);
     
     }
@@ -1524,4 +1566,243 @@ void listarRecursos(){
         log_info(logger,"Cant recursos del %s : %i",recursos[i],recurso->instancias);
                 
 }
+}
+//Funcion para buscar si una interfaz ya la tengo registrada y solo tengo que actualizar 
+//su socket porque se desconecto y ahora se esta volviendo a conectar
+bool BuscarinterfazYaRegistrada(void* interfazPrueba){
+    t_interfaz_registrada *interfaz =(t_interfaz_registrada *) interfazPrueba;
+    //Comparo el nombre de la que estoy probando con la de la variable global que cargue antes de hacer el listfind
+    return string_equals_ignore_case(interfaz->nombre,buscarInterfazYaRegistrada);
+}
+void ejecutar_script(char *path){
+    
+    int baseTam = strlen("/home/utnso/scripts/") + 1;
+    char *pathBase = malloc(baseTam);
+    memcpy(pathBase,"/home/utnso/scripts/",baseTam);
+
+    string_append(&pathBase,path);
+
+    FILE *archivoScript = fopen(pathBase, "r");
+    if (archivoScript == NULL) {
+        perror("Error al abrir el archivo");
+        return;
+    }
+
+    char linea[256];
+    //Esto lo usa para comprobar que realmente empieza con eso
+    //EN REALIDAD SE DEBERIA PODER LEER CUALQUIER COMANDO
+    //PERO COMO ESTO ES DE LO ULTIMO QUE HAGO, LAS PRUEBAS YA ESTAN PUBLICADAS
+    //Y SOLO USAR SCRIPTS PARA INICIAR PROCESOS POR ESO LO HAGO ASI
+
+    //ACLARACION: FIJARSE QUE EN INICIAR_PROCESO YA INCLUYO EL ESPACIO
+    //ENTONCES CON EL STRLEN INCLUYO EL ESPACIO Y NO HAGO STRLEN + 1
+    //PORQUE QUIERO SALTEARME TODOS ESOS CARACTERES PARA LLEGAR AL PATH
+    //PERO QUIERO SALTEARME EXACTAMENTE ESOS, CON EL ESPACIO INCLUIDO
+    //PERO NO MAS, POR ESO NO HAGO STRLEN MAS 1 
+    const char *prefix = "INICIAR_PROCESO ";
+    
+    size_t prefix_len = strlen(prefix);
+
+    while (fgets(linea, sizeof(linea), archivoScript)) {
+        // Verificar si la línea comienza con "INICIAR_PROCESO "
+        if (strncmp(linea, prefix, prefix_len) == 0) {
+            // Extraer el path después del prefijo
+            //LO QUE HAGO ES, DESDE LA LINEA QUE LEI
+            //LE SUMO EL TAMAÑO DE INICIAR_PROCESO osea
+            //me salteo eso, incluyendo el espacio asi en pathProceso
+            //queda lo que realmente le paso a create_process
+            char *pathProceso = linea + prefix_len;
+            // Eliminar el salto de línea al final del path si existe
+            // Utiliza la función `strcspn` para encontrar el índice del
+            // primer carácter de `path` que coincida con cualquier carácter en
+            // `"\n"` (en este caso, solo el salto de línea). Asigna `'\0'` a esta
+            // posición para eliminar el salto de línea, terminando la cadena `path`
+            // en ese punto.
+            pathProceso[strcspn(pathProceso, "\n")] = '\0';
+            // Crear el proceso
+            create_process(pathProceso); 
+        }
+
+
+    }
+
+// En el código: "linea" es un arreglo de caracteres de
+// tamaño fijo declarado en la pila (stack). No se asigna dinámicamente en
+// el montón (heap), por lo que no es necesario ni apropiado llamar a free
+// para este tipo de arreglo. Los arreglos automáticos (los que se declaran con
+// un tamaño fijo dentro de una función) se liberan automáticamente cuando la
+// función sale de su ámbito.
+
+
+// Prefix no necesita ser liberado porque es una cadena constante
+// (literal de cadena) que se almacena en el segmento de texto del programa,
+// no en el montón (heap). Los literales de cadena en C tienen una duración de
+// vida estática y no requieren liberación explícita de memoria.
+
+    free(pathBase);
+    fclose(archivoScript);
+
+}
+//FUNCION PARA ITERAR EN LAS LISTAS Y LISTAR LOS PIDS
+void listar(void *arg_pcb_n){
+	t_pcb *pcb = (t_pcb *) arg_pcb_n;
+    log_info(logger,"Pid: %i",pcb->pid);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//  FUNCIONES PARA LISTAR PIDS DENTRO DE CADA COLA DE INTERFAZ DEPENDIENDO EL TIPO DE INTERFAZ
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//PODRIA HABER HECHO ALGO PARECIDO A POLIMORFISMO (ESTABA INTENTANDOLO)
+//PORQUE TODAS LAS ESTRUCCTUARAS TIENEN
+//UN CAMPO PCB PERO FALTA POCO TIEMPO Y PARA EVITAR ERRORES PREFERI HACERLO ASI
+
+//Funcion para listar PID dentro de la cola de la interfaz
+//cada una trabaja con el struct de cada cola segun el tipo de interfaz
+void pidsInterfazSleep(void *interRegis){
+	t_pcbYtiempo *inter = (t_pcbYtiempo *) interRegis;
+    log_info(logger,"Pid: %i",inter->PCB->pid);
+}
+//Funcion para listar PID dentro de la cola de la interfaz
+void pidsInterfazStdOut(void *interRegis){
+	t_colaStdOUT *inter = (t_colaStdOUT *) interRegis;
+    log_info(logger,"Pid: %i",inter->PCB->pid);
+}
+//Funcion para listar PID dentro de la cola de la interfaz
+void pidsInterfazStdin(void *interRegis){
+	t_colaStdIN *inter = (t_colaStdIN *) interRegis;
+    log_info(logger,"Pid: %i",inter->PCB->pid);
+}
+//Funcion para listar PID dentro de la cola de la interfaz
+void pidsInterfazFs(void *interRegis){
+	t_colaDialFS *inter = (t_colaDialFS *) interRegis;
+    log_info(logger,"Pid: %i",inter->PCB->pid);
+}
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//FUNCION PARA ITERAR EN LAS COLAS DE CADA INTERFAZ, ESTA ES LA FUNCION QUE LE PASO A LIST
+//ITERATE DE LA COLA DE INTERFACES GENERAL
+void listarPidInterfaz(void *interfazIterate){
+    //Agarro la interfaz e imprimo su nombre 
+	t_interfaz_registrada *interfaz = (t_interfaz_registrada *) interfazIterate;
+    log_info(logger,"Nombre: %s Tipo: %s",interfaz->nombre,interfaz->tipo);
+
+    //Activo el semaforo para acceder a la cola de procesos
+    pthread_mutex_lock(&(interfaz->mutexColaIO));
+    //Me fijo si esta vacia y imprimo que esta vacia, pero sino
+    //separo en casos porque dependiendo el caso tiene structs diferentes
+        if(list_size(interfaz->listaProcesosEsperando->elements) == 0){
+            log_info(logger,"La interfaz no tiene elementos esperando");
+        }else{
+            if(string_equals_ignore_case(interfaz->tipo,"GENERICA")){
+                list_iterate(interfaz->listaProcesosEsperando->elements,pidsInterfazSleep);
+            }
+            if(string_equals_ignore_case(interfaz->tipo,"STDOUT")){
+                list_iterate(interfaz->listaProcesosEsperando->elements,pidsInterfazStdOut);
+            }
+            if(string_equals_ignore_case(interfaz->tipo,"STDIN")){
+                list_iterate(interfaz->listaProcesosEsperando->elements,pidsInterfazStdin);
+            }
+            if(string_equals_ignore_case(interfaz->tipo,"FS")){
+                list_iterate(interfaz->listaProcesosEsperando->elements,pidsInterfazFs);
+            }
+        }
+    //Desbloqueo el semaforo aca una vez hechas todas las comprobaciones
+    pthread_mutex_unlock(&(interfaz->mutexColaIO));
+
+}
+
+void listarProcesos(){
+
+    //Listo la cola READY bloqueandola con el semaforo por las dudas
+    log_info(logger,"Lista Cola READY");
+    
+    pthread_mutex_lock(&mutex_state_ready);
+    if(list_size(queue_ready->elements) <= 0){
+        log_info(logger,"Lista Vacia");
+    }else{
+        list_iterate(queue_ready->elements, listar);
+    }
+	pthread_mutex_unlock(&mutex_state_ready);
+
+    //Listo la cola READY+ DEL VRR bloqueandola con el semaforo por las dudas
+    log_info(logger,"Lista Cola READY+ VRR");
+    
+    pthread_mutex_lock(&mutex_state_prioridad);
+    if(list_size(queue_prioridad->elements) <= 0){
+        log_info(logger,"Lista Vacia");
+    }else{
+        list_iterate(queue_prioridad->elements, listar);
+    }
+	pthread_mutex_unlock(&mutex_state_prioridad);
+
+    //Listo la cola NEW bloqueandola con el semaforo por las dudas
+    log_info(logger,"Lista Cola NEW");
+    
+    pthread_mutex_lock(&mutex_state_new);
+    if(list_size(queue_new->elements) <= 0){
+        log_info(logger,"Lista Vacia");
+    }else{
+        list_iterate(queue_new->elements, listar);
+    }
+    pthread_mutex_unlock(&mutex_state_new);
+
+    //Listo la cola EXIT bloqueandola con el semaforo por las dudas
+    log_info(logger,"Lista Cola EXIT");
+    
+    //NO SE PORQUE CUANDO HAGO LIST SIZE QUEUEEXIT DA NEGATIVO
+    //ANTES TENIA UN == 0 Y LO SALTABA Y ENTRABA POR EL ELSE Y DABA SEG FAULT
+    //AHORA QUE PUSE MENOR O IGUAL A 0 FUNCIONA BIEN. NO SE PORQUE PASA BUSQUE
+    //Y TODO ESTABA BIEN
+    //EL ERROR ESTA EN QUE ES LIST_ITERATE Y ESTABA PASANDO QUEUE, HAY QUE 
+    //USAR LA LISTA DENTRO DE LA QUEUE CON ->ELEMENTS
+    pthread_mutex_lock(&mutex_state_exit);
+    if(list_size(queue_exit->elements) <= 0){
+        log_info(logger,"Lista Vacia");
+    }else{
+        list_iterate(queue_exit->elements, listar);
+    }
+    pthread_mutex_unlock(&mutex_state_exit);
+
+    //Proceso Ejecutando
+    log_info(logger,"Estado EXEC");
+    if(pcbEJECUTANDO == NULL){
+        log_info(logger,"No hay ningun proceso en EXEC");
+    }else{
+        log_info(logger,"Proceso en EXEC: %i",pcbEJECUTANDO->pid);
+    }
+
+
+    //Listo la cola Block
+    log_info(logger,"Lista cola BLOCK");
+    
+    //Primero listo las interfaces
+    if(list_size(listaInterfaces) == 0){
+        log_info(logger,"No hay interfaces cargadas");
+    }else{
+        list_iterate(listaInterfaces,listarPidInterfaz);
+    }
+
+    //Ahora las colas de Procesos bloqueados en Recursos
+    for (int i = 0; i < totalRecursos; i++){
+        t_recurso *recurso = dictionary_get(recursosActuales,recursos[i]);
+        log_info(logger,"Recurso: %s",recursos[i]);
+
+        //ACA NO TENGO SEMAFORO, CREO QUE NO ES NECESARIO, SERIA UN CASO MUY BORDE
+        //Me fijo si la lista esta vacia o no 
+        if(list_size(recurso->colaBloqueo->elements) == 0){
+            log_info(logger,"Cola Bloqueo Vacia");
+        }else{
+            //Para esta iteracion usa la misma funcion que para ready new y esas
+            //porque esta cola tiene struct pcb normales y no structs mas grandes con pcb dentro
+            //como las de las interfaces
+            list_iterate(recurso->colaBloqueo->elements,listar);
+        }
+        
+
+                
+    }
+
 }

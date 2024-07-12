@@ -5,6 +5,7 @@
 
 extern t_list *listaInterfaces;
 extern t_queue* queue_ready;
+extern char *buscarInterfazYaRegistrada;
 
 extern t_log *logger;
 extern sem_t procesosEsperandoIO;
@@ -14,8 +15,7 @@ t_pcb *fetch_pcb_con_sleep(int server_socket,int *tiempoDormir,char **nomrebInte
 t_pcb *fetchPCBfileSystem(int server_socket,char **nomrebInterfaz,char **nombreArchivo,int *nuevoTamaArchivo);
 t_pcb *fetch_pcb_con_STDIN(int server_socket,char **nomrebInterfaz,void **contenido,int *tamanio);
 t_pcb *fetch_pcb_con_STDOUT(int server_socket, char **nomrebInterfaz, void **contenido, int *tamanio, int *bytesMalloc);
-t_pcb *fetch_pcb_dialfs_create_o_delete(int server_socket, char **nomrebInterfaz, char **nombreArchivo);
-t_pcb *fetch_pcb_dialfs_truncate(int server_socket, char **nomrebInterfaz, char **nombreArchivo, int *tamanoNuevo);
+t_pcb *fetchPCBfileSystemWR(int server_socket,char **nomrebInterfaz,void **contenido,int *tamaContenidowr);
 void cargarEnListaSTDIN(t_pcb *receptorPCB,t_interfaz_registrada *interfaz,void **contenido,int tamanio);
 
 bool esLaInterfazBuscada(t_interfaz_registrada *recibida);
@@ -23,5 +23,5 @@ t_interfaz_registrada *buscar_interfaz(char *nombreInterfaz);
 void crear_hilo_interfaz(t_interfaz_registrada *interfaz);
 void llamadasIOstdout(t_interfaz_registrada *interfaz);
 void llamadasIOstdin(t_interfaz_registrada *interfaz);
-void llamadasIODialFS(t_interfaz_registrada *interfaz);
+void llamadasFS(t_interfaz_registrada *interfaz);
 #endif /* RECEPCION_H_ */

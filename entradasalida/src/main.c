@@ -27,7 +27,6 @@ t_bitarray *bitarray;
 t_list *lista_archivos;
 
 char* nombre_archivo_a_buscar;
-
 int main(int argc, char *argv[])
 {   
     //ARGV ES UN VECTOR D DE TODAS LAS VARIABLES DE ENTORNO, EN LA POSICION 0 ESTA
@@ -36,9 +35,13 @@ int main(int argc, char *argv[])
     //printf("PARAMETRO: %s\n",argv[0]);  //./bin/entradasalida
     // printf("PARAMETRO: %s\n",argv[1]); // NOMBRE DE LA INTERFAZ
     // printf("PARAMETRO: %s\n",argv[2]); // CONFIG AL QUE LO CONECTO
-  
+    
     char *nombreInterfaz = argv[1];
     char *configRecibido = argv[2];
+
+
+    //char *nombreInterfaz = "FS";
+    //char *configRecibido = "filesystem.config";
 
     // ESTO ES PARA TENER LOS NOMBRE YA PUESTOS ACA Y NO ESTAR PASANDOLOS AL LLAMAR AL EXE
     //char *nombreInterfaz = "nombre1";
@@ -102,7 +105,7 @@ void interfazGenerica(){
         case TIEMPO_DORMIR:
             int tiempo = fetch_tiempoDormir(socket_kernel);
             log_info(logger, "RECIBI UN SLEEP DE %i",tiempo);
-            usleep(tiempoUnidad * tiempo); 
+            usleep(tiempoUnidad * tiempo * 1000); 
             log_info(logger, "TERMINE UN SLEEP DE %i",tiempo);
             enviarAvisoAKernel(socket_kernel,CONFIRMACION_SLEEP_COMPLETO);
             //aca antes pasaba que me decia algun error inesperado, no se porque
@@ -244,6 +247,7 @@ void recibirYejecutarDireccionesFisicas(int socket_kernel){
 
     log_info(logger,"%s",cadena);
 
+    free(contenido);
     free(buffer2);
     
 }
@@ -421,6 +425,7 @@ void mandarAescribirEnMemoria(int dirFisica,void *contenidoAescribir, int cantid
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 }
 
+
 void interfazDialFS(){
 
     //Conexion a memoria 
@@ -445,23 +450,16 @@ void interfazDialFS(){
     retraso_compactacion = atoi(config_get_string_value(config, "RETRASO_COMPACTACION"));
 
     //Path para cada tipo (Archivos normal, Bitmap, Bloques) de Archivos 
-    path_archivo_comun;
     asprintf(&path_archivo_comun, "%s/", path_base_dialfs);
 
-    path_bloques;
     asprintf(&path_bloques, "%s/bloques.dat", path_base_dialfs);
 
-    path_bitmap;
     asprintf(&path_bitmap, "%s/bitmap.dat", path_base_dialfs);
+
+    log_info(logger, "En total existe %i bloques.", block_count);
 
     //Cantidad de bloques libre en el archivo bloques.dat
     bloques_libres = block_count;
-
-    //Crear o Abrir, en caso de existir, Archivo bloques.dat
-    crear_archivo_bloques();
-
-    //Crear o Abrir, en caso de existir, Archivo bitmap.dat
-    crear_archivo_bitmap();
 
     /*Crear la lista donde voy a poner los archivos
     Necesita para compactar*/
@@ -469,6 +467,19 @@ void interfazDialFS(){
 
     //Agregar nombre de todos los archivos que estan en este directorio
     agregar_a_lista_archivos(path_archivo_comun, lista_archivos);
+
+    //Crear o Abrir, en caso de existir, Archivo bloques.dat
+    crear_archivo_bloques();
+
+    //Crear o Abrir, en caso de existir, Archivo bitmap.dat
+    crear_archivo_bitmap();
+
+    int size_list = list_size(lista_archivos);
+
+    log_info(logger, "Existe %i archivos en la lista", size_list);
+
+    free(path_bloques);
+    free(path_bitmap);
 
     //Loop infinito de escucha a KERNEL
     while (1)
@@ -619,6 +630,7 @@ void crear_archivo(int socket_kernel){
         //necesita para compactar 
         //Agregar nombre es suficiente pq despues hay que abrir el archivo de metadata
         list_add(lista_archivos, nombre_archivo);
+        log_info(logger, "Agregando el archivo %s a la lista", nombre_archivo);
     }else{
         yaExiste = true;
         log_info(logger, "Ya existe el archivo a crear.");
@@ -649,13 +661,15 @@ void crear_archivo(int socket_kernel){
         //Disminuir bloques_libres solo por 1 ya que durante creacion el archivo ocupa un bit solo
         bloques_libres = bloques_libres - 1;
 
+        //Como bit libre devuelve emepzando de 0, sumamos 1 para saber el nuemro de bloque
+        int bloque_incial = bit_libre + 1;
+
         //Escribir en archivo metadata el bloque inicial y tamano 
-        fprintf(archivo, "BLOQUE_INICIAL=%i\n", bit_libre);
+        fprintf(archivo, "BLOQUE_INICIAL=%i\n", bloque_incial);
         fprintf(archivo, "TAMANIO_ARCHIVO=0\n");
     }
 
     free(buffer2);
-    free(path_archivo);
     fclose(archivo);
 }
 
@@ -708,9 +722,24 @@ void borrar_archivo(int socket_kernel){
     //Busco el nombre de archivo desde la lista y borro dicho nombre
     char* nombre_archivo_a_borrar = list_find(lista_archivos, buscar_de_lista);
 
+    log_info(logger, "Nombre de Archivo a Borrar: %s", nombre_archivo_a_borrar);
+
+    int cantidad_archivos_en_lista = list_size(lista_archivos);
+
     //Solo si existe el archivo en lista se borra
     if(nombre_archivo_a_borrar != NULL) {
-        list_remove(lista_archivos,nombre_archivo_a_borrar);
+        for(int i = 0; i < cantidad_archivos_en_lista; i++) {
+            char* archivo_actual = list_get(lista_archivos, i);
+
+            log_info(logger, "Nombre de Archivo buscado de la lista: %s", archivo_actual);
+
+            if (strcmp(archivo_actual, nombre_archivo_a_borrar) == 0) {
+                list_remove(lista_archivos, i);
+                //free(archivo_actual);
+                cantidad_archivos_en_lista--;
+                i--; 
+            }
+        }
     }
 
     //Path de archivo a Borrar
@@ -729,8 +758,10 @@ void borrar_archivo(int socket_kernel){
     //Leer y guardar Tamano 
     fscanf(archivo, "TAMANIO_ARCHIVO=%i\n", &tamano);
 
+    int bloques_ocupados = (tamano + block_size - 1) / block_size;  
+
     //Liberar los bloques que ocupaba el archivo desde bitrray 
-    hacer_libre_bloques(bitarray, bloque_inicial, tamano);
+    hacer_libre_bloques(bitarray, bloque_inicial, bloques_ocupados);
 
     //Borrar el Archivo
     if(remove(path_archivo) == 0) {
@@ -740,7 +771,6 @@ void borrar_archivo(int socket_kernel){
     }
 
     free(buffer2);
-    free(path_archivo);
     fclose(archivo);
 }
 
@@ -752,14 +782,13 @@ bool buscar_de_lista(void *nombre_archivo){
 }
 
 //Liberar bloques en bitmap.dat
-void hacer_libre_bloques(t_bitarray *bitarray, int bloque_inicial, int tamano){
-    //Calcular el cantidad de bloques ocupados para el archivo
-    int bloques_ocupados = (tamano + block_size - 1) / block_size;  
+void hacer_libre_bloques(t_bitarray *bitarray, int bloque_inicial, int bloques_ocupados){
 
     int bloque_mas_alta_ocupado = bloques_ocupados + bloque_inicial;
 
-    for (int i = bloque_inicial; i < bloque_mas_alta_ocupado; i++) {
-        bitarray_clean_bit(bitarray, i);
+    for (int i = bloque_inicial - 1; i < bloque_mas_alta_ocupado; i++) {
+        //Since bits and blocks are different (Bits start from 0 and blocks from 1), do - 1 
+        bitarray_clean_bit(bitarray, i - 1);
 
         //Sumar bloques_libres cada vez que libera un bit
         bloques_libres = bloques_libres + 1;
@@ -807,17 +836,22 @@ void truncar_archivo(int socket_kernel){
     nombre_archivo_a_buscar = nombre_archivo;
     char* nombre_archivo_a_truncar = list_find(lista_archivos, buscar_de_lista);
 
+    int cantidad_archivo_en_list_ahora = list_size(lista_archivos);
+
+    log_info(logger, "PID: %i - Truncar Archivo: %s - Tamano: %i  Cantidad Archivos: %i", pid, nombre_archivo, tamano_nuevo, cantidad_archivo_en_list_ahora);
+
+    /*
     //Si no existe el archivo a truncar entonces no vamnos a poder escribir por lo que hacemos un exit
     if(nombre_archivo_a_truncar == NULL) {
-        log_info(logger,"Error buscando el archivo para escribir");
+        log_info(logger,"Error buscando el archivo para truncar");
         exit(EXIT_FAILURE);
-    }
+    }*/
 
     //Path de archivo a Borrar
     asprintf(&path_archivo, "%s/%s", path_archivo_comun, nombre_archivo);
 
     //Abrir archivo para leer el bloque inicial y tamano 
-    FILE *archivo = fopen(path_archivo, "r");
+    FILE *archivo = fopen(path_archivo, "r+");
     if (archivo == NULL) {
         log_info(logger,"Error abriendo el archivo");
         exit(EXIT_FAILURE);
@@ -829,9 +863,22 @@ void truncar_archivo(int socket_kernel){
     //Guardar el tamano
     fscanf(archivo, "TAMANIO_ARCHIVO=%i\n", &tamano);
 
+    log_info(logger, "Bloque Inicial de archivo: %i          Tamano de archivo: %i", bloque_inicial, tamano);
+
     //Tengo a este dos variables para casos donde tengo que actualizar el archivo de metadata de nuevo por no poder truncar por falta de espacio
     int bloque_inicial_truncate_fail = bloque_inicial;
     int tamano_truncate_fail = tamano;
+
+    ftruncate(fileno(archivo), 0);
+
+    //Volver al incio de archivo
+    rewind(archivo);
+
+    //Escribir en el archivo el tamano nuevo 
+    fprintf(archivo, "BLOQUE_INICIAL=%i\n", bloque_inicial);
+    fprintf(archivo, "TAMANIO_ARCHIVO=%i\n", tamano_nuevo);
+
+    log_info(logger, "Tamano nuevo de archivo: %i", tamano_nuevo);
 
     /*Diferencia entre tamano anterior de archivo y tamano nuevo de archivo.
     Si diferencia_tamano > 0 significa que tamano_nuevo es mayor que tamano anterior 
@@ -839,32 +886,53 @@ void truncar_archivo(int socket_kernel){
     Y si diferencia_tamano = 0 significa que tamano_nuevo es igual que tamano anterior*/
     int diferencia_tamano = tamano_nuevo - tamano;
 
-    //Cantidad de bloques que esta ocupando el archivo ahora. Tambien puede ser el nuemro de ultima bloque que se ocupa
-    //Por ejemplo, si cantidad_bloques_actual = 8, entonces ocupa 8 bloques el archivo y el bloque 8 sera el ultime bloque que accede
-    int cantidad_bloques_actual = (tamano + block_size - 1) /block_size;
+    int cantidad_bloques_actual;
 
-    //Cantidad de bloques que va a ocupar el archivo despues de truncar
-    int cantidad_bloques_desp_truncar = (tamano_nuevo + block_size - 1) /block_size;
+    //Aqui esto es mas importante en caso donde tamno nuevo es menor que el tamano actual
+    if(tamano != 0){
+        //Cantidad de bloques que esta ocupando el archivo ahora. Tambien puede ser el nuemro de ultima bloque que se ocupa
+        //Por ejemplo, si cantidad_bloques_actual = 8, entonces ocupa 8 bloques el archivo y el bloque 8 sera el ultime bloque que accede
+        cantidad_bloques_actual = (tamano + block_size - 1) /block_size;
+    }else{
+        cantidad_bloques_actual = 1;
+    }
+    
+
+    int cantidad_bloques_desp_truncar;
+
+    if(tamano_nuevo != 0) {
+        cantidad_bloques_desp_truncar = (tamano_nuevo + block_size - 1) /block_size;
+    }else{
+        cantidad_bloques_desp_truncar = 1;
+    }
+
+    log_info(logger, "Despues de truncar, el archivo debe ocupar %i bloques", cantidad_bloques_desp_truncar);
 
     //Lo que usa despues para agrandar el archivo
     int bloque_final;
-
-    log_info(logger, "PID: %i - Truncar Archivo: %s - Tamano a Leer: %i", pid, nombre_archivo, tamano);
 
     //Achicar el archivo
     //Como es achicar, no hay necesidad de organizar el bloqus.dat ni bitmap.dat
     if(diferencia_tamano < 0){
         log_info(logger,"Tamano nuevo a truncar el archivo menor que lo de tamano actual de archivo.");
 
-        //Aqui el primer bloque a borrar sera el bloque_inicial donde esta dado por el archivo mas el bloques_para_tamano_nuevo.
-        int bloque_inicial_a_borrar = bloque_inicial + cantidad_bloques_desp_truncar + 1;
+        if(cantidad_bloques_actual == cantidad_bloques_desp_truncar){
+            //Es literlamente el mismo caso que dondeel tamano son mismo pero en este caso solo cambia el valor de tamano en archivo 
+            //y el bitarray no cambiara.
+            log_info(logger,"El cantidad de bloques despues de achicar no se cambia.");
+        }else{
+            //Aqui el primer bloque a borrar sera el bloque_inicial donde esta dado por el archivo mas el bloques_para_tamano_nuevo.
+            int bloque_inicial_a_borrar = bloque_inicial + cantidad_bloques_desp_truncar;
 
-        int cantidad_bloques_achicar = cantidad_bloques_actual - cantidad_bloques_desp_truncar;
+            int cantidad_bloques_achicar = cantidad_bloques_actual - cantidad_bloques_desp_truncar;
 
-        /*Liberar el bitarray desde el bloque_inicial_a_borrar calculado el tamano de diferencia_tamano_positivo
-        Libera en el bitmap.dat*/
-        hacer_libre_bloques(bitarray, bloque_inicial_a_borrar, cantidad_bloques_achicar);
+            /*Liberar el bitarray desde el bloque_inicial_a_borrar calculado el tamano de diferencia_tamano_positivo
+            Libera en el bitmap.dat*/
+            hacer_libre_bloques(bitarray, bloque_inicial_a_borrar, cantidad_bloques_achicar);
 
+            log_info(logger, "Liberado desde el bloque %i hasta bloque %i", bloque_inicial_a_borrar, bloque_inicial_a_borrar + cantidad_bloques_achicar - 1);
+        }
+        fclose(archivo);
     }
     //Agrandar el archivo
     else if(diferencia_tamano > 0){
@@ -874,21 +942,13 @@ void truncar_archivo(int socket_kernel){
         int cantidad_bloques_agrandar = cantidad_bloques_desp_truncar - cantidad_bloques_actual;
 
         //Aqui el primer bloque a agrandar sera el bloque_inicial donde esta dado por el archivo mas el cantidad_de_bloque_ultimo_anteriormente.
-        bloque_final = bloque_inicial + cantidad_bloques_actual + 1;
+        bloque_final = bloque_inicial + cantidad_bloques_actual - 1;
+
+        log_info(logger, "Verifico si hay suficiente espacio para agrandar sin compactar");
 
         //Primero verifico si puedo truncar desde donde estaba el archivo anteriormente
         if(existe_espacio_para_agrandar(bitarray, bloque_final, cantidad_bloques_agrandar)){
-            
-            //Necesita para fseek
-            char* tamano_length;
-            asprintf(&tamano_length, "TAMANIO_ARCHIVO=%i\n", tamano); 
-
-            //Actualizar archivo tamano
-            //Mover el puntero de archivo al inicio de tamano para cambiar el valor de tamano en el archivo
-            fseek(archivo, ftell(archivo) - strlen(tamano_length), SEEK_SET);
-
-            //Actualizar tamano archivo a tamano_nuevo
-            fprintf(archivo, "TAMANIO_ARCHIVO=%i\n", tamano_nuevo);
+            log_info(logger, "Hay suficiente espacio para agrandar.");
 
             //Ocupar bits continuo adicional en bitmap.dat
             for(int i = 0; i < cantidad_bloques_agrandar; i++) {
@@ -899,7 +959,7 @@ void truncar_archivo(int socket_kernel){
                 bloques_libres = bloques_libres - 1;
             }
 
-            free(tamano_length);
+            fclose(archivo);
             /*No es necesario actualizar el bloques.dat ya que si se agranda el archivo pero no es que su contenido cambia. 
             Por lo que ocupar bits en bitmap.dat es suficiente*/
         }
@@ -909,212 +969,220 @@ void truncar_archivo(int socket_kernel){
 
             log_info(logger, "PID: %i - Inicio Compactacion", pid);
 
+            fclose(archivo);
+
             //Compactar el bloques.dat y bitmap.dat en formato 0011101010 a 1111100000 para tener maxima espacio continuo libre
             /*Seleccionar el bloques donde esta el archivo y mandalo mas frente
             Si fue 11 111(Archivo a agrandar) 1 00000 moverlo a 111 111(Archivo a agrandar) 00000*/
-            compactar(bitarray, nombre_archivo);
+            compactar(bitarray, nombre_archivo, tamano_nuevo, tamano);
+
+            usleep(retraso_compactacion);
 
             log_info(logger, "PID: %i - Fin Compactacion", pid);
-
-            //Despues de compactar hay que esperar por un tiempo determinado por retraso_compactacion.
-            //Multiplico por 1000 para microsegundos
-            usleep(retraso_compactacion * 1000);
-
-            //Puntero a parte inicial del archivo
-            rewind(archivo);
-
-            //Guardar el bloque_inicial encontrado despues de compactar
-            fscanf(archivo, "BLOQUE_INICIAL=%i\n", &bloque_inicial);
-
-            //No es necesario actualizar el tamano ya que solo bloque_inicial cambia cuando compacta
-
-            //Como cambio el bloque_inicial tengo que actualizar bloque_final tambien
-            bloque_final = bloque_inicial + cantidad_bloques_actual + 1;
-
-            //Verificar si hay suficiente espacio con existe_espacio_para_agrandar()
-            if(existe_espacio_para_agrandar(bitarray, bloque_final, cantidad_bloques_agrandar)){
-                
-                //Necesita para fseek
-                char *tamano_length2;
-                asprintf(&tamano_length2, "TAMANIO_ARCHIVO=%i\n", tamano); 
-
-                //Actualizar archivo metadata tamano
-                //Mover el puntero de archivo al inicio de tamano para cambiar el valor de tamano en el archivo metadata
-                fseek(archivo, ftell(archivo) - strlen(tamano_length2), SEEK_SET);
-
-                //Actualizar tamano archivo a tamano_nuevo
-                fprintf(archivo, "TAMANIO_ARCHIVO=%i\n", tamano_nuevo);
-
-                //Ocupar bits continuo adicional en bitmap.dat
-                for(int i = 0; i < cantidad_bloques_agrandar; i++) {
-                    //El + 1 en el fin es pq no tengo que ocupar el bloque_final pq si va a estar ocupado siempre  
-                    bitarray_set_bit(bitarray, bloque_final + i);
-                    
-                    //Disminuir bloques_libres por 1
-                    bloques_libres = bloques_libres - 1;
-                }
-
-                free(tamano_length2);
-                /*No es necesario actualizar el bloques.dat ya que si se agranda el archivo pero no es que su contenido cambia. 
-                Por lo que ocupar bits en bitmap.dat es suficiente*/
-            }
-            /*En caso que no hay suficiente espacio sigfnifica que no puede por lo que logeo en logger y vuelve a cambiar los 
-            valores de bloque_inicial y tamano escrito en el archivo de metadata*/            
-            else{
-                log_info(logger, "No existe bloques suficiente para agrandar. Truncate Fail");
-
-                //Como no podia truncar entonces actualizo el archivo de metadata para que tiene los datos antes de truncar
-                //Puntero a parte inicial del archivo
-                rewind(archivo);
-
-                //Actualizar tamano archivo a tamano_nuevo
-                fprintf(archivo, "BLOQUE_INICIAL=%i\n", bloque_inicial_truncate_fail);
-
-                //Actualizar tamano archivo a tamano_nuevo
-                fprintf(archivo, "TAMANIO_ARCHIVO=%i\n", tamano_truncate_fail);
-            }
         }
     }else{
         /*diferencia_tamano = 0
         Aqui no tengo que hacer nada ya que ni voy a achicar y agrandar el archivo a tamano nuevo*/
         log_info(logger,"No hay cambio al Archivo ya que su tamano actual y tamano nuevo son mismo");
+        fclose(archivo);
     }
 
     free(buffer2);
-    free(path_archivo);
-    fclose(archivo);
+
 }
 
+//bloque_final = 2, cantidad_bloques_agrandar = 1 then 1 bit occupied in bitarray
 //Verificar en el bitmap.dat si existe suficiente espacio continuo para agrandar desde el posicion que esta 
 bool existe_espacio_para_agrandar(t_bitarray *bitarray, int bloque_final, int cantidad_bloques_agrandar){
-    
+
+    verifcar_los_bits_ocupado(bitarray);
+    //salida.txt SHOULD COMAPCT AS THE NEXT BLOCK IS OCCUPIED BUT IS NOT DOING SO THE FUCNTION ISNT WORKING PROPERLY
+
+    log_info(logger, "Verificando si existe espacio para agrandar desde el bloque %i hasta bloque %i", bloque_final, bloque_final + cantidad_bloques_agrandar);
+
     for(int i = 0; i < cantidad_bloques_agrandar; i++) {
+        int bit_de_prueba = bloque_final + i;
+        int bloque_a_probar = bit_de_prueba + 1;
         //El + 1 en el fin es pq no tengo que verificar si esta ocupado el bloque_final pq si va a estar ocupado siempre  
-        if(bitarray_test_bit(bitarray, bloque_final + i)){
+        if(bitarray_test_bit(bitarray, bit_de_prueba)){
+            log_info(logger, "El bloque %i esta ocupado.", bloque_a_probar);
             return false;
+        }else{
+            log_info(logger, "El bloque %i esta libre.", bloque_a_probar);
         }
     }
     return true;
 }
 
+void verifcar_los_bits_ocupado(t_bitarray *bitarray){
+    log_info(logger, "Existe %i bloques en total en el bitmap.dat.", block_count);
+
+    for(int i = 0; i < block_count; i++) {
+        if(bitarray_test_bit(bitarray, i)){
+            log_info(logger, "El bit %i (igual a bloque: %i) esta ocupado.", i, i + 1);
+        }
+    }
+
+    log_info(logger, " ");
+
+}
+
 /*Compactar el bitarray y bloques_map y tener en cuenta dejar el archivo buscado en bloque_inicial con su tamano al fin.
 Si fue 00 11 0 111(Archivo a agrandar) 1 00 moverlo a 111 111(Archivo a agrandar) 00000*/
-void compactar(t_bitarray *bitarray, char* nombre_archivo_a_truncar){
-    /*Estoy borrando el archivo a truncar desde lista primero para trabajr con los archivos
-    que no son los que van a ir a fin de secuencia 1 11 11 000*/
-    list_remove(lista_archivos, nombre_archivo_a_truncar);
-
+void compactar(t_bitarray *bitarray, char* nombre_archivo_a_truncar, int tamano_nuevo, int tamano_actual){
+    
     char* nombre_archivo;
     char* path_archivo;
-    char* path_archivo_a_truncar;
-    
-    int bloque_inicial = 0;
-    int tamano;
-    int bloques_ocupados;
     int cantidad_archivos_en_lista = list_size(lista_archivos);
     int cant_archivos_leidos = 0;
-    int tamano_a_saltar = 0;
-
+    int bloque_inicial = 1;
     int bloque_fin_ocupado;
-    int tamano_bloques_ocupados;
+    int tamano;
+    int bloques_ocupados;
 
     t_list* lista_temp = list_create();
 
+    log_info(logger, "Liberando todos los bits en el bitarray.");
+
     //liberar todos los bits en bitarray que voy a reocuparlo con metadata nuevo
-    hacer_libre_bloques(bitarray, 0, block_size * block_count);
+    hacer_libre_bloques(bitarray, 0, block_count);
 
-    //Actualizar todos los archivos de metadata para usarlo despues en posicionar el bitmap.dat y bloques.dat
+    verifcar_los_bits_ocupado(bitarray);
+
+    log_info(logger, "Bits en el Bitarray liberado.");
+
     while(cantidad_archivos_en_lista > cant_archivos_leidos){
-        nombre_archivo = list_get_first(lista_archivos);
 
-        //Path de archivo a Borrar
-        asprintf(&path_archivo, "%s/%s", path_archivo_comun, nombre_archivo);
+        nombre_archivo = (char *)list_get(lista_archivos, cant_archivos_leidos);
 
-        //Abrir archivo para leer el bloque inicial y tamano 
-        FILE *archivo = fopen(path_archivo, "r");
-        if (archivo == NULL) {
-            log_info(logger,"Error abriendo el archivo");
-            exit(EXIT_FAILURE);
+        if(strcmp(nombre_archivo, nombre_archivo_a_truncar) == 0){
+            cant_archivos_leidos++;
+        }else{
+            log_info(logger, "Archivo a mover: %s", nombre_archivo);
+
+            //Path de archivo a Borrar
+            asprintf(&path_archivo, "%s/%s", path_archivo_comun, nombre_archivo);
+
+            //Abrir archivo para leer el bloque inicial y tamano 
+            FILE *archivo = fopen(path_archivo, "r+");
+            if (archivo == NULL) {
+                log_info(logger,"Error abriendo el archivo");
+                exit(EXIT_FAILURE);
+            }
+
+            //Leer y guardar Bloque Inicial
+            fprintf(archivo, "BLOQUE_INICIAL=%i\n", bloque_inicial);
+
+            log_info(logger, "Nuevo bloque incial de archivo %s: %i", nombre_archivo, bloque_inicial);
+
+            //Leer tamano
+            fscanf(archivo, "TAMANIO_ARCHIVO=%i\n", &tamano);
+
+            log_info(logger, "TAMANO: %i", tamano);
+
+            if(tamano < block_size) {
+                bloques_ocupados = 1;
+            }else{
+                bloques_ocupados = (tamano + block_size - 1) / block_size; 
+            }
+
+            log_info(logger, "Bloque ocupado: %i", bloques_ocupados);
+
+            bloque_fin_ocupado = bloque_inicial + bloques_ocupados - 1;
+
+            log_info(logger, "Ocupando bloques en bitmap.dat");
+
+            //Ocupar bits en bitarray
+            for(int i = bloque_inicial - 1; i < bloque_fin_ocupado; i++){
+                bitarray_set_bit(bitarray, i);
+                bloques_libres = bloques_libres - 1;
+            }
+
+            //actualiza el bloque_inicial para ponerlo a siguiente archivo
+            bloque_inicial += bloques_ocupados;
+            
+            log_info(logger, "Nuevo bloque incial para la siguiente archivo a compactar: %i", bloque_inicial);
+    
+            log_info(logger, "Agregando el archivo a lista temproal y eliminando del lista principal");
+
+            //Agregar en lista_temp y borrar de la lista principal ya que hizo lo que tengo que a este archivo
+            //Despues se agrega de nuevo hasi que no hay problema
+            list_add(lista_temp, nombre_archivo);
+
+            cant_archivos_leidos++;
+
+            //Para proxima loop hago null dichos variables
+            path_archivo = NULL;
+
+            fclose(archivo);
         }
 
-        //Leer y guardar Bloque Inicial
-        fprintf(archivo, "BLOQUE_INICIAL=%i\n", &bloque_inicial);
-
-        //Leer tamano
-        fscanf(archivo, "TAMANIO_ARCHIVO=%i\n", &tamano);
-
-        //Buscar cantidad de bloques ocupados por el archivo
-        bloques_ocupados = (tamano + block_size - 1) / block_size; 
-
-        bloque_fin_ocupado = bloque_inicial + bloques_ocupados;
-
-        //Ocupar bits en bitarray
-        for(int i = bloque_inicial; i < bloque_fin_ocupado; i++){
-            bitarray_set_bit(bitarray, i);
-        }
-
-        //actualiza el bloque_inicial para ponerlo a siguiente archivo
-        bloque_inicial += bloques_ocupados + 1;
-
-        //Agregar en lista_temp y borrar de la lista principal ya que hizo lo que tengo que a este archivo
-        //Despues se agrega de nuevo hasi que no hay problema
-        list_add(lista_temp, nombre_archivo);
-        list_remove(lista_archivos,nombre_archivo);
-
-        cant_archivos_leidos++;
-
-        //Para proxima loop hago null dichos variables
-        nombre_archivo = NULL;
-        path_archivo = NULL;
-
-        free(path_archivo);
-        fclose(archivo);
     }
 
-    //Aca estoy haciendo esto para archivo que tengo que truncar
+    log_info(logger, "Archivo a mover: %s", nombre_archivo_a_truncar);
 
     //Path de archivo a Borrar
-    asprintf(&path_archivo_a_truncar, "%s/%s", path_archivo_comun, nombre_archivo_a_truncar);
+    asprintf(&path_archivo, "%s/%s", path_archivo_comun, nombre_archivo_a_truncar);
 
     //Abrir archivo para leer el bloque inicial y tamano 
-    FILE *archivo = fopen(path_archivo_a_truncar, "r");
-    if (archivo == NULL) {
+    FILE *archivo_a_truncar = fopen(path_archivo, "r+");
+    if (archivo_a_truncar == NULL) {
         log_info(logger,"Error abriendo el archivo");
         exit(EXIT_FAILURE);
     }
 
+    ftruncate(fileno(archivo_a_truncar), 0);
+
+    //Volver al incio de archivo
+    rewind(archivo_a_truncar);
+
     //Leer y guardar Bloque Inicial
-    fprintf(archivo, "BLOQUE_INICIAL=%i\n", &bloque_inicial);
+    fprintf(archivo_a_truncar, "BLOQUE_INICIAL=%i\n", bloque_inicial);
+
+    log_info(logger, "Bloque Inicial de archivo despues de mover: %i", bloque_inicial);
 
     //Leer tamano
-    fscanf(archivo, "TAMANIO_ARCHIVO=%i\n", &tamano);
+    fprintf(archivo_a_truncar, "TAMANIO_ARCHIVO=%i\n", tamano_nuevo);
+
+    log_info(logger, "Tamano de archivo despues de mover: %i", tamano_nuevo);
 
     //Buscar cantidad de bloques ocupados por el archivo
-    bloques_ocupados = (tamano + block_size - 1) / block_size; 
-
-    bloque_fin_ocupado = bloque_inicial + bloques_ocupados;
-
-    //Ocupar bits en bitarray
-    for(int i = bloque_inicial; i < bloque_fin_ocupado; i++){
-        bitarray_set_bit(bitarray, i);
+    if(tamano_nuevo < block_size) {
+        bloques_ocupados = 1;
+    }else{
+        bloques_ocupados = (tamano_nuevo + block_size - 1) / block_size; 
     }
 
-    //Agrego el archivo a truncar devuelta a la lista
-    list_add(lista_temp,nombre_archivo_a_truncar);
+    if(bloque_inicial + bloques_ocupados < block_count){
 
-    //Como despues de while es vacio hago esto para volver a contener los archivos que tenia anteriormente actualizado
-    lista_archivos = lista_temp;
+        bloque_fin_ocupado = bloque_inicial + bloques_ocupados - 1;
 
-    free(path_archivo_a_truncar);
-    fclose(archivo);
-}
+        //Ocupar bits en bitarray
+        for(int i = bloque_inicial - 1; i < bloque_fin_ocupado; i++){
+            bitarray_set_bit(bitarray, i);
+            bloques_libres = bloques_libres - 1;
+        }
 
-//No estaba en commons asi que creo un funcion que retorna primer elemento de la lista 
-char* list_get_first(t_list *list) {
-    if (list->head == NULL) {
-        return NULL; 
+        //Agrego el archivo a truncar devuelta a la lista
+        list_add(lista_temp, nombre_archivo_a_truncar);
+
+        //Como despues de while es vacio hago esto para volver a contener los archivos que tenia anteriormente actualizado
+        lista_archivos = lista_temp;
+    }else{
+        log_info(logger, "No hay suficiente espacio despues de compactar tambien.");
+        ftruncate(fileno(archivo_a_truncar), 0);
+
+        //Volver al incio de archivo
+        rewind(archivo_a_truncar);
+
+        //Escribir en el archivo el tamano nuevo 
+        fprintf(archivo_a_truncar, "BLOQUE_INICIAL=%i\n", bloque_inicial);
+        fprintf(archivo_a_truncar, "TAMANIO_ARCHIVO=%i\n", tamano_actual);
     }
-    return (char*)list->head->data; 
+
+    fclose(archivo_a_truncar);
+    free(path_archivo);
+
 }
 
 /*Cada vez que se corra de nuevo el codigo se pierda la lista por lo que creo una funcion
@@ -1127,6 +1195,11 @@ void agregar_a_lista_archivos(char* path_archivos, t_list* lista_archivos) {
 
     if (direccion) {
         while ((dir = readdir(direccion)) != NULL) {
+
+            if (strcmp(dir->d_name, ".") == 0 || strcmp(dir->d_name, "..") == 0) {
+                continue;
+            }
+
             //No voy a agregar el bitmap.dat y bloques.dat a la lista
             if (strcmp(dir->d_name, "bloques.dat") == 0 || strcmp(dir->d_name, "bitmap.dat") == 0) {
                 continue;
@@ -1167,6 +1240,17 @@ void escribir_archivo(int socket_kernel){
     void *buffer2;
     buffer2 = fetch_buffer(&total_size, socket_kernel);
 
+    //Saltar tamano de PID que no es necesario
+    offset += sizeof(int);
+
+    //PID
+    memcpy(&pid,buffer2 + offset, sizeof(int));
+    offset += sizeof(int);
+
+    int tamaVoid;
+    memcpy(&tamaVoid,buffer2 + offset, sizeof(int)); 
+    offset += sizeof(int); 
+
     //Tamano de Nombre de Archivo
     memcpy(&tamano_nombre_archivo,buffer2 + offset, sizeof(int));
     offset += sizeof(int);
@@ -1175,13 +1259,6 @@ void escribir_archivo(int socket_kernel){
     nombre_archivo = malloc(tamano_nombre_archivo);
     memcpy(nombre_archivo,buffer2 + offset, tamano_nombre_archivo);
     offset += tamano_nombre_archivo;
-
-    //Saltar tamano de PID que no es necesario
-    offset += sizeof(int);
-
-    //PID
-    memcpy(&pid,buffer2 + offset, sizeof(int));
-    offset += sizeof(int);
 
     //Saltar tamano de Puntero Archivo que no es necesario
     offset += sizeof(int);
@@ -1230,7 +1307,7 @@ void escribir_archivo(int socket_kernel){
     fscanf(archivo, "BLOQUE_INICIAL=%i\n", &bloque_inicial);
 
     //Leer y guardar Tamano
-    fscanf(archivo, "TAMANO=%i\n", &tamano);
+    fscanf(archivo, "TAMANO_ARCHIVO=%i\n", &tamano);
 
     //Calculo la posicion de inicio de archivo en bloques.dat
     int posicion_archivo = bloque_inicial *block_size;
@@ -1241,47 +1318,31 @@ void escribir_archivo(int socket_kernel){
     //Posicion de donde tengo que leer en el memoria
     void* posicion_memoria = bloques_map + posicion_bloques_dat;
 
-    /*Antes todo tengo que probar si hay suficiente bloque para escribir lo que lee desde memoria a archivo en bitmap.dat
-    Verifico si tamano max archivo - puntero archivo > tamano de escritura pq sino cumple este condicion deben truncar priemro
-    y no va a poder escribir.*/
-    bool tiene_suficiente_espacio_para_escribir = tamano - puntero_archivo > cantidad_bytes_cdf;
+    //Un for loop para mandar a leer cada direcciones fisicas
+    for(int i = 0; i < cantidad_direccioens_fisicas; i++){
 
-    if(tiene_suficiente_espacio_para_escribir){
+        //Salto tamano de cantidad bytes
+        offset += sizeof(int); 
 
-        //Un for loop para mandar a leer cada direcciones fisicas
-        for(int i = 0; i < cantidad_direccioens_fisicas; i++){
+        //Cantidad bytes
+        memcpy(&cantidad_bytes,buffer2 + offset, sizeof(int)); 
+        offset += sizeof(int);
 
-            //Salto tamano de cantidad bytes
-            offset += sizeof(int); 
+        //Salto tamano de Direccion Fisica
+        offset += sizeof(int);
 
-            //Cantidad bytes
-            memcpy(&cantidad_bytes,buffer2 + offset, sizeof(int)); 
-            offset += sizeof(int);
+        //Direccion Fisica
+        memcpy(&direccion_fisica,buffer2 + offset, sizeof(int)); 
+        offset += sizeof(int);
 
-            //Salto tamano de Direccion Fisica
-            offset += sizeof(int);
+        //Mandar a leer 
+        //Como desplazamiento = 0 en el primer loop, se va a guardar desde posicion_memoria
+        mandarALeer(direccion_fisica, cantidad_bytes, pid, posicion_memoria + desplazamiento);
 
-            //Direccion Fisica
-            memcpy(&direccion_fisica,buffer2 + offset, sizeof(int)); 
-            offset += sizeof(int);
-
-            //Mandar a leer 
-            //Como desplazamiento = 0 en el primer loop, se va a guardar desde posicion_memoria
-            mandarALeer(direccion_fisica, cantidad_bytes, pid, posicion_memoria + desplazamiento);
-
-            //Actualizo desplazamiento para siguiente direccion Fisica y Cantidad bytes
-            desplazamiento += cantidad_bytes;
-        }
-
-        //Copiar a bloques_map los que esta en posicion memoria
-        //Hay que hacer + posicion_bloques_dat a bloques_map para la posicion actual de donde esta guardado el archivo
-        memcpy(bloques_map + posicion_bloques_dat, posicion_memoria, cantidad_bytes_cdf);
-
-    }else{
-        log_info(logger,"No hay suficiente espacio. Trunca el archivo primero.");
+        //Actualizo desplazamiento para siguiente direccion Fisica y Cantidad bytes
+        desplazamiento += cantidad_bytes;
     }
 
-    free(path_archivo);
     free(buffer2);
     fclose(archivo);
 }
@@ -1311,6 +1372,17 @@ void leer_archivo(int socket_kernel){
     void *buffer2;
     buffer2 = fetch_buffer(&total_size, socket_kernel);
 
+    //Saltar tamano de PID que no es necesario
+    offset += sizeof(int);
+
+    //PID
+    memcpy(&pid,buffer2 + offset, sizeof(int));
+    offset += sizeof(int);
+
+    int tamaVoid;
+    memcpy(&tamaVoid,buffer2 + offset, sizeof(int)); 
+    offset += sizeof(int);
+
     //Tamano de Nombre de Archivo
     memcpy(&tamano_nombre_archivo,buffer2 + offset, sizeof(int));
     offset += sizeof(int);
@@ -1319,13 +1391,6 @@ void leer_archivo(int socket_kernel){
     nombre_archivo = malloc(tamano_nombre_archivo);
     memcpy(nombre_archivo,buffer2 + offset, tamano_nombre_archivo);
     offset += tamano_nombre_archivo;
-
-    //Saltar tamano de PID que no es necesario
-    offset += sizeof(int);
-
-    //PID
-    memcpy(&pid,buffer2 + offset, sizeof(int));
-    offset += sizeof(int);
 
     //Saltar tamano de Puntero Archivo que no es necesario
     offset += sizeof(int);
@@ -1374,7 +1439,7 @@ void leer_archivo(int socket_kernel){
     fscanf(archivo, "BLOQUE_INICIAL=%i\n", &bloque_inicial);
 
     //Leer y guardar Tamano
-    fscanf(archivo, "TAMANO=%i\n", &tamano);
+    fscanf(archivo, "TAMANO_ARCHIVO=%i\n", &tamano);
 
     //Calculo la posicion de inicio de archivo en bloques.dat
     int posicion_archivo = bloque_inicial *block_size;
@@ -1408,7 +1473,6 @@ void leer_archivo(int socket_kernel){
         desplazamiento += cantidad_bytes;
     }
 
-    free(path_archivo);
     free(buffer2);
     fclose(archivo);
 }

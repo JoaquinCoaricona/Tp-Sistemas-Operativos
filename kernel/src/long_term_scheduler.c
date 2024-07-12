@@ -14,8 +14,12 @@ pthread_mutex_t mutex_state_prioridad;
 
 pthread_mutex_t m_planificador_corto_plazo;
 pthread_mutex_t m_planificador_largo_plazo;
+pthread_mutex_t m_add_estado_ready;
+pthread_mutex_t m_add_estado_readyPlus;
 pthread_mutex_t procesosBloqueados;
 pthread_mutex_t m_procesoEjectuandoActualmente;
+pthread_mutex_t m_dispatch_kernel_Llegada_Procesos;
+pthread_mutex_t m_pidFinalizadoPorConsola;
 
 
 //Estado EXEC y BLOCKED no usan queue
@@ -51,6 +55,11 @@ void initialize_queue_and_semaphore() {
 	pthread_mutex_init(&m_planificador_largo_plazo, NULL);
 	pthread_mutex_init(&m_procesoEjectuandoActualmente, NULL);
 	pthread_mutex_init(&procesosBloqueados, NULL);
+	pthread_mutex_init(&m_add_estado_ready, NULL);
+	pthread_mutex_init(&m_add_estado_readyPlus, NULL);
+	pthread_mutex_init(&m_dispatch_kernel_Llegada_Procesos, NULL);
+	pthread_mutex_init(&m_pidFinalizadoPorConsola, NULL);
+
 
 }
 
@@ -83,9 +92,20 @@ t_pcb *obtenerSiguienteAready()
 }
 
 void addEstadoReady(t_pcb *pcb){
-    pthread_mutex_lock(&mutex_state_ready);
+
+	//Este semaforo lo uso para el caso de detener_planificacion
+	//porque las IO tienen que pausar el traspaso a ready de los PCB
+	//En los otros casos a esta funcion no se llegaba poruqe 
+	//hay semaforos para el planificador de corto y largo plazo
+	//entonces no llegaba nunca aca
+	pthread_mutex_lock(&m_add_estado_ready);
+    
+	//Este semaforo es el propio de la cola ready por las condiciones de carrera
+	pthread_mutex_lock(&mutex_state_ready);
 	queue_push(queue_ready,pcb);
 	pthread_mutex_unlock(&mutex_state_ready);
+
+	pthread_mutex_unlock(&m_add_estado_ready);
 
 	log_info(logger, "Se agrega el proceso: %d a ready \n", pcb->pid);
 }
@@ -171,20 +191,42 @@ void *Aready(void *arg)
 
 void addEstadoExit(t_pcb *pcb){
 	
-	liberarRecursosProceso(pcb->pid);
+	liberarRecursosProceso(pcb->pid); //Libero Recursos que tenia el proceso
     pthread_mutex_lock(&mutex_state_exit);
 	queue_push(queue_exit,pcb);
 	pthread_mutex_unlock(&mutex_state_exit);
 
+	//Aca tengo que enviarle a memoria el aviso de que un proceso finalizo y que 
+	//tengo que borrar las cosas que tenia. Del proceso
+	
+	int PIDaLiberar = pcb->pid;
+	//Creo le buffer y el paquete
+    t_buffer *bufferMemoria;
+    t_packet *packetMemoria;
+    // Inicializar Buffer y Packet
+    bufferMemoria = create_buffer();
+    packetMemoria = create_packet(LIBERAR_ESTRUCTURAS, bufferMemoria);
+    add_to_packet(packetMemoria, &PIDaLiberar, sizeof(int)); 
+    send_packet(packetMemoria, memory_socket);
+    destroy_packet(packetMemoria);
+	
 	log_info(logger, "Se agrega el proceso: %d a Exit \n", pcb->pid);
 }
 
 //Agregar y Sacar PCB de Cola Prioridad
 
 void addColaPrioridad(t_pcb *pcb){
+
+	//Este semaforo es para detener planificacion es la misma explicacion 
+	//que en addEstadoReady
+	pthread_mutex_lock(&m_add_estado_readyPlus);
+
+	//Este es el propio de la cola por las condiciones de carrera
     pthread_mutex_lock(&mutex_state_prioridad);
 	queue_push(queue_prioridad,pcb);
 	pthread_mutex_unlock(&mutex_state_prioridad);
+
+	pthread_mutex_unlock(&m_add_estado_readyPlus);
 
 	log_info(logger, "Se agrega el proceso: %d a la cola Prioridad", pcb->pid);
 }

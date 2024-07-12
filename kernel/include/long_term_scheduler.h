@@ -23,6 +23,8 @@ extern int procesoEjectuandoActualmente;
 
 extern t_pcb *pcbEJECUTANDO;
 
+extern int memory_socket;
+
 
 void agregarANew(t_pcb *pcb);
 
@@ -51,8 +53,12 @@ extern pthread_mutex_t mutex_state_prioridad;
 
 extern pthread_mutex_t m_planificador_corto_plazo;
 extern pthread_mutex_t m_planificador_largo_plazo;
+extern pthread_mutex_t m_add_estado_ready;
+extern pthread_mutex_t m_add_estado_readyPlus;
 extern pthread_mutex_t procesosBloqueados;
 extern pthread_mutex_t m_procesoEjectuandoActualmente;
+extern pthread_mutex_t m_dispatch_kernel_Llegada_Procesos;
+extern pthread_mutex_t m_pidFinalizadoPorConsola;
 
 
 

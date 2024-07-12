@@ -196,15 +196,72 @@ void operacion_resize(t_pcb* contexto, t_instruccion_unitaria* instruccion,int s
 	//Aca se bloquea esperando la respuesta de memoria
 	int operation_code = fetch_codop(client_fd_memoria);
 
-	//++++++++++++Recibo Buffer y Libero+++++++++++++++++++++++++++
-	//Lo libero porque lo unico que me interesaba era el codigo de operacion
+	//++++++++++++Recibo Buffer+++++++++++++++++++++++++++
 	int total_size;
-	void *buffer2 = fetch_buffer(&total_size, client_fd_memoria);
-	free(buffer2);
+	int offset = 0;
+	//ACLARACION MUY IMPORTANTE SOBRE ENVIO DE PAQUETE Y RECEPCION.
+	//ESTA HECHA EN RESIZEPAGINAS() EN EL MAIN DE MEMORIA
+	//CERCA DEL FINAL DE LA FUNCION DONDE SEPARO EN CASOS
+	//POR SI HUBO REUDCCION DE PROCESO Y SE BORRARON PAGINAS
+	void *buffer = fetch_buffer(&total_size, client_fd_memoria);
+
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 	if(operation_code == RESIZE_EXITOSO){
 		log_info(logger,"RESIZE EXITOSO");
+
+		offset += sizeof(int);  //Salteo el tamaño de int
+		//Recibo el numero de confirmacion que mando al inicio del paquete
+		int numeroConfirmacion;
+		memcpy(&numeroConfirmacion,buffer + offset, sizeof(int));
+		offset += sizeof(int); 
+
+		//Si es igual a 1 significa que hubo reudccion y algunas paginas se borraron
+		//entonces tengo que ver si esas paginas estaban en la TLB porque sino tendriamos TLB
+		//HITS de mas y accesos invalidos a memoria
+		//HABIAN DICHO QUE ESTO NO IBA A PASAR. OSEA QUE NO IBA A HABER ACCESOS INVALIDOS
+		//O PAGE FAULT ENTONCES ESTE CASO NO LO TENIAMOS EN CUENTA
+		//PERO HICIERON UNA FUNCION QUE ERA UN LOOP Y QUE AL FINAL HACIA
+		//RESIZE O Y AL PRINCIPIO RESIZE 60 (NO SE SI ESE NUMERO).
+		//Y ESO GENERABA ACCESOS INVALIDOS PORQUE CUANDO HACES RESIZE 0 Y DESPUES
+		//ASGINAS NO SIEMPRE VAN A SER LOS MISMOS MARCOS QUE TENIAS ANTES
+		//ENTONCES LA TLB TE QUEDO DESACTUALIZADA Y TENES ACCESOS INVALIDOS
+		//ESTO NO LO TOME EN CUENTA PORQUE HABIAN DICHO QUE NO IBA A PASAR PERO 
+		//LO PUSIERON EN LA ULTIMA PRUEBA
+		if(numeroConfirmacion == 1){
+
+			offset += sizeof(int);  //Salteo el tamaño de int
+
+			//Aca recibo la cantidad de paginas que borre
+			int cantPaginasBorradas;
+			memcpy(&cantPaginasBorradas,buffer + offset, sizeof(int));
+			offset += sizeof(int); 
+
+			for(int i = 0; i < cantPaginasBorradas; i++){
+
+				offset += sizeof(int);  //Salteo el tamaño de int
+
+				int paginaABorrar;
+				memcpy(&paginaABorrar,buffer + offset, sizeof(int));
+				offset += sizeof(int); 
+
+				//Cargo los datos para la busqueda en la TLB
+				pidTLB = contexto->pid;
+				paginaTLB = paginaABorrar;
+				//Busco en la TLB
+				t_entrada_TLB *entradaABorrar = list_find(TLB->elements,busqueda_tlb);
+				//Si encuentra algo entonces lo borro
+				if(entradaABorrar != NULL){
+					list_remove_element(TLB->elements,entradaABorrar);
+					log_info(logger,"Se borro la Pagina: %i de PID: %i de la TLB",pidTLB,paginaTLB);
+					free(entradaABorrar);	
+				}else{
+					log_info(logger,"Borraron una pagina pero no estaba en la TLB");
+				}
+
+			}
+		}
+
 	}else{
 		continuar_con_el_ciclo_instruccion = false;
 		pid_ejecutando = -1;
@@ -229,6 +286,7 @@ void operacion_resize(t_pcb* contexto, t_instruccion_unitaria* instruccion,int s
 
 		log_info(logger,"RESIZE FALLIDO, OUT OF MEMORY");
 	}
+	free(buffer);
 }
 
 //IO_GEN_SLEEP (Interfaz, Unidades de trabajo): Esta instrucción solicita al Kernel que se
@@ -254,7 +312,7 @@ void operacion_sleep(t_pcb *contexto,int socket,t_instruccion_unitaria* instrucc
 	destroy_packet(packet_rta);
 
 }
-bool busqueda_tlb(void *entradaTLB) {
+bool busqueda_tlb(void *entradaTLB){
 		t_entrada_TLB *entrada = (t_entrada_TLB*) entradaTLB;
 
 		if (entrada->pid == pidTLB && entrada->pagina == paginaTLB) {
@@ -354,7 +412,7 @@ void agregarALaTLB(t_queue *TLB ,t_entrada_TLB *nuevaEntrada){
 	//Agrego el distinto de cero para el caso que la cant de entradas de la tlb sea 0
 	//crei que no se podia pero lo incluyeron. Si es 0 no se tiene que agregar nada
 	//en ninguno de los dos casos. Asi las busquedas en la tlb siempre dan NULL
-	//Cambio el else que tenia por un elseif para agregar el caso de tlb cant = 0
+	//Cambio el else que tenia por un elseif para agregar el caso de tlb cant != 0
 	if((queue_size(TLB) >= cantEntradasTLB) && (cantEntradasTLB != 0)){
 		//Aca hago lo mismo si es LRU o FIFO porque al usarlos
 		//voy acomodando en caso que sea LRU. Asi en los dos casos
@@ -366,6 +424,13 @@ void agregarALaTLB(t_queue *TLB ,t_entrada_TLB *nuevaEntrada){
 		free(entradaAEliminar);
 	}else if(cantEntradasTLB != 0){
 		queue_push(TLB,nuevaEntrada);
+	}
+	else{
+		//En caso que la cant entradas TLB sea 0 entonces no pasaba nada
+		//aca, pero tengo que liberar esto porque generaba muchos bytes perdidos
+		//en valgrind. Ahora como no lo agregamos a la TLB porque tiene 0
+		//espacios, entonces libero la memoria
+		free(nuevaEntrada);
 	}
 	
 }
@@ -492,6 +557,7 @@ void operacion_mov_out(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 			mandarAescribirEnMemoria(dirFisica,contenidoAescribir,cantidadBits,contexto);
 
 		}
+	free(contenidoAescribir); //Libero por valgrind
 	
 }
 
@@ -575,6 +641,7 @@ void operacion_mov_in(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 		memcpy(&valorAGuardar,contenidoLeido,sizeof(uint32_t)); 
 		setear_registro(contexto,instruccion->parametros[0],valorAGuardar);	
 	}
+	free(contenidoLeido); //Libero por valgrind
 
 }
 
@@ -751,6 +818,7 @@ void operacion_copy_string(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 			mandarAescribirEnMemoria(dirFisicaEscritura,contenidoLeido,cantidadBits,contexto);
 
 		}
+		free(contenidoLeido); //Libero por valgrind
 //*********************************************************************************************
 
 }

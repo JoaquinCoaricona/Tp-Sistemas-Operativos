@@ -93,7 +93,7 @@ t_pcb *fetch_pcb_con_sleep(int server_socket,int *tiempoDormir,char **nomrebInte
     log_info(logger, "REGISTRO BX : %i",PCBrec->registers.BX);
     // A PARTIR DE ACA EL PCB RECIBIDO VA A ENTRAR EN LA COLA DE ESPERA DE LA INTERFAZ 
     //Y SI LE INTERFAZ ESTA LIBRE SE CREA EL HILO PARA ENVIARLE EL SLEEP
-
+    free(buffer);
     return PCBrec;
 }
 t_pcb *fetch_pcb_con_STDOUT(int server_socket, char **nomrebInterfaz, void **contenido, int *tamanio, int *bytesMalloc){
@@ -193,7 +193,7 @@ t_pcb *fetch_pcb_con_STDOUT(int server_socket, char **nomrebInterfaz, void **con
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
+    free(buffer);
     return PCBrec;
 }
 t_pcb *fetch_pcb_con_STDIN(int server_socket,char **nomrebInterfaz,void **contenido,int *tamanio){
@@ -300,11 +300,112 @@ t_pcb *fetch_pcb_con_STDIN(int server_socket,char **nomrebInterfaz,void **conten
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
+    free(buffer); //Libero por valgrind
     return PCBrec;
 
 }
+t_pcb *fetchPCBfileSystem(int server_socket,char **nomrebInterfaz,char **nombreArchivo,int *nuevoTamaArchivo){
+    
+    int total_size;
+    int offset = 0;
+    t_pcb *PCBrec = pcbEJECUTANDO;
+    pcbEJECUTANDO = NULL;
+    void *buffer;
+    int length_nombre_inter;
+    
+    buffer = fetch_buffer(&total_size, server_socket);
 
+    //Tamano de nombre interfaz
+    memcpy(&length_nombre_inter,buffer + offset, sizeof(int)); 
+    offset += sizeof(int);
+
+    //Nombre de Interfaz
+    *nomrebInterfaz = malloc(length_nombre_inter);
+    memcpy(*nomrebInterfaz,buffer + offset,length_nombre_inter);
+    offset += length_nombre_inter;
+
+    //Tamano de nombre de Archivo
+    int length_nombre_archivo;
+    memcpy(&length_nombre_archivo,buffer + offset, sizeof(int));
+    offset += sizeof(int); 
+
+    //Nombre de Archivo
+    *nombreArchivo = malloc(length_nombre_archivo);
+    memcpy(*nombreArchivo,buffer + offset,length_nombre_archivo); 
+    offset += length_nombre_archivo;
+
+    if(*nuevoTamaArchivo == 1){
+        //Tamano de Nuevo Tamano
+        offset += sizeof(int);
+
+        //Nuevo Tamano
+        memcpy(nuevoTamaArchivo,buffer + offset,sizeof(int));
+        offset += sizeof(int);
+    }
+
+    //Tamano de PCB
+    offset += sizeof(int); 
+
+    //PCB
+    memcpy((PCBrec),buffer + offset, sizeof(t_pcb));
+
+    log_info(logger, "SE RECIBIO UN PCB PARA IR A FS");
+    log_info(logger, "PID RECIBIDO : %i",PCBrec->pid);
+    log_info(logger, "PC RECIBIDO : %i",PCBrec->program_counter);
+    log_info(logger, "REGISTRO AX : %i",PCBrec->registers.AX);
+    log_info(logger, "REGISTRO BX : %i",PCBrec->registers.BX);
+
+    free(buffer);
+    return PCBrec;
+
+}
+t_pcb *fetchPCBfileSystemWR(int server_socket,char **nomrebInterfaz,void **contenido,int *tamaContenidowr){
+    
+    int total_size;
+    int offset = 0;
+    t_pcb *PCBrec = pcbEJECUTANDO;
+    pcbEJECUTANDO = NULL;
+    void *buffer;
+    int length_nombre_inter;
+    
+
+    buffer = fetch_buffer(&total_size, server_socket); 
+
+    //Tamano de nombre interfaz
+    memcpy(&length_nombre_inter,buffer + offset, sizeof(int)); 
+    offset += sizeof(int);
+
+    //Nombre de Interfaz
+    *nomrebInterfaz = malloc(length_nombre_inter);
+    memcpy(*nomrebInterfaz,buffer + offset,length_nombre_inter);
+    offset += length_nombre_inter;
+
+    //Tamano de Void
+    int tamaVoid = total_size - offset - sizeof(int) -sizeof(t_pcb);
+
+    //Void
+    *contenido = malloc(tamaVoid);
+    memcpy(*contenido,buffer + offset,tamaVoid);
+    offset += tamaVoid;
+
+    *tamaContenidowr = tamaVoid;
+
+    //Tamano de PCB
+    offset += sizeof(int); 
+    
+    //PCB
+    memcpy((PCBrec),buffer + offset, sizeof(t_pcb));
+
+    log_info(logger, "SE RECIBIO UN PCB PARA IR A FS");
+    log_info(logger, "PID RECIBIDO : %i",PCBrec->pid);
+    log_info(logger, "PC RECIBIDO : %i",PCBrec->program_counter);
+    log_info(logger, "REGISTRO AX : %i",PCBrec->registers.AX);
+    log_info(logger, "REGISTRO BX : %i",PCBrec->registers.BX);
+
+    free(buffer);
+    return PCBrec;
+
+}
 t_interfaz_registrada *buscar_interfaz(char *nombreInterfaz){  
     
     interfazBUSCADA = nombreInterfaz;
@@ -357,6 +458,15 @@ void cargarEnListaSTDIN(t_pcb *receptorPCB,t_interfaz_registrada *interfaz,void 
     pthread_mutex_unlock(&(interfaz->mutexColaIO));
 
     sem_post(&(interfaz->semaforoContadorIO)); //aca solo le hago el post porque sume un pcb a la lista
+
+}
+void cargarEnListaFS(t_colaDialFS *aCargar,t_interfaz_registrada *interfaz){
+
+    pthread_mutex_lock(&(interfaz->mutexColaIO));
+    queue_push(interfaz->listaProcesosEsperando, aCargar);
+    pthread_mutex_unlock(&(interfaz->mutexColaIO));
+
+    sem_post(&(interfaz->semaforoContadorIO)); 
 
 }
 
@@ -437,8 +547,31 @@ void llamadas_io(t_interfaz_registrada *interfaz){
         
         sem_post(&(soloUnoEnvia));
         destroy_packet(packetTiempoDormir);
+        pcbEnviado->PCB = NULL;
+        free(pcbEnviado);
 
     }
+}
+
+void crear_hilo_interfaz(t_interfaz_registrada *interfaz){
+    pthread_t hilo_manejo_io;
+    if(string_equals_ignore_case(interfaz->tipo,"GENERICA")){
+        pthread_create(&hilo_manejo_io, NULL, (void* ) llamadas_io, interfaz);
+        pthread_detach(hilo_manejo_io);
+    }else if(string_equals_ignore_case(interfaz->tipo,"STDOUT")){
+        pthread_create(&hilo_manejo_io, NULL, (void* ) llamadasIOstdout, interfaz);
+        pthread_detach(hilo_manejo_io);
+    }else if(string_equals_ignore_case(interfaz->tipo,"STDIN")){
+        pthread_create(&hilo_manejo_io, NULL, (void* ) llamadasIOstdin, interfaz);
+        pthread_detach(hilo_manejo_io);
+    }else if(string_equals_ignore_case(interfaz->tipo,"DIALFS")){
+        pthread_create(&hilo_manejo_io, NULL, (void* ) llamadasFS, interfaz);
+        pthread_detach(hilo_manejo_io);
+    }else{
+        log_info(logger,"ERROR");
+    }
+
+    
 }
 
 void llamadasIOstdout(t_interfaz_registrada *interfaz){
@@ -509,6 +642,8 @@ void llamadasIOstdout(t_interfaz_registrada *interfaz){
             sem_post(&sem_ready); 
         }
         free(pcbEnviado->contenido);
+        pcbEnviado->PCB = NULL;
+        free(pcbEnviado);
         
         sem_post(&(soloUnoEnvia));
         destroy_packet(packetEscribir);
@@ -589,6 +724,8 @@ void llamadasIOstdin(t_interfaz_registrada *interfaz){
             sem_post(&sem_ready); 
         }
         free(pcbEnviado->contenido);
+        pcbEnviado->PCB = NULL;
+        free(pcbEnviado);
         
         sem_post(&(soloUnoEnvia));
         destroy_packet(packetEscribir);
@@ -596,28 +733,7 @@ void llamadasIOstdin(t_interfaz_registrada *interfaz){
     }
 }
 
-void crear_hilo_interfaz(t_interfaz_registrada *interfaz){
-    pthread_t hilo_manejo_io;
-    if(string_equals_ignore_case(interfaz->tipo,"GENERICA")){
-        pthread_create(&hilo_manejo_io, NULL, (void* ) llamadas_io, interfaz);
-        pthread_detach(hilo_manejo_io);
-    }else if(string_equals_ignore_case(interfaz->tipo,"STDOUT")){
-        pthread_create(&hilo_manejo_io, NULL, (void* ) llamadasIOstdout, interfaz);
-        pthread_detach(hilo_manejo_io);
-    }else if(string_equals_ignore_case(interfaz->tipo,"STDIN")){
-        pthread_create(&hilo_manejo_io, NULL, (void* ) llamadasIOstdin, interfaz);
-        pthread_detach(hilo_manejo_io);
-    }else if(string_equals_ignore_case(interfaz->tipo,"DIALFS")){
-        pthread_create(&hilo_manejo_io, NULL, (void* ) llamadasIODialFS, interfaz);
-        pthread_detach(hilo_manejo_io);
-    }else{
-        log_info(logger,"ERROR");
-    }
-
-    
-}
-
-void llamadasIODialFS(t_interfaz_registrada *interfaz){
+void llamadasFS(t_interfaz_registrada *interfaz){
     
     t_colaDialFS *pcbEnviado = NULL;
     sem_t soloUnoEnvia;
@@ -625,338 +741,128 @@ void llamadasIODialFS(t_interfaz_registrada *interfaz){
 
     while(1){
         
-        t_buffer *buffer;
-        t_packet *packet;
+        t_buffer *bufferFS;
+        t_packet *packetFS;
         
-        sem_wait(&(interfaz->semaforoContadorIO)); 
+        sem_wait(&(interfaz->semaforoContadorIO));
         sem_wait(&(soloUnoEnvia));
-
+        
         pthread_mutex_lock(&(interfaz->mutexColaIO));
         pcbEnviado = queue_pop(interfaz->listaProcesosEsperando);
         pthread_mutex_unlock(&(interfaz->mutexColaIO));
 
-        buffer = create_buffer();
+        bufferFS = create_buffer();
+        if(pcbEnviado->tipoOperacion == DIALFS_CREATE){
+            packetFS = create_packet(DIALFS_CREATE,bufferFS);
 
-        switch (pcbEnviado->tipoOperacion) {
-            case DIALFS_CREATE:
-                packet = create_packet(DIALFS_CREATE, buffer);
+            int tamaNombre = strlen(pcbEnviado->nombreArchivo) + 1;
+            
+            //Nombre de Archivo
+            add_to_packet(packetFS,pcbEnviado->nombreArchivo,tamaNombre);
 
-                //Nombre de Archivo
-                add_to_packet(packet, pcbEnviado->nombreArchivo, strlen(pcbEnviado->nombreArchivo) + 1);
+            //PID
+            add_to_packet(packetFS,&(pcbEnviado->PCB->pid), sizeof(int));
 
-                //PID
-                add_to_packet(packet, &(pcbEnviado->PCB->pid), sizeof(int));
+            send_packet(packetFS,interfaz->socket_de_conexion);
+            free(pcbEnviado->nombreArchivo);
 
-                send_packet(packet, interfaz->socket_de_conexion);
-                break;
+        }
+        if(pcbEnviado->tipoOperacion == DIALFS_DELETE){
+            packetFS = create_packet(DIALFS_DELETE,bufferFS);
 
-            case DIALFS_DELETE:
-                packet = create_packet(DIALFS_DELETE, buffer);
+            int tamaNombre = strlen(pcbEnviado->nombreArchivo) + 1;
+            
+            //Nombre de Archivo
+            add_to_packet(packetFS,pcbEnviado->nombreArchivo,tamaNombre);
 
-                //Nombre de Archivo
-                add_to_packet(packet, pcbEnviado->nombreArchivo, strlen(pcbEnviado->nombreArchivo) + 1);
+            //PID
+            add_to_packet(packetFS,&(pcbEnviado->PCB->pid), sizeof(int));
 
-                //PID
-                add_to_packet(packet, &(pcbEnviado->PCB->pid), sizeof(int));
+            send_packet(packetFS,interfaz->socket_de_conexion);
+            free(pcbEnviado->nombreArchivo);
 
-                send_packet(packet, interfaz->socket_de_conexion);
-                break;
+        }
+        if(pcbEnviado->tipoOperacion == DIALFS_TRUNCATE){
+            packetFS = create_packet(DIALFS_TRUNCATE,bufferFS);
 
-            case DIALFS_TRUNCATE:
-                packet = create_packet(DIALFS_TRUNCATE, buffer);
+            int tamaNombre = strlen(pcbEnviado->nombreArchivo) + 1;
+            
+            //Nombre de Archivo
+            add_to_packet(packetFS,pcbEnviado->nombreArchivo,tamaNombre);
 
-                //Nombre de Archivo
-                add_to_packet(packet, pcbEnviado->nombreArchivo, strlen(pcbEnviado->nombreArchivo) + 1);
+            //PID
+            add_to_packet(packetFS,&(pcbEnviado->PCB->pid), sizeof(int));
 
-                //PID
-                add_to_packet(packet, &(pcbEnviado->PCB->pid), sizeof(int));
+            //Nuevo Tamano de Archivo
+            add_to_packet(packetFS,&(pcbEnviado->nuevoTamaArchivo), sizeof(int));
 
-                //Tamano Nuevo de Archivo
-                add_to_packet(packet, &(pcbEnviado->tamanoNuevo), sizeof(int));
+            send_packet(packetFS,interfaz->socket_de_conexion);
+            free(pcbEnviado->nombreArchivo);
 
-                send_packet(packet, interfaz->socket_de_conexion);
-                break;
+        }
+        if(pcbEnviado->tipoOperacion == DIALFS_WRITE){
+            packetFS = create_packet(DIALFS_WRITE,bufferFS);
 
-            case DIALFS_READ:
-                packet = create_packet(DIALFS_READ, buffer);
+            //PID
+            add_to_packet(packetFS,&(pcbEnviado->PCB->pid), sizeof(int));
 
-                //Nombre de Archivo
-                add_to_packet(packet, pcbEnviado->nombreArchivo, strlen(pcbEnviado->nombreArchivo) + 1);
+            //Void Contenido
+            add_to_packet(packetFS,pcbEnviado->contenido,pcbEnviado->tamaContenido);
 
-                //PID
-                add_to_packet(packet, &(pcbEnviado->PCB->pid), sizeof(int));
+            send_packet(packetFS,interfaz->socket_de_conexion);
+            free(pcbEnviado->contenido);
+        }
+        if(pcbEnviado->tipoOperacion == DIALFS_READ){
+            packetFS = create_packet(DIALFS_READ,bufferFS);
 
-                //Puntero Archivo
-                add_to_packet(packet, &(pcbEnviado->punteroArchivo), sizeof(int));
+            //PID
+            add_to_packet(packetFS,&(pcbEnviado->PCB->pid), sizeof(int));
 
-                //Contenido
-                void *contenidoDialFSR = pcbEnviado->contenido;
-                add_to_packet(packet, contenidoDialFSR, pcbEnviado->tamanoContenido);
+            //Void COntenido
+            add_to_packet(packetFS,pcbEnviado->contenido,pcbEnviado->tamaContenido);
 
-                send_packet(packet, interfaz->socket_de_conexion);
-                break;
-
-            case DIALFS_WRITE:
-                packet = create_packet(DIALFS_WRITE, buffer);
-
-                //Nombre de Archivo
-                add_to_packet(packet, pcbEnviado->nombreArchivo, strlen(pcbEnviado->nombreArchivo) + 1);
-
-                //PID
-                add_to_packet(packet, &(pcbEnviado->PCB->pid), sizeof(int));
-
-                //Puntero Archivo
-                add_to_packet(packet, &(pcbEnviado->punteroArchivo), sizeof(int));
-                
-                //Contenido
-                void *contenidoDialFSW = pcbEnviado->contenido;
-                add_to_packet(packet, contenidoDialFSW, pcbEnviado->tamanoContenido);
-
-                send_packet(packet, interfaz->socket_de_conexion);
-                break;
-
-            case -1:
-                log_error(logger, "Error al recibir el codigo de operacion...");
-                return;
-
-            default:
-                log_error(logger, "Alguno error inesperado");
-                return;
-        
+            send_packet(packetFS,interfaz->socket_de_conexion);
+            free(pcbEnviado->contenido);
         }
 
-        int operation_code = fetch_codop(interfaz->socket_de_conexion);
+        int operation_code = fetch_codop(interfaz->socket_de_conexion); 
+    
         int total_size;
-        void *buffer2 = fetch_buffer(&total_size, interfaz->socket_de_conexion);
 
-        free(buffer2);
-
-        switch (operation_code) {
-            case CONFIRMACION_DIALFS_CREATE:
-                log_info(logger, "Creacion de Archivo exitoso");
-                break;
-
-            case CONFIRMACION_DIALFS_DELETE:
-                log_info(logger, "Eliminacion de Archivo Exitoso");
-                break;
-
-            case CONFIRMACION_DIALFS_TRUNCATE:
-                log_info(logger, "Truncar Archivo exitoso");
-                break;
-
-            case CONFIRMACION_DIALFS_READ:
-                log_info(logger, "Leer Archivo exitoso");
-                break;
-
-            case CONFIRMACION_DIALFS_WRITE:
-                log_info(logger, "Escribir en Archivo exitoso");
-                break;
-
-            case -1:
-                log_error(logger, "Error al recibir el codigo de operacion");
-                return;
-
-            default:
-                log_error(logger, "Alguno error inesperado");
-                return;
+        void *buffer2 = fetch_buffer(&total_size,interfaz->socket_de_conexion);
+        free(buffer2); 
+        
+        if(operation_code == CONFIRMACION_DIALFS_CREATE){
+            log_info(logger, "Creacion de Archivo Exitoso"); 
         }
+        if(operation_code == CONFIRMACION_DIALFS_DELETE){
+            log_info(logger, "Eliminacion de Archivo Exitoso"); 
+        }
+        if(operation_code == CONFIRMACION_DIALFS_TRUNCATE){
+            log_info(logger, "Truncar el Archivo Exitoso"); 
+        }
+        if(operation_code == CONFIRMACION_DIALFS_WRITE){
+            log_info(logger, "Escritura a Archivo Exitoso"); 
+        }
+        if(operation_code == CONFIRMACION_DIALFS_READ){
+            log_info(logger, "Lectura de Archivo Exitoso"); 
+        }                       
 
-        if (pcbEnviado->PCB->quantum == quantumGlobal) {
-            log_info(logger, "Como estoy en RoundRobin lo agrego a ready directamente");
+        if(pcbEnviado->PCB->quantum == quantumGlobal){
+            log_info(logger,"Como estoy en RoundRobin lo agrego a ready directamente");
             addEstadoReady(pcbEnviado->PCB);
-            sem_post(&sem_ready);
-        } else {
-            log_info(logger, "Como estoy en Virtual RoundRobin lo agrego a la cola prioridad");
+            sem_post(&sem_ready); 
+        }else{
+            log_info(logger,"Como estoy en Virtual RoundRobin lo agrego a la cola prioridad");
             addColaPrioridad(pcbEnviado->PCB);
-            sem_post(&sem_ready);
+            sem_post(&sem_ready); 
         }
 
         sem_post(&(soloUnoEnvia));
-        destroy_packet(packet);
+        destroy_packet(packetFS);
+
+        pcbEnviado->PCB = NULL;
+        free(pcbEnviado);
+
     }
-}
-
-//Create y Delete literalmente mandan mismos cosas en mismo orden por lo que no es necesario crear 2 fetch distinto
-t_pcb *fetch_pcb_dialfs_create_o_delete(int server_socket, char **nomrebInterfaz, char **nombreArchivo){
-    int total_size;
-    int offset = 0;
-    t_pcb *PCBrec = pcbEJECUTANDO;
-    pcbEJECUTANDO = NULL;
-    void *buffer;
-    int sizeNombreInterfaz;
-    int sizeNombreArchivo;
-
-    buffer = fetch_buffer(&total_size, server_socket);
-
-    //Tamano de nombre de Interfaz
-    memcpy(&sizeNombreInterfaz,buffer + offset, sizeof(int));  
-    offset += sizeof(int); 
-
-    //Nombre de Interfaz
-    *nomrebInterfaz = malloc(sizeNombreInterfaz);
-    memcpy(*nomrebInterfaz,buffer + offset,sizeNombreInterfaz);
-    offset += sizeNombreInterfaz;
-
-    //Tamano de Nombre de Archivo
-    memcpy(&sizeNombreArchivo,buffer + offset, sizeof(int));
-    offset += sizeof(int); 
-
-    //Nombre de Archivo
-    *nombreArchivo = malloc(sizeNombreArchivo);
-    memcpy(*nombreArchivo,buffer + offset,sizeNombreArchivo);
-    offset += sizeNombreArchivo;
-
-    //Saltar lo de Tamano de PCB que no es necesario
-    offset += sizeof(int); 
-
-    //PCB
-    memcpy((PCBrec),buffer + offset, sizeof(t_pcb));
-
-    log_info(logger, "SE RECIBIO UN PCB PARA IR A DIALFS");
-    log_info(logger, "PID RECIBIDO : %i",PCBrec->pid);
-    log_info(logger, "PC RECIBIDO : %i",PCBrec->program_counter);
-    log_info(logger, "REGISTRO AX : %i",PCBrec->registers.AX);
-    log_info(logger, "REGISTRO BX : %i",PCBrec->registers.BX);
-
-    return PCBrec;
-}
-
-t_pcb *fetch_pcb_dialfs_truncate(int server_socket, char **nomrebInterfaz, char **nombreArchivo, int *tamanoNuevo){
-    int total_size;
-    int offset = 0;
-    t_pcb *PCBrec = pcbEJECUTANDO;
-    pcbEJECUTANDO = NULL;
-    void *buffer;
-    int sizeNombreInterfaz;
-    int sizeNombreArchivo;
-
-    buffer = fetch_buffer(&total_size, server_socket);
-
-    //Tamano de nombre de Interfaz
-    memcpy(&sizeNombreInterfaz,buffer + offset, sizeof(int));  
-    offset += sizeof(int); 
-
-    //Nombre de Interfaz
-    *nomrebInterfaz = malloc(sizeNombreInterfaz);
-    memcpy(*nomrebInterfaz,buffer + offset,sizeNombreInterfaz);
-    offset += sizeNombreInterfaz;
-
-    //Tamano de Nombre de Archivo
-    memcpy(&sizeNombreArchivo,buffer + offset, sizeof(int));
-    offset += sizeof(int); 
-
-    //Nombre de Archivo
-    *nombreArchivo = malloc(sizeNombreArchivo);
-    memcpy(*nombreArchivo,buffer + offset,sizeNombreArchivo);
-    offset += sizeNombreArchivo;
-
-    //No necesito saber tamano de tamano nuevo pro lo que salto
-    offset += sizeof(int);
-
-    //Nuevo Tamano de Archivo
-    memcpy(tamanoNuevo,buffer + offset,sizeof(int));
-    offset += sizeof(int);
-
-    //Saltar lo de Tamano de PCB que no es necesario
-    offset += sizeof(int); 
-
-    //PCB
-    memcpy((PCBrec),buffer + offset, sizeof(t_pcb));
-
-    log_info(logger, "SE RECIBIO UN PCB PARA IR A DIALFS");
-    log_info(logger, "PID RECIBIDO : %i",PCBrec->pid);
-    log_info(logger, "PC RECIBIDO : %i",PCBrec->program_counter);
-    log_info(logger, "REGISTRO AX : %i",PCBrec->registers.AX);
-    log_info(logger, "REGISTRO BX : %i",PCBrec->registers.BX);
-
-    return PCBrec;
-}
-
-//Como IO_FS_WRITE y IO_FS_READ literalmente necesitan los mismos variables, no es necesario crear dos diferentes funciones para cada uno
-//Es literlamente mismo que el fetch de STDIN o STDOUT solo que se recibe el nombre de archivo y registro puntero archivo tambien ademas de lo que recibia el STDIN y STDOUT
-t_pcb *fetch_pcb_dialfs_read_o_write(int server_socket, char **nomrebInterfaz, char** nombreArchivo, int *punteroArchivo,void **contenido,int *tamanoContenido){
-
-    int total_size;
-    int offset = 0;
-    t_pcb *PCBrec = pcbEJECUTANDO;
-    pcbEJECUTANDO = NULL;
-    void *buffer;
-    int sizeNombreInterfaz;
-    int sizeNombreArchivo;
-    int contenidoACopiar;
-    
-    buffer = fetch_buffer(&total_size, server_socket); //RECIBO EL BUFFER 
-
-    //Tamano de nombre de Interfaz
-    memcpy(&sizeNombreInterfaz,buffer + offset, sizeof(int));  
-    offset += sizeof(int); 
-
-    //Nombre de Interfaz
-    *nomrebInterfaz = malloc(sizeNombreInterfaz);
-    memcpy(*nomrebInterfaz,buffer + offset,sizeNombreInterfaz);
-    offset += sizeNombreInterfaz;
-
-    //Tamano de Nombre de Archivo
-    memcpy(&sizeNombreArchivo,buffer + offset, sizeof(int));
-    offset += sizeof(int); 
-
-    //Nombre de Archivo
-    *nombreArchivo = malloc(sizeNombreArchivo);
-    memcpy(*nombreArchivo,buffer + offset,sizeNombreArchivo);
-    offset += sizeNombreArchivo;
-
-    //Tamano de Puntero Archivo
-    offset += sizeof(int);
-
-    //Puntero Archivo
-    memcpy(&punteroArchivo,buffer + offset, sizeof(int));  
-    offset += sizeof(int); 
-
-    //Contenido
-    contenidoACopiar = total_size - offset - sizeof(int) - sizeof(t_pcb); 
-
-    *contenido = malloc(contenidoACopiar);
-    memcpy(*contenido,buffer + offset, contenidoACopiar);
-    offset += contenidoACopiar;
-
-    *tamanoContenido = contenidoACopiar;
-
-    //Saltar lo de Tamano de PCB que no es necesario
-    offset += sizeof(int); 
-
-    //PCB
-    memcpy((PCBrec),buffer + offset, sizeof(t_pcb));
-
-    log_info(logger, "SE RECIBIO UN PCB PARA IR A DIALFSB");
-    log_info(logger, "PID RECIBIDO : %i",PCBrec->pid);
-    log_info(logger, "PC RECIBIDO : %i",PCBrec->program_counter);
-    log_info(logger, "REGISTRO AX : %i",PCBrec->registers.AX);
-    log_info(logger, "REGISTRO BX : %i",PCBrec->registers.BX);
-
-    return PCBrec;
-}
-
-void cargarEnListaDialFS(t_pcb *receptorPCB, t_interfaz_registrada *interfaz, char* nombreArchivo, int tamanoNuevo, op_code cod_op, void** contenido, int tamanoContenido, int punteroArchivo){
-
-    t_colaDialFS * colaDialFS = malloc(sizeof(t_colaDialFS));
-
-    colaDialFS->PCB = receptorPCB;
-    colaDialFS->nombreArchivo = nombreArchivo;
-    colaDialFS->tipoOperacion = cod_op;
-    if(tamanoNuevo != -1) {
-        colaDialFS->tamanoNuevo = tamanoNuevo;
-    }
-    //Verificar contenido solo es suficiente ya que contenido y tamanoContendio trabajan juntos
-    if(contenido != NULL ) {
-        colaDialFS->contenido = *contenido;
-        colaDialFS->tamanoContenido = tamanoContenido;
-        colaDialFS->punteroArchivo = punteroArchivo;
-    }
-
-    pthread_mutex_lock(&(interfaz->mutexColaIO));
-    queue_push(interfaz->listaProcesosEsperando, colaDialFS);
-    pthread_mutex_unlock(&(interfaz->mutexColaIO));
-
-    sem_post(&(interfaz->semaforoContadorIO));
-
 }
