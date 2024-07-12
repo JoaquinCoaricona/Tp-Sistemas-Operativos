@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
     // procesos en ready se traba ahi pero ya tiene el post del semaforo corto plazo
 
     // LOGGER
-    logger = initialize_logger("kernel.log", "kernel", true, LOG_LEVEL_INFO);
+    logger = initialize_logger("kernel.log", "kernel", false, LOG_LEVEL_INFO);
     //Log para la entrega con los logs obligatorios
     //Importante lo del nivel del log y con el tercer parametro decimos si se muestra
     //o no por consola. El cuarto parametro es el nivel del logger
@@ -1681,7 +1681,9 @@ void liberarRecursosProceso(int pid){
         if(recBuscado->instancias <= 0){
 
         t_colayNombre *aEnviar = malloc(sizeof(t_colayNombre));
+        //Aca me guardo el nombre que venia en el recuerdo, a este si le puedo hacer free
         aEnviar->nombreRecurso = rec->nombreRecurso;
+        //aca me guardo la cola de bloqueo del original
         aEnviar->colaBloqueo = recBuscado->colaBloqueo;
 
         //Separo la liberacion en un hilo para que si la planificacion esta
@@ -1694,7 +1696,26 @@ void liberarRecursosProceso(int pid){
         //logueo el resultado y me fijo si habia otro recurso mas asignado
         //en ese caso volveria a entrar al while, sino sale directamente
         log_info(logger,"Recurso %s liberado",rec->nombreRecurso);
-        free(rec->nombreRecurso);
+        //free(rec->nombreRecurso);
+        //ACA HAY UN ERROR COMPLICADO DE ARREGLAR, LO ENCONTRE CON VALGRIND
+        //EL TEMA ES QUE ACA YO TENGO EL PUNTERO REC, Y ESTE PUNTERO LO QUE HACE ES
+        //APUNTAR A UNA ESTRUCTURA RECURSO USADO (QUE SI NO ME EQUIVOCO ES A LO QUE
+        //CUANDO LO HICE LLAME RECUERDO. IGUAL PUEDE QUE NO SEA ESO)
+        //BUENO EL PROBLEMA ES QUE AL HACERLE FREE YO ESTABA HACIENDO
+        //fREE TAMBIEN DEL NOMBRE RECURSO QUE ES LO QUE ESTA MAS ARRIBA
+        //EL TEMA ES QUE COMO YO LE HAGO FREE AL NOMBRE
+        //ESE NOMBRE YO SE LO PASO AL HILO DE MAS ARRIBA
+        //PARA QUE NO NOS QUEDEMOS COLGADOS EN CASO DE FINALIZAR UN PROCESO
+        //MIENTRAS LA PLANIFICACION ESTA DETENIDA. MAS ABAJO Y MAS ARRIBA TAMBIE
+        //SE EXPLICA LA SITUACION PERO ERA PARA QUE SI YO LIBERO
+        //UN RECURSO QUE TENIA ALGO BLOQUEADO ENTONCES NO ME CUELGE INTENTANDO
+        //METER ESE PROCESO QUE LIBERE, A LA COLA DE READY Y QUE NO HAYA PROBLEMAS
+        //BUENO LA COSA ES QUE YO LIBEABA ACA ES NOMBRE PERO QUIZAS YO LIBERO
+        //ACA PERO DENTRO DE HILO TODAVIA NO SE USO
+        //ENTONCES ESTOY LIBERANDO ALGO Y DESPUES LO USO. 
+        //ENTONCES ACA SOLO LIBERO LA ESCTRCUTRA OSEA SOLO EL PUNTERO
+        //A LA ESTRUCTURA Y LA ESTRUCTURA COMO TAL Y DESOUES DENTRO
+        //LIBERO EL NOMBRERECURSO DEL (REC->NOMBRERECURSO)
         free(rec);
         rec = list_remove_by_condition(recursosAsignados,buscarRecursoUsadoPorPid);
     
@@ -1734,7 +1755,8 @@ void liberacionProceso(void *cola){
     addEstadoReady(PCBliberado);
     sem_post(&sem_ready);
     pthread_mutex_unlock(&procesosBloqueados);
-
+    free(recurso->nombreRecurso); //Agrego aca lo que elimine arriba, despues de llamar a crear este hilo
+    //estaba este free pero a veces se borraba ahi antes que aca y eso lo marco valgrind
     pthread_cancel(pthread_self());
 }
 
