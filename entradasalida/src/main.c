@@ -3,6 +3,7 @@
 int socket_kernel;
 int socket_memoria ;
 t_log *logger;
+t_log *logOficialIO;
 char *PORT_memoria;
 char *IP_memoria;
 char *PORT_kernel;
@@ -43,6 +44,7 @@ int main(int argc, char *argv[])
     listaDeArchivos = list_create();
 
     logger = initialize_logger("entradasalida.log", "entradasalida", true, LOG_LEVEL_INFO);
+    logOficialIO = initialize_logger("logOficialIO.log",nombreInterfaz,true,LOG_LEVEL_INFO);
 
     config = initialize_config(logger, configRecibido);
 
@@ -99,6 +101,7 @@ void interfazGenerica(){
             log_info(logger, "RECIBI UN SLEEP DE %i",tiempo);
             usleep(tiempoUnidad * tiempo * 1000); 
             log_info(logger, "TERMINE UN SLEEP DE %i",tiempo);
+            log_info(logger, "TERMINE EL SLEEP");
             enviarAvisoAKernel(socket_kernel,CONFIRMACION_SLEEP_COMPLETO);
             //aca antes pasaba que me decia algun error inesperado, no se porque
             //lo debugee y empezo a funcionar, pero pasaba que se iba por el default
@@ -124,16 +127,20 @@ int fetch_tiempoDormir(int socket_kernel){
 
     int total_size;
     int offset = 0;
-
+    int pid;
     int tiempoSleep;
    
     void *buffer2;
     buffer2 = fetch_buffer(&total_size, socket_kernel);
 
+    offset += sizeof(int);
+    memcpy(&pid,buffer2 + offset, sizeof(int));
+
     offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
     
     memcpy(&tiempoSleep,buffer2 + offset, sizeof(int)); //RECIBO EL TAMAÑO
     
+    log_info(logOficialIO,"PID: %i - Operacion: SLEEP",pid);
 
     free(buffer2);
     return tiempoSleep;
@@ -206,6 +213,7 @@ void recibirYejecutarDireccionesFisicas(int socket_kernel){
 
     memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
     offset += sizeof(int);
+    log_info(logOficialIO,"PID: <%i> - Operacion: STDOUT",pid);
     
     offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
 
@@ -238,6 +246,7 @@ void recibirYejecutarDireccionesFisicas(int socket_kernel){
     cadena[cantidadBytesMalloc] = '\0'; // Asegúrate de que el string esté terminado en '\0'
 
     log_info(logger,"%s",cadena);
+    log_info(logOficialIO,"Leido: %s",cadena);
 
     free(contenido);
     free(buffer2);
@@ -284,8 +293,7 @@ void interfazStdin(){
 
 void recibirYejecutarDireccionesFisicasSTDIN(int socket_kernel){
     //char *cadenaPrueba = "hola como estas";
-    log_info(logger,"Ingrese cadena a escribir. No se va escribir todo (solo lo indicado en la instruccion)");
-    char *cadenaPrueba = readline(">");
+
     
     int limiteAEscribir;
 
@@ -307,6 +315,11 @@ void recibirYejecutarDireccionesFisicasSTDIN(int socket_kernel){
     memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
     offset += sizeof(int);
 
+    log_info(logOficialIO,"PID: <%i> - Operacion: STDIN",pid);
+    log_info(logOficialIO,"Ingrese cadena a escribir. No se va escribir todo (solo lo indicado en la instruccion)");
+    log_info(logger,"Ingrese cadena a escribir. No se va escribir todo (solo lo indicado en la instruccion)");
+    char *cadenaPrueba = readline(">");
+    
     int observador;
     memcpy(&observador,buffer2 + offset, sizeof(int)); 
 
@@ -770,6 +783,8 @@ void crearArchivo(int socket_kernel){
 
     memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
     offset += sizeof(int);
+    log_info(logOficialIO,"PID: <%i> - Operacion: CREAR ARCHIVO",pid);
+    log_info(logOficialIO,"PID: <%i> - Crear Archivo: %s",pid,nombreArchivo);
 
 
     char *pathNuevo = strdup(conservadorPATH);
@@ -832,6 +847,8 @@ void borrarArchivo(int socket_kernel){
 
     memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
     offset += sizeof(int);
+    log_info(logOficialIO,"PID: %i - Operacion: BORRAR ARCHIVO",pid);
+    log_info(logOficialIO,"PID: <%i> - Eliminar Archivo: %s",pid,nombreArchivo);
 
     char *pathNuevo = strdup(conservadorPATH);
     string_append(&pathNuevo,nombreArchivo);
@@ -905,11 +922,14 @@ void truncarArchivo(int socket_kernel){
 
     memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
     offset += sizeof(int);
+    log_info(logOficialIO,"PID: %i - Operacion: TRUNCAR ARCHIVO",pid);
 
     offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT;
 
     memcpy(&nuevoTamaArchivo,buffer2 + offset, sizeof(int)); //RECIBO EL NUEVO TAMAÑO DEL ARCHIVO
     offset += sizeof(int);
+
+    log_info(logOficialIO,"PID: <%i> - Truncar Archivo: %s - Tamaño: %i",pid,nombreArchivo,nuevoTamaArchivo);
 
     char *pathNuevo = strdup(conservadorPATH);
     string_append(&pathNuevo,nombreArchivo);
@@ -1015,10 +1035,14 @@ void truncarArchivo(int socket_kernel){
             //el desplzamiento, que es el bloque inicial por el tamaño de cada bloque para llegar
             //al 0 del bloque (y del archivo) y desde ahi copiar
             memcpy(copiaContenidoBloques,contenidoFS + (bloque_inicial * block_size),cantidadBloques * block_size);
+            //Logueo Inicio Compactacion
+            log_info(logOficialIO,"PID: <%i> - Inicio Compactación.",pid);
             //Compacto, ACLARACION SOBRE LA COMPACTACION MAS ARRIBA
             compactar(bitarray,bloque_inicial,cantidadBloques);
             //Tiempo de espera despues de la compactacion -- Esto lo pedia la consigna
             usleep(tiempoRetrasoCompactacion);
+            //Logueo Fin de Compactacion
+            log_info(logOficialIO,"PID: <%i> - Fin Compactación.",pid);
             //Despues de compactar ya le pongo el valor que tenia
             archivoPorelQueCompactamos->bloque_inicial = bloque_inicial;
 
@@ -1450,6 +1474,7 @@ void writeArchivo(int socket_kernel){
 
     memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
     offset += sizeof(int);
+    log_info(logOficialIO,"PID: %i - Operacion: ESCRIBIR ARCHIVO",pid);
 
     int tamaVoid;
     memcpy(&tamaVoid,buffer2 + offset, sizeof(int)); 
@@ -1475,7 +1500,7 @@ void writeArchivo(int socket_kernel){
     offset += sizeof(int);//ME SALTEO EL TAMAÑO DEL INT DIR FISICAS;
     memcpy(&cantidadDireccionesFisicas,buffer2 + offset, sizeof(int)); //Recibo cantidad dir Fisicas
     offset += sizeof(int);
-
+    log_info(logOficialIO,"PID: <%i> - Escribir Archivo: %s - Tamaño a Leer: %i - Puntero Archivo: %i",pid,nombreArchivo,cantidadBytesMalloc,registroPuntero);
     log_info(logger,"Cantidad Direcciones fisicas %i",cantidadDireccionesFisicas);
 
     //+++++++++++++++Abro el archivo y leo los datos+++++++++++++++++++++++
@@ -1552,6 +1577,7 @@ void writeArchivo(int socket_kernel){
     reservaParaLoggear[cantidadBytesMalloc] = '\0';
     //Loggeo
     log_info(logger,"%s",reservaParaLoggear);
+    log_info(logOficialIO,"Escrito: %s",reservaParaLoggear);
     //Libero la memoria que solo pedi para loggear que todo haya salido bien
     free(reservaParaLoggear);
     free(buffer2);
@@ -1579,6 +1605,7 @@ void readArchivo(int socket_kernel){
 
     memcpy(&pid,buffer2 + offset, sizeof(int)); //RECIBO EL PID
     offset += sizeof(int);
+    log_info(logOficialIO,"PID: %i - Operacion: LEER ARCHIVO",pid);
 
     int tamaVoid;
     memcpy(&tamaVoid,buffer2 + offset, sizeof(int)); 
@@ -1604,7 +1631,8 @@ void readArchivo(int socket_kernel){
     memcpy(&cantidadDireccionesFisicas,buffer2 + offset,sizeof(int));//Recibo la cant Dir fisicas
     offset += sizeof(int);
 
-
+    log_info(logOficialIO,"PID: <%i> - Leer Archivo: %s - Tamaño a Leer: %i - Puntero Archivo: %i",pid,nombreArchivo,limiteAEscribir,registroPuntero);
+    
     char *pathRead = strdup(conservadorPATH);
     string_append(&pathRead,nombreArchivo);
 
@@ -1646,6 +1674,7 @@ void readArchivo(int socket_kernel){
         contenidoEscrito[cantidadBytesEscribir] = '\0'; // Asegúrate de que el string esté terminado en '\0'
         memcpy(contenidoEscrito,punteroALeerParaEscribirEnMemoria + parteEscrita, cantidadBytesEscribir); 
         log_info(logger,"%s",contenidoEscrito);
+        log_info(logOficialIO,"Leido: %s",contenidoEscrito);
         free(contenidoEscrito);
         //Actualizo la variable desplazamiento sumandole lo que acabo de escribir en memoria
         parteEscrita = parteEscrita + cantidadBytesEscribir;

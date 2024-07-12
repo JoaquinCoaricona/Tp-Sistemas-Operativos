@@ -511,6 +511,7 @@ void llamadas_io(t_interfaz_registrada *interfaz){
         
         bufferTiempoDormir = create_buffer();
         packetTiempoDormir = create_packet(TIEMPO_DORMIR, bufferTiempoDormir);
+        add_to_packet(packetTiempoDormir,&(pcbEnviado->PCB->pid), sizeof(int));
         add_to_packet(packetTiempoDormir,&(pcbEnviado->tiempoDormir), sizeof(int));
         send_packet(packetTiempoDormir,interfaz->socket_de_conexion);     //armo el paquete para enviar a la IO 
         log_info(logger, "SE ENVIO SLEEP DE %i A LA INTERFAZ: %s\n",pcbEnviado->tiempoDormir,interfaz->nombre); 
