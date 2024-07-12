@@ -337,9 +337,19 @@ void manejoHiloQuantumVRR(void *pcb){
 void obtenerDatosTemporal(){
     //Detengo el Temporal y guardo el tiempo transcurrido en la variable global
     temporal_stop(timer);
-    ms_transcurridos = temporal_gettime(timer);
-    log_info(logger,"Tiempo Transcurrido: %i",ms_transcurridos * 1000); //Multiplico Por mil porque me interesan
+    ms_transcurridos = temporal_gettime(timer); //Antes se multiplicaba por mil abajo
+    log_info(logger,"Tiempo Transcurrido: %i",ms_transcurridos); //Multiplico Por mil porque me interesan
     //los microsegundos que son los que usa usleep y no milisegundos que es lo que devuelve t_temporal
+    
+    //Al final si me interesaban los milisegundos
+
+    //ACA HABIA UN ERROR PORQUE ESTO ESTABA COMO DICE MAS ARRIBA *1000
+    //PORQUE ANTES NO SABIA COMO ERA LA CUENTA ENTONCES EL TEMPORAL LO DA EN MS
+    //QUE ESTA BIEN PERO YO LO PASABA A MICRO PORQUE EL USLEEP USA ESO Y NO ENTENIDA
+    //EN QUE UNIDADES QUERIAN QUE LO USEMOS. DESPUES LO ENTENDI Y ARREGLE
+    //PERO ESTO HABIA QUEDADO ASI. ME DI CUENTA CON MIS LOGS, CUANDO YA ESTABA CON 
+    //LOS LOGS OBLIGATORIOS VI ESTO Y NO SE PODIA VER EL ERROR
+    //PERO CON MIS LOGS, LO HUBIESE VISTO EN EL MOMENTO
     temporal_destroy(timer);
 }
 

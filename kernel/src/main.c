@@ -329,7 +329,15 @@ void *manage_request_from_dispatch(void *args)
             obtenerDatosTemporal();
             //la multiplicacion es para pasarlo a microsegundos, que es lo usa usleep
             //t_temporal devuelve milisegundos. El quantumglobal esta en microsegundos
-            receptorPCB->quantum = receptorPCB->quantum - (ms_transcurridos * 1000);
+            receptorPCB->quantum = receptorPCB->quantum - (ms_transcurridos);
+            //ACA HABIA UN ERROR PORQUE ESTO ESTABA COMO DICE MAS ARRIBA *1000
+            //PORQUE ANTES NO SABIA COMO ERA LA CUENTA ENTONCES EL TEMPORAL LO DA EN MS
+            //QUE ESTA BIEN PERO YO LO PASABA A MICRO PORQUE EL USLEEP USA ESO Y NO ENTENIDA
+            //EN QUE UNIDADES QUERIAN QUE LO USEMOS. DESPUES LO ENTENDI Y ARREGLE
+            //PERO ESTO HABIA QUEDADO ASI. ME DI CUENTA CON MIS LOGS, CUANDO YA ESTABA CON 
+            //LOS LOGS OBLIGATORIOS VI ESTO Y NO SE PODIA VER EL ERROR
+            //PERO CON MIS LOGS, LO HUBIESE VISTO EN EL MOMENTO
+
             //Hago Control de que el quantumRestante no sea negativo, en caso que sea neagativo, le cargo el original
             //para que al volver de IO, lo carguen a la cola de ready y no a la prioritaria
             //Esto pasaba cuando enviabamos varias veces a IO dentro de un mismo quantum, quizas entre que envia la 
@@ -373,7 +381,14 @@ void *manage_request_from_dispatch(void *args)
             obtenerDatosTemporal();
             //la multiplicacion es para pasarlo a microsegundos, que es lo usa usleep
             //t_temporal devuelve milisegundos. El quantumglobal esta en microsegundos
-            receptorPCBOUT->quantum = receptorPCBOUT->quantum - (ms_transcurridos * 1000);
+            receptorPCBOUT->quantum = receptorPCBOUT->quantum - (ms_transcurridos);
+            //ACA HABIA UN ERROR PORQUE ESTO ESTABA COMO DICE MAS ARRIBA *1000
+            //PORQUE ANTES NO SABIA COMO ERA LA CUENTA ENTONCES EL TEMPORAL LO DA EN MS
+            //QUE ESTA BIEN PERO YO LO PASABA A MICRO PORQUE EL USLEEP USA ESO Y NO ENTENIDA
+            //EN QUE UNIDADES QUERIAN QUE LO USEMOS. DESPUES LO ENTENDI Y ARREGLE
+            //PERO ESTO HABIA QUEDADO ASI. ME DI CUENTA CON MIS LOGS, CUANDO YA ESTABA CON 
+            //LOS LOGS OBLIGATORIOS VI ESTO Y NO SE PODIA VER EL ERROR
+            //PERO CON MIS LOGS, LO HUBIESE VISTO EN EL MOMENTO
             //Hago Control de que el quantumRestante no sea negativo, en caso que sea neagativo, le cargo el original
             //para que al volver de IO, lo carguen a la cola de ready y no a la prioritaria
             //Esto pasaba cuando enviabamos varias veces a IO dentro de un mismo quantum, quizas entre que envia la 
@@ -418,7 +433,15 @@ void *manage_request_from_dispatch(void *args)
             obtenerDatosTemporal();
             //la multiplicacion es para pasarlo a microsegundos, que es lo usa usleep
             //t_temporal devuelve milisegundos. El quantumglobal esta en microsegundos
-            receptorPCBIN->quantum = receptorPCBIN->quantum - (ms_transcurridos * 1000);
+            receptorPCBIN->quantum = receptorPCBIN->quantum - (ms_transcurridos);
+            //ACA HABIA UN ERROR PORQUE ESTO ESTABA COMO DICE MAS ARRIBA *1000
+            //PORQUE ANTES NO SABIA COMO ERA LA CUENTA ENTONCES EL TEMPORAL LO DA EN MS
+            //QUE ESTA BIEN PERO YO LO PASABA A MICRO PORQUE EL USLEEP USA ESO Y NO ENTENIDA
+            //EN QUE UNIDADES QUERIAN QUE LO USEMOS. DESPUES LO ENTENDI Y ARREGLE
+            //PERO ESTO HABIA QUEDADO ASI. ME DI CUENTA CON MIS LOGS, CUANDO YA ESTABA CON 
+            //LOS LOGS OBLIGATORIOS VI ESTO Y NO SE PODIA VER EL ERROR
+            //PERO CON MIS LOGS, LO HUBIESE VISTO EN EL MOMENTO
+
             //Hago Control de que el quantumRestante no sea negativo, en caso que sea neagativo, le cargo el original
             //para que al volver de IO, lo carguen a la cola de ready y no a la prioritaria
             //Esto pasaba cuando enviabamos varias veces a IO dentro de un mismo quantum, quizas entre que envia la 
@@ -491,7 +514,14 @@ void *manage_request_from_dispatch(void *args)
             //+++++++++++CHEQUEO VRR++++++++++++++++++++++++++++++++++++++++++++
             if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
             obtenerDatosTemporal();
-            receptorPCBFS->quantum = receptorPCBFS->quantum - (ms_transcurridos * 1000);
+            receptorPCBFS->quantum = receptorPCBFS->quantum - (ms_transcurridos);
+            //ACA HABIA UN ERROR PORQUE ESTO ESTABA COMO DICE MAS ARRIBA *1000
+            //PORQUE ANTES NO SABIA COMO ERA LA CUENTA ENTONCES EL TEMPORAL LO DA EN MS
+            //QUE ESTA BIEN PERO YO LO PASABA A MICRO PORQUE EL USLEEP USA ESO Y NO ENTENIDA
+            //EN QUE UNIDADES QUERIAN QUE LO USEMOS. DESPUES LO ENTENDI Y ARREGLE
+            //PERO ESTO HABIA QUEDADO ASI. ME DI CUENTA CON MIS LOGS, CUANDO YA ESTABA CON 
+            //LOS LOGS OBLIGATORIOS VI ESTO Y NO SE PODIA VER EL ERROR
+            //PERO CON MIS LOGS, LO HUBIESE VISTO EN EL MOMENTO
             if(receptorPCBFS->quantum < 0){
                 receptorPCBFS->quantum = quantumGlobal;
                 log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
@@ -537,7 +567,15 @@ void *manage_request_from_dispatch(void *args)
             //+++++++++++CHEQUEO VRR++++++++++++++++++++++++++++++++++++++++++++
             if(string_equals_ignore_case(algoritmo_planificacion, "VRR")){
             obtenerDatosTemporal();
-            receptorPCBFSwr->quantum = receptorPCBFSwr->quantum - (ms_transcurridos * 1000);
+            receptorPCBFSwr->quantum = receptorPCBFSwr->quantum - (ms_transcurridos);
+            //ACA HABIA UN ERROR PORQUE ESTO ESTABA COMO DICE MAS ARRIBA *1000
+            //PORQUE ANTES NO SABIA COMO ERA LA CUENTA ENTONCES EL TEMPORAL LO DA EN MS
+            //QUE ESTA BIEN PERO YO LO PASABA A MICRO PORQUE EL USLEEP USA ESO Y NO ENTENIDA
+            //EN QUE UNIDADES QUERIAN QUE LO USEMOS. DESPUES LO ENTENDI Y ARREGLE
+            //PERO ESTO HABIA QUEDADO ASI. ME DI CUENTA CON MIS LOGS, CUANDO YA ESTABA CON 
+            //LOS LOGS OBLIGATORIOS VI ESTO Y NO SE PODIA VER EL ERROR
+            //PERO CON MIS LOGS, LO HUBIESE VISTO EN EL MOMENTO
+            
             if(receptorPCBFSwr->quantum < 0){
                 receptorPCBFSwr->quantum = quantumGlobal;
                 log_info(logger,"El Quantum era negativo, asigno el quantumGlobal");
@@ -917,7 +955,7 @@ void fetch_pcb_actualizado_fin_quantum(int server_socket)
         addEstadoExit(pcbEJECUTANDO); // meto en ready el pcb
         controlGradoMultiprogramacion();
         log_info(logger,"El proceso se elimino por consola y estaba en cpu ya se habia mandado a kernel pero lo eliminamos aca");
-        log_info(logOficialKernel,"Finaliza el proceso <%i> - Motivo: SUCCESS",pcbEJECUTANDO->pid);
+        log_info(logOficialKernel,"Finaliza el proceso <%i> - Motivo: INTERRUPTED_BY_USER",pcbEJECUTANDO->pid);
     }else{
         pidFinalizadoPorConsola = -1;
         pthread_mutex_unlock(&m_pidFinalizadoPorConsola);
