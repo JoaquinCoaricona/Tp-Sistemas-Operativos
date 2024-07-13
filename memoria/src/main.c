@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
     initialize_queue_and_semaphore_memoria();
 
     // LOGGER
-    logger = initialize_logger("memoria.log", "memoria", true, LOG_LEVEL_INFO);
+    logger = initialize_logger("memoria.log", "memoria", false, LOG_LEVEL_INFO);
     logOficialMemoria = initialize_logger("memoriaLogOficial.log","MEMORIA",true,LOG_LEVEL_INFO);
 
     // CONFIG

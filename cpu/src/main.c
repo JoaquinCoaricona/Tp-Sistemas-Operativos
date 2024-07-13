@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
     t_packet *packet;
 
     // LOGGER
-    logger = initialize_logger("cpu.log", "cpu", true, LOG_LEVEL_INFO);
+    logger = initialize_logger("cpu.log", "cpu", false, LOG_LEVEL_INFO);
     logOficialCpu = initialize_logger("cpuLogOficial.log","CPU",true,LOG_LEVEL_INFO);
     // CONFIG
    

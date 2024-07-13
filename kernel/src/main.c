@@ -334,7 +334,7 @@ void *manage_request_from_dispatch(void *args)
             }
             }
             interfaz = buscar_interfaz(nombreInter);
-            log_info(logOficialKernel,"PID: <PID> - Bloqueado por: %s",nombreInter);
+            log_info(logOficialKernel,"PID: <%i> - Bloqueado por: %s",receptorPCB->pid, nombreInter);
             cargarEnListaIO(receptorPCB, interfaz, tiempoDormir);
             sem_post(&short_term_scheduler_semaphore);
             // sem_post(&sem_multiprogramacion);
@@ -378,7 +378,7 @@ void *manage_request_from_dispatch(void *args)
             }
             }
             interfazOUT = buscar_interfaz(nombreInterOUT);
-            log_info(logOficialKernel,"PID: <PID> - Bloqueado por: %s",nombreInterOUT);
+            log_info(logOficialKernel,"PID: <%i> - Bloqueado por: %s",receptorPCBOUT->pid, nombreInterOUT);
             cargarEnListaSTDOUT(receptorPCBOUT, interfazOUT,&contenido,tamanio,bytesMalloc);
             sem_post(&short_term_scheduler_semaphore);
             // sem_post(&sem_multiprogramacion);
@@ -423,7 +423,7 @@ void *manage_request_from_dispatch(void *args)
             }
             }
             interfazIN = buscar_interfaz(nombreInterIN);
-            log_info(logOficialKernel,"PID: <PID> - Bloqueado por: %s",nombreInterIN);
+            log_info(logOficialKernel,"PID: <%i> - Bloqueado por: %s",receptorPCBIN->pid, nombreInterIN);
             //ACA TAMBIEN SIEMPRE QUE PASO UN PUNTERO TENGO QUE PASAR EL &puntero y no el puntero solo
             //una vez dentro lo desreferencio con *puntero y lo recibo como **puntero
             cargarEnListaSTDIN(receptorPCBIN, interfazIN, &contenidoIN,tamanioIN);
@@ -485,7 +485,7 @@ void *manage_request_from_dispatch(void *args)
                 }
             }
             interfazFS = buscar_interfaz(nombreInterFS);
-            log_info(logOficialKernel,"PID: <PID> - Bloqueado por: %s",nombreInterFS);
+            log_info(logOficialKernel,"PID: <%i> - Bloqueado por: %s",receptorPCBFS, nombreInterFS);
 
             t_colaFS *guardarFS = malloc(sizeof(t_colaFS)); 
 
@@ -529,7 +529,7 @@ void *manage_request_from_dispatch(void *args)
 
             interfazFSwr = buscar_interfaz(nombreInterFSwr);
             
-            log_info(logOficialKernel,"PID: <PID> - Bloqueado por: %s",nombreInterFSwr);
+            log_info(logOficialKernel,"PID: <%i> - Bloqueado por: %s",receptorPCBFSwr->pid, nombreInterFSwr);
 
             t_colaFS *guardarFSwr = malloc(sizeof(t_colaFS)); 
 
