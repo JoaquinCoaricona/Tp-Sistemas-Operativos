@@ -602,11 +602,11 @@ void *manage_request_from_dispatch(void *args)
             free(nombreInterFSwr);
         break; 
         case -1:
-            log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
+            log_error(logger, "Error al recibir el codigo de operacion ...");
             return;
 
         default:
-            log_error(logger, "Alguno error inesperado %s", server_name);
+            log_error(logger, "Alguno error inesperado ");
             return;
         }
         //Aca desbloqueo el semaforo,este cambio solo esta hecho para detener planificacion
