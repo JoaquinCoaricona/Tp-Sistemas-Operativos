@@ -1781,10 +1781,19 @@ void ejecutar_script(char *path){
     char *pathBase = malloc(baseTam);
     memcpy(pathBase,"/home/utnso/scripts/",baseTam);
 
-    string_append(&pathBase,path);
+    //string_append(&pathBase,path); Esto estaba antes
+    //Arreglo de ultimo momento en esta parte, lo pongo como se hace en memoeria 
+    //para armar los paths de los archivos. Lo pongo asi porque perdia un poco de memoria
+    //mas que nada cuando fallaba el fopen, ahi perdia un poco de espacio pero lo mostraba
+    //valgrin
+    char* pathScript = string_new();
+	string_append(&pathScript, pathBase);
+	string_append(&pathScript, path);
 
-    FILE *archivoScript = fopen(pathBase, "r");
+    FILE *archivoScript = fopen(pathScript, "r");
     if (archivoScript == NULL) {
+        free(pathScript);
+        free(pathBase);
         perror("Error al abrir el archivo");
         return;
     }
@@ -1840,6 +1849,7 @@ void ejecutar_script(char *path){
 // no en el montón (heap). Los literales de cadena en C tienen una duración de
 // vida estática y no requieren liberación explícita de memoria.
 
+    free(pathScript);
     free(pathBase);
     fclose(archivoScript);
 
