@@ -83,6 +83,7 @@ static void process_conection(void *args)
         break;
         case -1:
             log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
+            exit(1);
             return;
 
         default:

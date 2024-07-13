@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
     // procesos en ready se traba ahi pero ya tiene el post del semaforo corto plazo
 
     // LOGGER
-    logger = initialize_logger("kernel.log", "kernel", true, LOG_LEVEL_INFO);
+    logger = initialize_logger("kernel.log", "kernel", false, LOG_LEVEL_INFO);
     logOficialKernel = initialize_logger("kernelLogOficial.log","KERNEL",true,LOG_LEVEL_INFO);
     // CONFIG
     // t_config *config = initialize_config(logger, "../kernel.config");
@@ -1636,7 +1636,6 @@ void liberarRecursosProceso(int pid){
         //logueo el resultado y me fijo si habia otro recurso mas asignado
         //en ese caso volveria a entrar al while, sino sale directamente
         log_info(logger,"Recurso %s liberado",rec->nombreRecurso);
-        free(rec->nombreRecurso);
         free(rec);
         rec = list_remove_by_condition(recursosAsignados,buscarRecursoUsadoPorPid);
     
@@ -1676,7 +1675,8 @@ void liberacionProceso(void *cola){
     addEstadoReady(PCBliberado);
     sem_post(&sem_ready);
     pthread_mutex_unlock(&procesosBloqueados);
-
+    
+     free(recurso->nombreRecurso);
     pthread_cancel(pthread_self());
 }
 
