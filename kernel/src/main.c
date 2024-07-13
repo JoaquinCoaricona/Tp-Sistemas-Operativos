@@ -1763,7 +1763,8 @@ void ejecutar_script(char *path){
 // (literal de cadena) que se almacena en el segmento de texto del programa,
 // no en el montón (heap). Los literales de cadena en C tienen una duración de
 // vida estática y no requieren liberación explícita de memoria.
-
+    
+    free(pathScript);
     free(pathBase);
     fclose(archivoScript);
 
