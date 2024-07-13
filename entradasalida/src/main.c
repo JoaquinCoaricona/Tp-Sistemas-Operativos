@@ -246,6 +246,7 @@ void recibirYejecutarDireccionesFisicas(int socket_kernel){
     cadena[cantidadBytesMalloc] = '\0'; // Asegúrate de que el string esté terminado en '\0'
 
     log_info(logger,"%s",cadena);
+
     log_info(logOficialIO,"Leido: %s",cadena);
 
     free(contenido);
@@ -508,7 +509,7 @@ void interfazFileSystem(){
 
     //Borrar esto -- Esto es para la prueba de FS para poder mandar algo a memoria directamente
     //a escribir y no tener que escribir primero el FS
-    memcpy(contenidoFS + 1024,"ERROR ERROR",12);
+    //memcpy(contenidoFS + 1024,"ERROR ERROR",12);
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
