@@ -544,11 +544,11 @@ void *manage_request_from_dispatch(void *args)
             free(nombreInterFSwr);
             break; 
         case -1:
-            log_error(logger, "Error al recibir el codigo de operacion %s...", server_name);
+            log_error(logger, "Error al recibir el codigo de operacion ...");
             return;
 
         default:
-            log_error(logger, "Alguno error inesperado %s", server_name);
+            log_error(logger, "Alguno error inesperado");
             return;
         }
         //Aca desbloqueo el semaforo,este cambio solo esta hecho para detener planificacion
@@ -1701,10 +1701,14 @@ void ejecutar_script(char *path){
     char *pathBase = malloc(baseTam);
     memcpy(pathBase,"/home/utnso/scripts/",baseTam);
 
-    string_append(&pathBase,path);
+    char* pathScript = string_new();
+	string_append(&pathScript, pathBase);
+	string_append(&pathScript, path);
 
-    FILE *archivoScript = fopen(pathBase, "r");
+    FILE *archivoScript = fopen(pathScript, "r");
     if (archivoScript == NULL) {
+        free(pathScript);
+        free(pathBase);
         perror("Error al abrir el archivo");
         return;
     }

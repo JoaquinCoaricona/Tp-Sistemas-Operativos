@@ -93,6 +93,7 @@ void leer_pseudo(int client_socket){
         //si el char esta vacio, hace break.
 		if(resultado_cadena == NULL)
 		{
+			free(cadena);
 			//log_error(logger, "No encontre el archivo o esta vacio");
 			break;
 		}
