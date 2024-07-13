@@ -92,7 +92,10 @@ void leer_pseudo(int client_socket){
 
         //si el char esta vacio, hace break.
 		if(resultado_cadena == NULL)
-		{
+		{	
+			//Agrego este caso que no lo habia tenido en cuenta y generaba 300 de perdida
+			//en valgrind, si char esta vacio entonces libero la memoria porque sino perdi la referencia
+			free(cadena); //Error que mostro valgrind
 			//log_error(logger, "No encontre el archivo o esta vacio");
 			break;
 		}
