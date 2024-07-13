@@ -101,7 +101,7 @@ void interfazGenerica(){
             log_info(logger, "RECIBI UN SLEEP DE %i",tiempo);
             usleep(tiempoUnidad * tiempo * 1000); 
             log_info(logger, "TERMINE UN SLEEP DE %i",tiempo);
-            log_info(logOficialIO, "TERMINE EL SLEEP");
+            //log_info(logOficialIO, "TERMINE EL SLEEP");
             enviarAvisoAKernel(socket_kernel,CONFIRMACION_SLEEP_COMPLETO);
             //aca antes pasaba que me decia algun error inesperado, no se porque
             //lo debugee y empezo a funcionar, pero pasaba que se iba por el default
