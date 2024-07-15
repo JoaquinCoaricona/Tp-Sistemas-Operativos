@@ -642,7 +642,9 @@ void operacion_mov_in(t_pcb* contexto, t_instruccion_unitaria* instruccion)
 		nuevaDirFisica = nuevoMarco * tamaPagina;
 		mandarALeer(nuevaDirFisica,cantidadBits,contexto,contenidoLeido + desplazamientoContenido);
 		//++++++++++++++++++++++SOLO PARA EL LOG++++++++++++++++++++++++++++++++
-		memcpy(&numeroGlobalLog + desplazamientoContenido,contenidoLeido + desplazamientoContenido,cantidadBits);
+		//Aca habia sumando un puntero para escribri al final pero no va eso, solo quiero
+		//imprimir la parte que se escribio, no reconstruilo. Eso se hace mas abajo y se guarda en el registro
+		memcpy(&numeroGlobalLog,contenidoLeido + desplazamientoContenido,cantidadBits);
 		log_info(logOficialCpu,"PID: <%i> - Acción: LEER - Dirección Física: %i - Valor: %d",contexto->pid,nuevaDirFisica,numeroGlobalLog);
 		//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		
