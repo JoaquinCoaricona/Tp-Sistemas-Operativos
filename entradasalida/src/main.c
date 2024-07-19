@@ -469,8 +469,6 @@ void interfazDialFS(){
 
     asprintf(&path_bitmap, "%s/bitmap.dat", path_base_dialfs);
 
-    log_info(logger, "En total existe %i bloques.", block_count);
-
     //Cantidad de bloques libre en el archivo bloques.dat
     bloques_libres = block_count;
 
@@ -566,9 +564,9 @@ void crear_archivo_bloques(){
 
         ftruncate(file_descriptor,length_archivo);
 
-        log_info(logger, "Archivo de bloques creado y abierto");
+        log_info(logger, "Archivo de bloques creado y abierto.");
     }else{
-        log_info(logger, "Archivo de bloques abierto");
+        log_info(logger, "Archivo de bloques abierto.");
     }
 
     //Mapear bloques.dat a memoria
@@ -598,9 +596,9 @@ void crear_archivo_bitmap(){
 
         ftruncate(file_descriptor,length_archivo);
 
-        log_info(logger, "Archivo de bitmap creado y abierto");
+        log_info(logger, "Archivo de bitmap creado y abierto.");
     }else{
-        log_info(logger, "Archivo de bitmap abierto");
+        log_info(logger, "Archivo de bitmap abierto.");
     }
 
     //Mapear bitmap.dat a memoria
