@@ -1174,8 +1174,9 @@ void compactar(t_bitarray *bitarray, char* nombre_archivo_a_truncar, int tamano_
         bloques_ocupados = (tamano_nuevo + block_size - 1) / block_size; 
     }
 
+    /*
     if(bloque_inicial + bloques_ocupados < block_count){
-
+    */
         bloque_fin_ocupado = bloque_inicial + bloques_ocupados - 1;
 
         //Ocupar bits en bitarray
@@ -1183,7 +1184,7 @@ void compactar(t_bitarray *bitarray, char* nombre_archivo_a_truncar, int tamano_
             bitarray_set_bit(bitarray, i);
             bloques_libres = bloques_libres - 1;
         }
-
+    /*
     }else{
         log_info(logger, "No hay suficiente espacio despues de compactar tambien.");
         ftruncate(fileno(archivo_a_truncar), 0);
@@ -1194,7 +1195,7 @@ void compactar(t_bitarray *bitarray, char* nombre_archivo_a_truncar, int tamano_
         //Escribir en el archivo el tamano nuevo 
         fprintf(archivo_a_truncar, "BLOQUE_INICIAL=%i\n", bloque_inicial);
         fprintf(archivo_a_truncar, "TAMANIO_ARCHIVO=%i\n", tamano_actual);
-    }
+    }*/
 
     fclose(archivo_a_truncar);
     free(path_archivo_truncar);
