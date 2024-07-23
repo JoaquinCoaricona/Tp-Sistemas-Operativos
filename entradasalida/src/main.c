@@ -1329,7 +1329,7 @@ void escribir_archivo(int socket_kernel){
     fscanf(archivo, "TAMANO_ARCHIVO=%i\n", &tamano);
 
     //Calculo la posicion de inicio de archivo en bloques.dat
-    int posicion_archivo = bloque_inicial *block_size;
+    int posicion_archivo = (bloque_inicial - 1) * block_size;
 
     //Posicion de escritura en bloques.dat
     int posicion_bloques_dat = posicion_archivo + puntero_archivo;
@@ -1465,7 +1465,7 @@ void leer_archivo(int socket_kernel){
     fscanf(archivo, "TAMANO_ARCHIVO=%i\n", &tamano);
 
     //Calculo la posicion de inicio de archivo en bloques.dat
-    int posicion_archivo = bloque_inicial *block_size;
+    int posicion_archivo = (bloque_inicial - 1) *block_size;
 
     //Posicion de escritura en bloques.dat
     int posicion_bloques_dat = posicion_archivo + puntero_archivo;
