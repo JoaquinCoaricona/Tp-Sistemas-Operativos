@@ -485,7 +485,7 @@ void *manage_request_from_dispatch(void *args)
                 }
             }
             interfazFS = buscar_interfaz(nombreInterFS);
-            log_info(logOficialKernel,"PID: <%i> - Bloqueado por: %s",receptorPCBFS, nombreInterFS);
+            log_info(logOficialKernel,"PID: <%i> - Bloqueado por: %s",receptorPCBFS->pid, nombreInterFS);
 
             t_colaFS *guardarFS = malloc(sizeof(t_colaFS)); 
 
